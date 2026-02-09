@@ -172,7 +172,7 @@ function renderCategoriesBar(categories) {
   validCategories.forEach(category => {
     const categoryData = category.category_data;
     const categoryChip = document.createElement('a');
-    categoryChip.href = `#category-${category.id}`;
+    categoryChip.href = `products.html?category=${category.id}&name=${encodeURIComponent(categoryData.name)}`;
     categoryChip.className = 'category-chip';
     categoryChip.textContent = categoryData.name;
     categoriesScroll.appendChild(categoryChip);
@@ -207,7 +207,7 @@ function renderCategoriesSidebar(categories) {
   validCategories.forEach(category => {
     const categoryData = category.category_data;
     const categoryItem = document.createElement('a');
-    categoryItem.href = `#category-${category.id}`;
+    categoryItem.href = `products.html?category=${category.id}&name=${encodeURIComponent(categoryData.name)}`;
     categoryItem.className = 'category-list-item';
     categoryItem.dataset.categoryId = category.id;
     

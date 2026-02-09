@@ -196,11 +196,8 @@ async function handleLogin(e) {
         
         console.log('✅ Sesión guardada correctamente:', JSON.parse(savedSession));
 
-        // Mostrar éxito
-        if (successDiv) {
-            successDiv.textContent = '¡Inicio de sesión exitoso! Redirigiendo...';
-            successDiv.style.display = 'block';
-        }
+        // Mostrar spinner de carga
+        showLoginSpinner();
 
         // Verificar que isUserLoggedIn funciona antes de redirigir
         if (typeof isUserLoggedIn === 'function') {

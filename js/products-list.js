@@ -112,7 +112,15 @@ async function renderProducts() {
     container.innerHTML = '';
     
     if (filteredProducts.length === 0) {
-        container.innerHTML = '<div class="no-products"><p>No se encontraron productos en esta categoría.</p></div>';
+        container.innerHTML = `
+            <div class="no-products-message">
+                <div class="no-products-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <h3 class="no-products-title">Categoría en abastecimiento</h3>
+                <p class="no-products-text">Todavía no está disponible para comprar. Espere unos días.</p>
+            </div>
+        `;
         updateProductsCount(0, 0, 0);
         return;
     }
