@@ -491,6 +491,35 @@ function logout() {
     window.location.href = 'index.html';
 }
 
+// Función para mostrar spinner de carga después del login
+function showLoginSpinner() {
+    // Crear overlay de carga
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'login-loading-overlay';
+    loadingOverlay.className = 'login-loading-overlay';
+    
+    // Crear spinner
+    const spinner = document.createElement('div');
+    spinner.className = 'login-spinner';
+    
+    // Logo dentro del spinner
+    const logoImg = document.createElement('img');
+    logoImg.src = 'images/logo.png';
+    logoImg.alt = 'Tropiplus Supermarket';
+    logoImg.className = 'login-spinner-logo';
+    
+    spinner.appendChild(logoImg);
+    loadingOverlay.appendChild(spinner);
+    
+    // Agregar al body
+    document.body.appendChild(loadingOverlay);
+    
+    // Animar el spinner
+    setTimeout(() => {
+        loadingOverlay.classList.add('active');
+    }, 10);
+}
+
 // Hacer funciones disponibles globalmente
 window.isUserLoggedIn = isUserLoggedIn;
 window.getCurrentUser = getCurrentUser;
