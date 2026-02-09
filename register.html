@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta - Tropiplus Supermarket</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <!-- Contenido Principal -->
+    <main class="auth-main">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <!-- Logo dentro de la tarjeta -->
+                    <div class="auth-logo-section">
+                        <a href="index.html" class="auth-logo-link">
+                            <img src="images/logo.png" alt="Tropiplus Supermarket" class="auth-logo-image">
+                            <div class="auth-logo-text-large">
+                                <span class="auth-logo-super">TROPIPLUS</span>
+                                <span class="auth-logo-market">SUPERMARKET</span>
+                            </div>
+                        </a>
+                        <p class="auth-website-url">WWW.TROPIPLUSSUPERMARKET.COM</p>
+                    </div>
+
+                    <div class="auth-header-section">
+                        <h1 class="auth-title">Crear una cuenta</h1>
+                        <p class="auth-subtitle">Únete a Tropiplus Supermarket y disfruta de nuestros servicios</p>
+                    </div>
+
+                    <form id="register-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="register-name" class="form-label">Su nombre *</label>
+                            <input 
+                                type="text" 
+                                id="register-name" 
+                                name="name" 
+                                class="form-input" 
+                                placeholder="Nombre completo"
+                                required
+                                autocomplete="name"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-email" class="form-label">Correo Electrónico *</label>
+                            <input 
+                                type="email" 
+                                id="register-email" 
+                                name="email" 
+                                class="form-input" 
+                                placeholder="tu@email.com"
+                                required
+                                autocomplete="email"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-address" class="form-label">Su dirección *</label>
+                            <input 
+                                type="text" 
+                                id="register-address" 
+                                name="address" 
+                                class="form-input" 
+                                placeholder="Dirección completa"
+                                required
+                                autocomplete="street-address"
+                            >
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="register-country" class="form-label">País *</label>
+                                <select id="register-country" name="country" class="form-input" required>
+                                    <option value="">Seleccione un país</option>
+                                    <option value="US">Estados Unidos</option>
+                                    <option value="CU">Cuba</option>
+                                    <option value="MX">México</option>
+                                    <option value="ES">España</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="register-state" class="form-label">Provincia / Estado *</label>
+                                <input 
+                                    type="text" 
+                                    id="register-state" 
+                                    name="state" 
+                                    class="form-input" 
+                                    placeholder="Estado o Provincia"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="register-city" class="form-label">Ciudad *</label>
+                                <input 
+                                    type="text" 
+                                    id="register-city" 
+                                    name="city" 
+                                    class="form-input" 
+                                    placeholder="Ciudad"
+                                    required
+                                    autocomplete="address-level2"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="register-postal" class="form-label">Código postal *</label>
+                                <input 
+                                    type="text" 
+                                    id="register-postal" 
+                                    name="postal_code" 
+                                    class="form-input" 
+                                    placeholder="Código postal"
+                                    required
+                                    autocomplete="postal-code"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-phone" class="form-label">Teléfono</label>
+                            <input 
+                                type="tel" 
+                                id="register-phone" 
+                                name="phone" 
+                                class="form-input" 
+                                placeholder="+1 (555) 123-4567"
+                                autocomplete="tel"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-password" class="form-label">Contraseña *</label>
+                            <div class="password-input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="register-password" 
+                                    name="password" 
+                                    class="form-input" 
+                                    placeholder="Mínimo 8 caracteres"
+                                    required
+                                    minlength="8"
+                                    autocomplete="new-password"
+                                >
+                                <button type="button" class="password-toggle" id="toggle-password-register">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-password-confirm" class="form-label">Repetir Contraseña *</label>
+                            <div class="password-input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="register-password-confirm" 
+                                    name="password_confirm" 
+                                    class="form-input" 
+                                    placeholder="Confirme su contraseña"
+                                    required
+                                    minlength="8"
+                                    autocomplete="new-password"
+                                >
+                                <button type="button" class="password-toggle" id="toggle-password-confirm">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-checkbox-group">
+                            <input type="checkbox" id="register-terms" name="terms" required>
+                            <label for="register-terms">
+                                Acepto los <a href="#" class="link-text">términos y condiciones</a> y la <a href="#" class="link-text">política de privacidad</a>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="auth-submit-btn" id="register-submit-btn">
+                            CREAR CUENTA
+                        </button>
+
+                        <div id="register-error" class="auth-error-message" style="display: none;"></div>
+                        <div id="register-success" class="auth-success-message" style="display: none;"></div>
+                    </form>
+                </div>
+
+                <div class="auth-footer-links">
+                    <a href="login.html" class="auth-link-btn" style="margin-top: 16px;">
+                        Ya tengo una cuenta
+                    </a>
+                    <a href="index.html" class="auth-link-btn">
+                        VOLVER A LA PÁGINA DE INICIO
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Simple -->
+    <footer class="auth-page-footer">
+        <div class="container">
+            <p class="auth-footer-text">Copyright © 2026. Tropiplus Supermarket. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/square-config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

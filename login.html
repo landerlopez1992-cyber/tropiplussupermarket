@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Tropiplus Supermarket</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <!-- Contenido Principal -->
+    <main class="auth-main">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <!-- Logo dentro de la tarjeta -->
+                    <div class="auth-logo-section">
+                        <a href="index.html" class="auth-logo-link">
+                            <img src="images/logo.png" alt="Tropiplus Supermarket" class="auth-logo-image">
+                            <div class="auth-logo-text-large">
+                                <span class="auth-logo-super">TROPIPLUS</span>
+                                <span class="auth-logo-market">SUPERMARKET</span>
+                            </div>
+                        </a>
+                        <p class="auth-website-url">WWW.TROPIPLUSSUPERMARKET.COM</p>
+                    </div>
+
+                    <div class="auth-header-section">
+                        <h1 class="auth-title">Iniciar sesión</h1>
+                        <p class="auth-subtitle">Para utilizar los servicios de Tropiplus Supermarket</p>
+                    </div>
+
+                    <form id="login-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="login-email" class="form-label">Correo Electrónico</label>
+                            <input 
+                                type="email" 
+                                id="login-email" 
+                                name="email" 
+                                class="form-input" 
+                                placeholder="tu@email.com"
+                                required
+                                autocomplete="email"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="login-password" class="form-label">Contraseña</label>
+                            <div class="password-input-wrapper">
+                                <input 
+                                    type="password" 
+                                    id="login-password" 
+                                    name="password" 
+                                    class="form-input" 
+                                    placeholder="••••••••"
+                                    required
+                                    autocomplete="current-password"
+                                >
+                                <button type="button" class="password-toggle" id="toggle-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-options">
+                            <a href="forgot-password.html" class="forgot-password-link">Olvidé mi contraseña</a>
+                            <a href="register.html" class="forgot-password-link">Cree una cuenta</a>
+                        </div>
+
+                        <button type="submit" class="auth-submit-btn" id="login-submit-btn">
+                            INICIAR SESIÓN
+                        </button>
+
+                        <div id="login-error" class="auth-error-message" style="display: none;"></div>
+                        <div id="login-success" class="auth-success-message" style="display: none;"></div>
+                    </form>
+                </div>
+
+                <div class="auth-footer-links">
+                    <a href="index.html" class="auth-link-btn">
+                        VOLVER A LA PÁGINA DE INICIO
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Simple -->
+    <footer class="auth-page-footer">
+        <div class="container">
+            <p class="auth-footer-text">Copyright © 2026. Tropiplus Supermarket. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/square-config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Tropiplus Supermarket</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Square Web Payments SDK -->
+    <script type="text/javascript" src="https://web.squarecdn.com/v1/square.js"></script>
+</head>
+<body>
+    <!-- Header Principal con Logo y Búsqueda -->
+    <header class="main-header-section">
+        <div class="container">
+            <div class="header-top-row">
+                <!-- Logo -->
+                <div class="logo-section-main">
+                    <a href="index.html" class="main-logo-link">
+                        <img src="images/logo.png" alt="Tropiplus Supermarket" class="main-logo-image">
+                        <span class="main-logo-text">Tropiplus Supermarket</span>
+                    </a>
+                </div>
+
+                <!-- Búsqueda y Navegación -->
+                <div class="header-search-nav">
+                    <button class="categories-main-btn">
+                        Categorías <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="location-display">
+                        <i class="fas fa-map-marker-alt"></i> Real Campiña, Aguada de Pasajeros
+                    </div>
+                    <div class="main-search-wrapper">
+                        <input type="text" class="main-search-input" placeholder="Buscar en la tienda ..." id="main-search">
+                        <button class="main-search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Usuario y Carrito -->
+                <div class="header-user-section">
+                    <a href="login.html" class="user-account-link" id="user-account-link">
+                        <i class="fas fa-user"></i>
+                        <span id="user-account-text">Entrar Registrar</span>
+                    </a>
+                    <div class="cart-icon-wrapper" id="cart-trigger">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge-number">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Barra de Navegación Azul Oscuro -->
+    <div class="nav-bar-dark-blue">
+        <div class="container">
+            <div class="nav-bar-inner">
+                <button class="menu-hamburger">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="nav-links-main">
+                    <a href="products.html" class="nav-link-item">Todos los productos</a>
+                    <a href="#" class="nav-link-item">Comprar de nuevo</a>
+                    <a href="ayuda.html" class="nav-link-item">Ayuda</a>
+                    <a href="sobre-nosotros.html" class="nav-link-item">Sobre nosotros</a>
+                    <a href="que-debe-saber.html" class="nav-link-item">Qué debe saber!</a>
+                    <a href="contacto.html" class="nav-link-item">Contacto</a>
+                </div>
+                <div class="nav-right-items">
+                    <a href="#" class="nav-social-btn"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="nav-social-btn"><i class="fab fa-instagram"></i></a>
+                    <div class="nav-language-selector">
+                        <span class="nav-flag">🇪🇸</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="nav-currency-selector">
+                        USD <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <a href="tel:+17729851015" class="nav-phone">
+                        <i class="fas fa-phone"></i> (772) 985-1015
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Categorías Amarilla -->
+    <div class="categories-yellow-bar">
+        <div class="container">
+            <div class="categories-scroll-wrapper" id="categories-scroll">
+                <!-- Categorías se cargan dinámicamente desde Square -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <div class="breadcrumbs-section">
+        <div class="container">
+            <div class="breadcrumbs">
+                <a href="index.html">Inicio</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="cart.html">Carrito</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Checkout</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <main class="checkout-page-main">
+        <div class="container">
+            <h1 class="checkout-page-title">Finalizar Compra</h1>
+            
+            <div class="checkout-page-content">
+                <!-- Formulario de Pago -->
+                <div class="checkout-form-section">
+                    <div class="checkout-card">
+                        <h2 class="checkout-section-title">
+                            <i class="fas fa-store"></i> Información de Recogida
+                        </h2>
+                        <div class="checkout-pickup-info">
+                            <div class="pickup-info-box">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <div>
+                                    <strong>Tropiplus Supermarket Real Campiña</strong>
+                                    <p>Aguada de Pasajeros, Cienfuegos</p>
+                                    <p class="pickup-note">Recogida en tienda - No realizamos envíos</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 class="checkout-section-title">
+                            <i class="fas fa-credit-card"></i> Método de Pago
+                        </h2>
+                        
+                        <div class="payment-method-selector">
+                            <label class="payment-method-option">
+                                <input type="radio" name="payment-method" value="CARD" checked>
+                                <span class="payment-method-label">
+                                    <i class="fas fa-credit-card"></i> Tarjeta de Crédito/Débito
+                                </span>
+                            </label>
+                            <label class="payment-method-option">
+                                <input type="radio" name="payment-method" value="CASH">
+                                <span class="payment-method-label">
+                                    <i class="fas fa-money-bill-wave"></i> Pago en Efectivo (Al recoger)
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <form id="payment-form">
+                            <div id="card-container" class="card-payment-section"></div>
+                            <div id="cash-payment-section" class="cash-payment-section" style="display: none;">
+                                <div class="cash-payment-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <p>Pagarás en efectivo cuando recojas tu pedido en la tienda.</p>
+                                    <p><strong>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>
+                                </div>
+                            </div>
+                            <div id="save-card-option" class="save-card-option" style="display: none;">
+                                <label class="save-card-checkbox">
+                                    <input type="checkbox" id="save-card-checkbox" name="save-card">
+                                    <span>Guardar esta tarjeta para pagos futuros</span>
+                                </label>
+                            </div>
+                            <button type="submit" id="card-button" class="btn-submit-payment">
+                                <i class="fas fa-lock"></i> Confirmar Pedido <span id="payment-amount">0.00</span> US$
+                            </button>
+                            <div id="payment-status-container"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Resumen del Pedido -->
+                <div class="checkout-summary-section">
+                    <div class="checkout-summary-card">
+                        <h3 class="checkout-summary-title">Resumen del Pedido</h3>
+                        
+                        <div id="checkout-items-list">
+                            <!-- Items se cargan dinámicamente -->
+                        </div>
+
+                        <div class="checkout-summary-divider"></div>
+
+                        <div class="checkout-summary-row">
+                            <span>Subtotal</span>
+                            <span id="checkout-subtotal">0.00 US$</span>
+                        </div>
+                        
+                        <div class="checkout-summary-total">
+                            <span>Total</span>
+                            <span id="checkout-total">0.00 US$</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <h4 class="footer-col-title">Tropiplus Supermarket</h4>
+                    <p class="footer-description">Tu supermercado de confianza</p>
+                </div>
+                <div class="footer-col">
+                    <h4 class="footer-col-title">Mi Cuenta</h4>
+                    <a href="#" class="footer-link">Mi lista de deseos</a>
+                    <a href="#" class="footer-link">Salir</a>
+                </div>
+                <div class="footer-col">
+                    <h4 class="footer-col-title">Links de Interés</h4>
+                    <a href="#" class="footer-link">Compras online</a>
+                    <a href="#" class="footer-link">Combos de Alimentos</a>
+                    <a href="#" class="footer-link">Tarifas de Entrega</a>
+                    <a href="#" class="footer-link">Entregas Días Específicos</a>
+                </div>
+            </div>
+            <div class="footer-pickup-info">
+                <div class="footer-pickup-box">
+                    <i class="fas fa-store"></i>
+                    <div>
+                        <strong>Recogida en sucursal</strong>
+                        <p>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</p>
+                        <p class="footer-pickup-note">No realizamos envíos. Solo recogida en tienda.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-copyright">
+                <p>Copyright © 2026. Tropiplus Supermarket. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Sidebar del Menú Hamburguesa -->
+    <div class="main-menu-overlay" id="main-menu-overlay"></div>
+    <aside class="main-menu-sidebar" id="main-menu-sidebar">
+        <div class="main-menu-header">
+            <h3 class="main-menu-title">Menú</h3>
+            <button class="main-menu-close-btn" id="close-main-menu">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="main-menu-body">
+            <div class="main-menu-user-section">
+                <i class="fas fa-user-circle"></i>
+                <span>Entrar / Registrar</span>
+            </div>
+            
+            <div class="main-menu-options-section">
+                <div class="main-menu-selector">
+                    <span class="main-menu-flag">🇪🇸</span>
+                    <span>Español</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="main-menu-selector">
+                    <span>USD</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="main-menu-contact">
+                    <i class="fas fa-phone"></i>
+                    <i class="fas fa-envelope"></i>
+                    <a href="tel:+17729851015">(772) 985-1015</a>
+                </div>
+                <div class="main-menu-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Real Campiña, Aguada de Pasajeros</span>
+                </div>
+                <a href="#" class="main-menu-wishlist">
+                    Mi lista de deseos
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+            
+            <div class="main-menu-divider"></div>
+            
+            <div class="main-menu-nav-section">
+                <a href="index.html" class="main-menu-nav-link">
+                    Inicio
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="products.html" class="main-menu-nav-link">
+                    Todos los productos
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="#" class="main-menu-nav-link" id="open-categories-from-menu">
+                    Categorías
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="products.html?sale=true" class="main-menu-nav-link">
+                    Productos rebajados
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="products.html?free_shipping=true" class="main-menu-nav-link">
+                    Productos con envío gratis
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+            
+            <div class="main-menu-divider"></div>
+            
+            <div class="main-menu-help-section">
+                <a href="#" class="main-menu-nav-link">
+                    Ayuda
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="#" class="main-menu-nav-link">
+                    Sobre nosotros
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="#" class="main-menu-nav-link">
+                    Qué debe saber!
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="#" class="main-menu-nav-link">
+                    Contacto
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+            
+            <div class="main-menu-social-section">
+                <p class="main-menu-social-title">Síguenos:</p>
+                <div class="main-menu-social-icons">
+                    <a href="#" class="main-menu-social-icon">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="main-menu-social-icon">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Sidebar de Categorías -->
+    <div class="categories-sidebar-overlay" id="categories-overlay"></div>
+    <aside class="categories-sidebar-panel" id="categories-sidebar-panel">
+        <div class="categories-panel-header">
+            <button class="categories-back-btn" id="categories-back">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h3 class="categories-panel-title">Categorías</h3>
+            <button class="categories-close-btn" id="close-categories">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="categories-panel-container">
+            <div class="categories-panel-body" id="categories-list">
+                <!-- Categorías principales se cargan dinámicamente desde Square -->
+            </div>
+            <div class="subcategories-panel-body" id="subcategories-list">
+                <!-- Subcategorías se cargan dinámicamente cuando se selecciona una categoría -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Carrito Lateral -->
+    <div class="cart-sidebar-overlay" id="cart-overlay"></div>
+    <aside class="cart-sidebar-panel" id="cart-sidebar">
+        <div class="cart-panel-header">
+            <h3 class="cart-panel-title">Productos en el carro</h3>
+            <button class="cart-close-btn" id="close-cart">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="cart-panel-body" id="cart-content">
+            <div class="cart-store-section">
+                <h4 class="cart-store-title">Tienda</h4>
+                <!-- Items del carrito -->
+            </div>
+        </div>
+        <div class="cart-panel-footer">
+            <div class="cart-pickup-info">
+                <i class="fas fa-store"></i>
+                <div class="pickup-info-text">
+                    <strong>Recogida en sucursal</strong>
+                    <span>Tropiplus Supermarket Real Campiña</span>
+                    <span>Aguada de Pasajeros, Cienfuegos</span>
+                </div>
+            </div>
+            <div class="cart-subtotal">
+                <span>Subtotal (<span id="cart-item-count">0</span> producto)</span>
+                <span class="cart-total-amount" id="cart-total-price">0.00 US$</span>
+            </div>
+            <div class="cart-action-buttons">
+                <button class="cart-go-to-btn" id="cart-go-to-btn">
+                    <i class="fas fa-shopping-cart"></i> Ir al carro
+                </button>
+                <button class="cart-pay-btn" id="cart-pay-btn">
+                    <i class="fas fa-dollar-sign"></i> Pagar
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Modal de Error de Pago -->
+    <div class="payment-error-modal-overlay" id="payment-error-modal">
+        <div class="payment-error-modal-content">
+            <div class="payment-error-modal-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error en el Pago</h3>
+            </div>
+            <div class="payment-error-modal-body">
+                <p id="payment-error-message">Ha ocurrido un error al procesar el pago.</p>
+            </div>
+            <div class="payment-error-modal-footer">
+                <button type="button" class="btn-modal-ok" id="payment-error-ok-btn">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/square-config.js"></script>
+    <script src="js/square-integration.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/square-orders.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/checkout.js"></script>
+</body>
+</html>
