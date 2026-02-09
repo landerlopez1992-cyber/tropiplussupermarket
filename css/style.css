@@ -399,80 +399,57 @@ img {
    ============================================ */
 .hero-promo-section {
     background: linear-gradient(135deg, var(--purple-hero-start) 0%, var(--purple-hero-end) 100%);
-    padding: 80px 0 60px;
+    padding: 0;
     color: var(--white);
     position: relative;
+    overflow: hidden;
 }
 
-.hero-content-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
-}
-
-.hero-text-section {
-    max-width: 550px;
-}
-
-.hero-main-title {
-    font-size: 56px;
-    font-weight: 900;
-    line-height: 1.1;
-    margin-bottom: 24px;
-    color: var(--blue-hero-text);
-}
-
-.hero-subtitle {
-    font-size: 20px;
-    font-weight: 400;
-    margin-bottom: 32px;
-    color: var(--red-hero-text);
-    line-height: 1.5;
-}
-
-.hero-cta-button {
-    background-color: var(--blue-hero-text);
-    color: var(--white);
-    border: none;
-    padding: 16px 36px;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.hero-image-section {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.hero-image-placeholder {
+.hero-banner-carousel-wrapper {
+    position: relative;
     width: 100%;
-    max-width: 500px;
-    height: 400px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
+    max-width: 100%;
+    margin: 0 auto;
 }
 
-.hero-image-text {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--white);
-    opacity: 0.8;
+.hero-banner-carousel {
+    position: relative;
+    width: 100%;
+    height: auto;
+    overflow: hidden;
+}
+
+.hero-banner-slide {
+    display: none;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+    text-align: center;
+}
+
+.hero-banner-slide.active {
+    display: block;
+    opacity: 1;
+}
+
+.hero-banner-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    max-height: 600px;
+    margin: 0 auto;
+    max-width: 100%;
 }
 
 .hero-carousel-dots {
     display: flex;
     justify-content: center;
     gap: 12px;
-    margin-top: 40px;
+    margin-top: 20px;
+    padding-bottom: 30px;
+    position: relative;
+    z-index: 10;
 }
 
 .carousel-dot {
@@ -481,12 +458,21 @@ img {
     border-radius: 50%;
     background-color: rgba(255,255,255,0.4);
     cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.carousel-dot:hover {
+    background-color: rgba(255,255,255,0.6);
+    transform: scale(1.2);
 }
 
 .carousel-dot.active {
     background-color: var(--yellow-bg);
     width: 32px;
     border-radius: 6px;
+    border-color: var(--white);
+    box-shadow: 0 0 8px rgba(255, 213, 75, 0.6);
 }
 
 /* ============================================
@@ -4935,9 +4921,24 @@ img {
     }
 }
 
+@media (max-width: 1024px) {
+    .hero-banner-image {
+        max-height: 500px;
+    }
+}
+
 @media (max-width: 768px) {
     .header-top-row {
         flex-wrap: wrap;
+    }
+    
+    .hero-banner-image {
+        max-height: 400px;
+    }
+    
+    .hero-carousel-dots {
+        margin-top: 15px;
+        padding-bottom: 20px;
     }
     
     .main-logo-text {

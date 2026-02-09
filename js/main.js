@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCartSidebar();
     initSearch();
     initCarousels();
+    initHeroBannerCarousel();
     initCategoriesScroll();
     initCategoriesSidebar();
     initMainMenu();
@@ -131,6 +132,55 @@ function initSearch() {
 function performSearch(query) {
     console.log('Buscando:', query);
     // Implementar búsqueda con Square API
+}
+
+function initHeroBannerCarousel() {
+    const carousel = document.getElementById('hero-banner-carousel');
+    const slides = carousel?.querySelectorAll('.hero-banner-slide');
+    const dots = document.querySelectorAll('.hero-carousel-dots .carousel-dot');
+    
+    if (!carousel || !slides || slides.length === 0) return;
+    
+    let currentSlide = 0;
+    const totalSlides = slides.length;
+    
+    // Función para cambiar de slide
+    function showSlide(index) {
+        // Remover active de todos los slides
+        slides.forEach((slide, i) => {
+            slide.classList.remove('active');
+            if (i === index) {
+                setTimeout(() => {
+                    slide.classList.add('active');
+                }, 50);
+            }
+        });
+        
+        // Actualizar dots
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+        });
+    }
+    
+    // Función para siguiente slide
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        showSlide(currentSlide);
+    }
+    
+    // Event listeners para los dots
+    dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+            currentSlide = index;
+            showSlide(currentSlide);
+        });
+    });
+    
+    // Auto-play cada 5 segundos
+    setInterval(nextSlide, 5000);
+    
+    // Inicializar primer slide
+    showSlide(0);
 }
 
 function initCarousels() {
