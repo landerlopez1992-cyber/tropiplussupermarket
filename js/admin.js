@@ -141,6 +141,19 @@ function saveTvConfigs(tvConfigs) {
     console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
     console.log('💾 [Admin] Verificación:', localStorage.getItem(TV_STORAGE_KEY));
     
+    // Exponer TVs globalmente para que la app pueda leerlos
+    window.tropiplusTVs = tvConfigs;
+    
+    // Guardar en un script tag con datos para que la app pueda leerlos
+    let scriptTag = document.getElementById('tropiplus-tvs-data');
+    if (!scriptTag) {
+        scriptTag = document.createElement('script');
+        scriptTag.id = 'tropiplus-tvs-data';
+        scriptTag.type = 'application/json';
+        document.head.appendChild(scriptTag);
+    }
+    scriptTag.textContent = JSON.stringify(tvConfigs);
+    
     // Sincronizar con otras pestañas/WebViews usando BroadcastChannel
     try {
         const channel = new BroadcastChannel('tropiplus_sync');
