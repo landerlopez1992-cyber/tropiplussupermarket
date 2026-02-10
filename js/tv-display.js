@@ -525,6 +525,9 @@ async function renderProductsGrid() {
   const gridEl = document.getElementById('tv-products-grid');
   if (!gridEl || !currentTvConfig) return;
   
+  // Verificar si hay acceso a la API (requiere login)
+  const hasApiAccess = typeof window.squareApiCall !== 'undefined';
+  
   // Modo Mixed: Rotar entre productos, promos, pedidos y QRs (solo los activos)
   if (currentTvConfig.mode === 'mixed') {
     // Construir lista de modos activos
@@ -543,10 +546,14 @@ async function renderProductsGrid() {
     
     // Si no hay modos activos, mostrar mensaje
     if (activeModes.length === 0) {
+      const message = hasApiAccess 
+        ? 'No hay contenido configurado para mostrar'
+        : 'Cargando contenido... (Requiere iniciar sesión en el admin)';
       gridEl.innerHTML = `
-        <div class="tv-product-card" style="grid-column: 1 / -1;">
+        <div class="tv-product-card" style="grid-column: 1 / -1; text-align: center; padding: 60px;">
           <div class="tv-product-info">
-            <h1 class="tv-product-name">No hay contenido configurado para mostrar</h1>
+            <h1 class="tv-product-name" style="font-size: 48px; margin-bottom: 20px;">${message}</h1>
+            ${!hasApiAccess ? '<p style="font-size: 24px; opacity: 0.8;">Los productos y pedidos se cargan desde el administrador</p>' : ''}
           </div>
         </div>
       `;
@@ -745,11 +752,16 @@ async function renderProductsGrid() {
   
   // Modo Listado de Pedidos
   if (currentTvConfig.mode === 'orders') {
+    const hasApiAccess = typeof window.squareApiCall !== 'undefined';
     if (!allTvOrders.length) {
+      const message = hasApiAccess 
+        ? 'No hay pedidos pendientes'
+        : 'Cargando pedidos... (Requiere iniciar sesión en el admin)';
       gridEl.innerHTML = `
-        <div class="tv-product-card" style="grid-column: 1 / -1;">
+        <div class="tv-product-card" style="grid-column: 1 / -1; text-align: center; padding: 60px;">
           <div class="tv-product-info">
-            <h1 class="tv-product-name">No hay pedidos pendientes</h1>
+            <h1 class="tv-product-name" style="font-size: 48px; margin-bottom: 20px;">${message}</h1>
+            ${!hasApiAccess ? '<p style="font-size: 24px; opacity: 0.8;">Los pedidos se cargan desde el administrador</p>' : ''}
           </div>
         </div>
       `;
@@ -828,10 +840,15 @@ async function renderProductsGrid() {
   
   // Modo Productos (mixed o products)
   if (!allTvProducts.length) {
+    const hasApiAccess = typeof window.squareApiCall !== 'undefined';
+    const message = hasApiAccess 
+      ? 'Sin productos para mostrar en esta configuración'
+      : 'Cargando productos... (Requiere iniciar sesión en el admin)';
     gridEl.innerHTML = `
-      <div class="tv-product-card" style="grid-column: 1 / -1;">
+      <div class="tv-product-card" style="grid-column: 1 / -1; text-align: center; padding: 60px;">
         <div class="tv-product-info">
-          <h1 class="tv-product-name">Sin productos para mostrar en esta configuración</h1>
+          <h1 class="tv-product-name" style="font-size: 48px; margin-bottom: 20px;">${message}</h1>
+          ${!hasApiAccess ? '<p style="font-size: 24px; opacity: 0.8;">Los productos se cargan desde el administrador</p>' : ''}
         </div>
       </div>
     `;
