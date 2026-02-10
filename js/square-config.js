@@ -27,10 +27,6 @@ const SQUARE_CONFIG = {
 // Función para hacer llamadas a la API de Square
 // Usa el proxy local o externo según el entorno
 async function squareApiCall(endpoint, method = 'GET', body = null) {
-  // Asegurar que la función esté disponible globalmente inmediatamente
-  if (typeof window !== 'undefined' && !window.squareApiCall) {
-    window.squareApiCall = squareApiCall;
-  }
   // Detectar si estamos en producción (GitHub Pages) o desarrollo local
   const isLocalhost = window.location.hostname === 'localhost' || 
                       window.location.hostname === '127.0.0.1';
