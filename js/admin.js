@@ -178,6 +178,27 @@ async function saveTvConfigs(tvConfigs) {
     }
 }
 
+async function seedSupabaseFromLocalIfNeeded() {
+    try {
+        if (
+            typeof window.getTvConfigsFromSupabase !== 'function' ||
+            typeof window.saveTvConfigsToSupabase !== 'function'
+        ) {
+            return;
+        }
+
+        const remoteTvs = await window.getTvConfigsFromSupabase();
+        const localTvs = getTvConfigs();
+
+        if (Array.isArray(remoteTvs) && remoteTvs.length === 0 && Array.isArray(localTvs) && localTvs.length > 0) {
+            await window.saveTvConfigsToSupabase(localTvs);
+            console.log('✅ [Admin] Supabase inicializado con TVs locales:', localTvs.length);
+        }
+    } catch (error) {
+        console.warn('⚠️ [Admin] No se pudo inicializar Supabase desde local:', error);
+    }
+}
+
 function normalizeTvForSync(tv) {
     return {
         id: String(tv?.id || ''),
@@ -1468,12 +1489,13 @@ function initTvTab() {
     populateTvCategorySelect();
     populateTvQrSelect();
     renderTvList();
+    seedSupabaseFromLocalIfNeeded().then(() => refreshPublicTvSyncStatus());
 
     resetBtn?.addEventListener('click', () => {
         resetTvForm();
     });
 
-    listContainer.addEventListener('click', (event) => {
+    listContainer.addEventListener('click', async (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
         const action = target.dataset.tvAction;
@@ -1488,10 +1510,15 @@ function initTvTab() {
 
         if (action === 'delete') {
             const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
-            saveTvConfigs(tvConfigs);
-            renderTvList();
-            if (typeof showModal === 'function') {
-                showModal('Listo', 'TV eliminado correctamente.', 'success');
+            try {
+                await saveTvConfigs(tvConfigs);
+                renderTvList();
+                refreshPublicTvSyncStatus();
+                if (typeof showModal === 'function') {
+                    showModal('Listo', 'TV eliminado correctamente.', 'success');
+                }
+            } catch (_error) {
+                // Error ya reportado en saveTvConfigs
             }
             return;
         }
@@ -1607,20 +1634,21 @@ function initTvTab() {
             tvConfigs.push(tvPayload);
         }
 
-        saveTvConfigs(tvConfigs);
-        console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
-        console.log('💾 [Admin] Ticker config:', {
-            enabled: tvPayload.tickerEnabled,
-            speed: tvPayload.tickerSpeed,
-            fontSize: tvPayload.tickerFontSize,
-            textColor: tvPayload.tickerTextColor,
-            bgColor: tvPayload.tickerBgColor
-        });
-        renderTvList();
-        resetTvForm();
-
-        if (typeof showModal === 'function') {
-            showModal('Éxito', 'Configuración de TV guardada correctamente.', 'success');
+        try {
+            await saveTvConfigs(tvConfigs);
+            console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
+            console.log('💾 [Admin] Ticker config:', {
+                enabled: tvPayload.tickerEnabled,
+                speed: tvPayload.tickerSpeed,
+                fontSize: tvPayload.tickerFontSize,
+                textColor: tvPayload.tickerTextColor,
+                bgColor: tvPayload.tickerBgColor
+            });
+            renderTvList();
+            refreshPublicTvSyncStatus();
+            resetTvForm();
+        } catch (_error) {
+            // Error ya reportado en saveTvConfigs
         }
     });
 }
