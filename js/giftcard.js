@@ -87,84 +87,78 @@ function initGiftCardSystem() {
 
         try {
             // Buscar la tarjeta en Square usando el número
-            // Square Gift Cards API: POST /v2/gift-cards/search
-            // Según la documentación de Square, podemos buscar por GAN o por los últimos 4 dígitos
+            // Square Gift Cards API: Según la documentación, debemos usar el endpoint correcto
+            // El endpoint correcto es: POST /v2/gift-cards/from-gan (para obtener por GAN)
+            // O usar: GET /v2/gift-cards/{id} si tenemos el ID
             let response = null;
+            let giftCard = null;
             
-            // Primero intentar buscar por GAN completo
+            // Método 1: Intentar obtener la tarjeta directamente por GAN usando el endpoint from-gan
             try {
-                console.log('🔍 Buscando tarjeta por GAN completo:', cardNumber);
-                response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
-                    query: {
-                        exact_query: {
-                            gan: cardNumber
-                        }
-                    }
+                console.log('🔍 Buscando tarjeta por GAN usando from-gan:', cardNumber);
+                response = await squareApiCall(`/v2/gift-cards/from-gan`, 'POST', {
+                    gan: cardNumber
                 });
-                console.log('✅ Respuesta de Square (GAN completo):', response);
+                console.log('✅ Respuesta de Square (from-gan):', response);
+                
+                if (response && response.gift_card) {
+                    giftCard = response.gift_card;
+                }
             } catch (error) {
-                console.warn('⚠️ Error buscando por GAN completo:', error);
-                console.log('📋 Detalles del error:', JSON.stringify(error, null, 2));
+                console.warn('⚠️ Error usando from-gan:', error);
+                console.log('📋 Detalles del error:', error.message || JSON.stringify(error, null, 2));
             }
             
-            // Si no se encuentra, intentar buscar por los últimos 4 dígitos
-            if (!response || !response.gift_cards || response.gift_cards.length === 0) {
-                const last4 = cardNumber.slice(-4);
-                console.log('🔍 Buscando tarjeta por últimos 4 dígitos:', last4);
+            // Método 2: Si from-gan no funciona, intentar buscar usando el endpoint de retrieve balance
+            // Este endpoint permite verificar el saldo usando el GAN
+            if (!giftCard) {
                 try {
-                    response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
-                        query: {
-                            exact_query: {
-                                last4: last4
-                            }
-                        }
+                    console.log('🔍 Intentando obtener saldo directamente por GAN...');
+                    // Square tiene un endpoint para verificar saldo: POST /v2/gift-cards/from-gan
+                    // O podemos intentar obtener todas las tarjetas y buscar
+                    const balanceResponse = await squareApiCall(`/v2/gift-cards/from-gan`, 'POST', {
+                        gan: cardNumber
                     });
-                    console.log('✅ Respuesta de Square (últimos 4):', response);
+                    
+                    if (balanceResponse && balanceResponse.gift_card) {
+                        giftCard = balanceResponse.gift_card;
+                        console.log('✅ Tarjeta encontrada mediante from-gan:', giftCard);
+                    }
                 } catch (error2) {
-                    console.warn('⚠️ Error buscando por últimos 4 dígitos:', error2);
-                    console.log('📋 Detalles del error:', JSON.stringify(error2, null, 2));
+                    console.warn('⚠️ Error obteniendo saldo:', error2);
                 }
             }
             
-            // Si aún no se encuentra, intentar buscar todas las tarjetas y filtrar por GAN
-            if (!response || !response.gift_cards || response.gift_cards.length === 0) {
-                console.log('🔍 Intentando obtener todas las tarjetas y filtrar...');
+            // Método 3: Si aún no funciona, intentar obtener todas las tarjetas usando el endpoint correcto
+            // Square Gift Cards API usa: GET /v2/gift-cards (sin search)
+            if (!giftCard) {
+                console.log('🔍 Intentando obtener todas las tarjetas...');
                 try {
-                    // Obtener todas las tarjetas (sin filtro) y buscar manualmente
-                    const allCardsResponse = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
-                        query: {},
-                        limit: 100
-                    });
+                    // Intentar listar todas las tarjetas (si el endpoint existe)
+                    const listResponse = await squareApiCall(`/v2/gift-cards`, 'GET');
+                    console.log('📋 Respuesta de listado:', listResponse);
                     
-                    console.log('📋 Todas las tarjetas obtenidas:', allCardsResponse);
-                    
-                    if (allCardsResponse && allCardsResponse.gift_cards) {
-                        // Buscar manualmente por GAN completo o parcial
-                        const foundCard = allCardsResponse.gift_cards.find(card => {
+                    if (listResponse && listResponse.gift_cards) {
+                        // Buscar manualmente por GAN
+                        const foundCard = listResponse.gift_cards.find(card => {
                             const gan = card.gan || '';
-                            // Buscar coincidencia exacta, final o inicio
                             return gan === cardNumber || 
                                    gan.endsWith(cardNumber) || 
-                                   cardNumber.endsWith(gan) ||
-                                   gan.includes(cardNumber) ||
-                                   cardNumber.includes(gan);
+                                   cardNumber.endsWith(gan);
                         });
                         
                         if (foundCard) {
-                            response = { gift_cards: [foundCard] };
-                            console.log('✅ Tarjeta encontrada mediante búsqueda manual:', foundCard);
-                        } else {
-                            console.log('⚠️ Tarjeta no encontrada en la lista de', allCardsResponse.gift_cards.length, 'tarjetas');
+                            giftCard = foundCard;
+                            console.log('✅ Tarjeta encontrada en listado:', foundCard);
                         }
                     }
                 } catch (error3) {
-                    console.error('❌ Error en búsqueda manual:', error3);
-                    console.log('📋 Detalles del error:', JSON.stringify(error3, null, 2));
+                    console.error('❌ Error listando tarjetas:', error3);
+                    console.log('📋 Detalles del error:', error3.message || JSON.stringify(error3, null, 2));
                 }
             }
 
-            if (response && response.gift_cards && response.gift_cards.length > 0) {
-                const giftCard = response.gift_cards[0];
+            if (giftCard) {
                 currentGiftCard = giftCard;
                 
                 // Mostrar información de la tarjeta

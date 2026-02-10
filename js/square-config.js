@@ -56,6 +56,15 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
         errorData = { message: errorText };
       }
       console.error('❌ Error de Square API:', errorData);
+      console.error('❌ Status:', response.status, response.statusText);
+      console.error('❌ URL:', proxyUrl);
+      console.error('❌ Body enviado:', body ? JSON.stringify(JSON.parse(body), null, 2) : 'N/A');
+      
+      // Si es un 404, proporcionar más información
+      if (response.status === 404) {
+        throw new Error(`Endpoint no encontrado (404). Verifica que el endpoint ${proxyUrl} existe en Square API. Detalles: ${errorData.errors?.[0]?.detail || errorData.message || 'Resource not found'}`);
+      }
+      
       throw new Error(errorData.message || errorData.errors?.[0]?.detail || `HTTP error! status: ${response.status}`);
     }
     
