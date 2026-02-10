@@ -1,11 +1,14 @@
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
 const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_SELECTED_KEY = 'tropiplus_tv_selected';
+const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 
 let currentTvConfig = null;
 let allTvProducts = [];
 let allTvOrders = [];
+let allQrConfigs = [];
 let tvSlideIndex = 0;
+let tvMixedModeIndex = 0;
 let tvSlideTimer = null;
 const imageCache = {};
 
@@ -1014,7 +1017,8 @@ function startAutoRefresh(tvId) {
       return;
     }
     
-    const config = getTvConfigs().find(item => item.id === tvId);
+    const configs = await getTvConfigs();
+    const config = configs.find(item => item.id === tvId);
     if (!config || config.active === false) return;
 
     currentTvConfig = config;
