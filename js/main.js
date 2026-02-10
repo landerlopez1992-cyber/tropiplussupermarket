@@ -22,10 +22,15 @@ function getPromotionConfig() {
     };
     try {
         const raw = localStorage.getItem('tropiplus_promo_config');
-        if (!raw) return fallback;
+        console.log('📋 [Tropiplus] Raw promotion config from localStorage:', raw);
+        if (!raw) {
+            console.log('⚠️ [Tropiplus] No hay configuración de promoción en localStorage');
+            return fallback;
+        }
         const parsed = JSON.parse(raw);
+        console.log('📋 [Tropiplus] Parsed promotion config:', parsed);
         const parsedText = String(parsed.text || '').trim();
-        return {
+        const config = {
             // Compatibilidad: si hay texto guardado, la barra se considera activa.
             enabled: Boolean(parsed.enabled) || Boolean(parsedText),
             text: parsedText,
@@ -33,8 +38,10 @@ function getPromotionConfig() {
             linkEnabled: Boolean(parsed.linkEnabled),
             url: String(parsed.url || '')
         };
+        console.log('📋 [Tropiplus] Final promotion config:', config);
+        return config;
     } catch (error) {
-        console.warn('No se pudo leer configuración de promoción:', error);
+        console.error('❌ [Tropiplus] Error leyendo configuración de promoción:', error);
         return fallback;
     }
 }
@@ -64,9 +71,12 @@ function createPromotionBar() {
     }
 
     if (!config.text || config.text.trim() === '') {
-        console.log('⚠️ No hay texto de promoción configurado');
+        console.log('⚠️ [Tropiplus] No hay texto de promoción configurado. Config:', config);
+        console.log('💡 [Tropiplus] Para mostrar la promoción, ve a Admin > Promocion y configura el texto');
         return;
     }
+    
+    console.log('✅ [Tropiplus] Creando barra promocional con texto:', config.text.substring(0, 50) + '...');
 
     const durationBySpeed = {
         slow: '22s',
