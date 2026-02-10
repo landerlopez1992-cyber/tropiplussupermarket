@@ -482,10 +482,57 @@ async function showTvCastModal(tvUrl, tvId) {
 
 async function detectAndShowTvs(tvUrl, modal) {
     const devicesList = modal.querySelector('#tv-devices-list');
+    
+    // Mostrar formulario manual inmediatamente
     devicesList.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
+        <div style="background: #e7f3ff; border: 2px solid #1a73e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 15px 0; color: #1a73e8; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-tv"></i> Conectar a TV Manualmente
+            </h3>
+            <p style="margin: 0 0 15px 0; color: #1a73e8; font-size: 14px;">
+                Ingresa la IP del TV que aparece en la pantalla del TV (esquina superior derecha):
+            </p>
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--dark-blue-nav);">
+                        IP del TV:
+                    </label>
+                    <input 
+                        type="text" 
+                        id="manual-tv-ip" 
+                        placeholder="192.168.1.112" 
+                        style="width: 100%; padding: 12px; border: 2px solid #1a73e8; border-radius: 6px; font-family: monospace; font-size: 14px;"
+                    />
+                </div>
+                <div style="width: 100px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500; color: var(--dark-blue-nav);">
+                        Puerto:
+                    </label>
+                    <input 
+                        type="number" 
+                        id="manual-tv-port" 
+                        placeholder="8081" 
+                        value="8081"
+                        style="width: 100%; padding: 12px; border: 2px solid #1a73e8; border-radius: 6px; font-family: monospace; font-size: 14px;"
+                    />
+                </div>
+                <button 
+                    onclick="castToManualTv('${tvUrl.replace(/'/g, "\\'")}')"
+                    style="padding: 12px 24px; background: var(--green-categories); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap;">
+                    <i class="fas fa-paper-plane"></i> Conectar
+                </button>
+            </div>
+            <p style="margin: 15px 0 0 0; color: #1a73e8; font-size: 12px; font-style: italic;">
+                💡 La IP aparece en la esquina superior derecha de la app del TV
+            </p>
+        </div>
+    `;
+    
+    // Intentar detección automática en segundo plano
+    devicesList.innerHTML += `
+        <div style="text-align: center; padding: 20px; background: #f5f5f5; border-radius: 8px;">
             <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--green-categories);"></i>
-            <p style="margin-top: 10px; color: var(--gray-text);">Buscando TVs en la red local...</p>
+            <p style="margin-top: 10px; color: var(--gray-text);">Buscando TVs automáticamente...</p>
         </div>
     `;
     
@@ -494,15 +541,7 @@ async function detectAndShowTvs(tvUrl, modal) {
     // Obtener IP local del navegador
     const localIp = await getLocalIP();
     if (!localIp) {
-        devicesList.innerHTML = `
-            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
-                <i class="fas fa-exclamation-triangle" style="color: #856404;"></i>
-                <strong style="color: #856404;">No se pudo detectar la red local</strong>
-                <p style="margin: 8px 0 0 0; color: #856404; font-size: 14px;">
-                    Asegúrate de estar en la misma red WiFi que los TVs.
-                </p>
-            </div>
-        `;
+        // Si no se puede detectar, solo mostrar el formulario manual
         return;
     }
     

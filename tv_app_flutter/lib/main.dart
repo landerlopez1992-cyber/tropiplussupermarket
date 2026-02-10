@@ -284,75 +284,65 @@ class _TVBrowserState extends State<TVBrowser> {
                   ),
                 ),
               ),
-            // Debug info (tocar 5 veces para mostrar/ocultar)
+            // Mostrar IP siempre visible en la esquina superior derecha
             Positioned(
               top: 10,
               right: 10,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _showDebugInfo = !_showDebugInfo);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green, width: 2),
                 ),
-              ),
-            ),
-            if (_showDebugInfo)
-              Positioned(
-                top: 50,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Servidor Local',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'IP del TV:',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _serverStatus,
+                    ),
+                    const SizedBox(height: 4),
+                    if (_localIp != null && _serverPort > 0)
+                      SelectableText(
+                        '$_localIp:$_serverPort',
                         style: const TextStyle(
                           color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      )
+                    else
+                      const Text(
+                        'Cargando...',
+                        style: TextStyle(
+                          color: Colors.orange,
                           fontSize: 12,
                         ),
                       ),
-                      if (_localIp != null && _serverPort > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            'http://$_localIp:$_serverPort/ping',
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontSize: 10,
-                              fontFamily: 'monospace',
-                            ),
+                    if (_localIp != null && _serverPort > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Estado: $_serverStatus',
+                          style: TextStyle(
+                            color: _serverStatus.contains('✅') 
+                                ? Colors.green 
+                                : Colors.orange,
+                            fontSize: 10,
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
       ),
