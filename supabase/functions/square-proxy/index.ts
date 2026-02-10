@@ -6,6 +6,14 @@ const SQUARE_API_BASE = 'https://connect.squareup.com';
 const SQUARE_ACCESS_TOKEN = Deno.env.get('SQUARE_ACCESS_TOKEN') || 
   'EAAAl2nJjLDUfcBLy2EIXc7ipUq3Pwkr3PcSji6oC1QmgtUK5E8UyeICc0mbowZB';
 
+// Log del token (solo primeros y últimos caracteres para seguridad)
+if (!SQUARE_ACCESS_TOKEN || SQUARE_ACCESS_TOKEN.length < 10) {
+  console.error('[Square Proxy] ⚠️ SQUARE_ACCESS_TOKEN no está configurado o es inválido');
+} else {
+  const tokenPreview = `${SQUARE_ACCESS_TOKEN.substring(0, 10)}...${SQUARE_ACCESS_TOKEN.substring(SQUARE_ACCESS_TOKEN.length - 10)}`;
+  console.log('[Square Proxy] ✅ Token configurado:', tokenPreview);
+}
+
 Deno.serve(async (req) => {
   // Habilitar CORS
   const corsHeaders = {
@@ -70,11 +78,34 @@ Deno.serve(async (req) => {
     });
 
     // Preparar headers para Square
+    if (!SQUARE_ACCESS_TOKEN || SQUARE_ACCESS_TOKEN.length < 10) {
+      console.error('[Square Proxy] ❌ SQUARE_ACCESS_TOKEN no válido');
+      return new Response(
+        JSON.stringify({
+          error: 'Configuration error',
+          message: 'SQUARE_ACCESS_TOKEN no está configurado correctamente en Supabase Secrets',
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    
     const headers = {
       'Square-Version': '2024-01-18',
       'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
     };
+    
+    console.log('[Square Proxy] Headers preparados:', {
+      'Square-Version': headers['Square-Version'],
+      'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN.substring(0, 10)}...`,
+      'Content-Type': headers['Content-Type']
+    });
 
     // Square Catalog Search requires POST. If the request comes from a browser
     // URL test (GET), we transparently convert it to POST with a safe default.
