@@ -40,6 +40,8 @@ class _TVBrowserState extends State<TVBrowser> {
   HttpServer? _localServer;
   String? _localIp;
   int _serverPort = 8081;
+  String _serverStatus = 'Iniciando...';
+  bool _showDebugInfo = false;
   
   static const String _mainUrl =
       'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tv-selector.html';
@@ -60,13 +62,15 @@ class _TVBrowserState extends State<TVBrowser> {
   }
 
   Future<void> _startLocalServer() async {
+    setState(() => _serverStatus = 'Obteniendo IP...');
+    
     try {
       // Obtener IP local
       final networkInfo = NetworkInfo();
       _localIp = await networkInfo.getWifiIP();
       
       // Si no hay WiFi, intentar obtener IP de cualquier interfaz
-      if (_localIp == null || _localIp == '0.0.0.0') {
+      if (_localIp == null || _localIp == '0.0.0.0' || _localIp == '127.0.0.1') {
         final interfaces = await NetworkInterface.list(
           type: InternetAddressType.IPv4,
           includeLinkLocal: false,
@@ -74,45 +78,61 @@ class _TVBrowserState extends State<TVBrowser> {
         
         for (var interface in interfaces) {
           for (var addr in interface.addresses) {
-            if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+            if (!addr.isLoopback && 
+                addr.type == InternetAddressType.IPv4 &&
+                !addr.address.startsWith('169.254.')) { // Evitar link-local
               _localIp = addr.address;
               break;
             }
           }
-          if (_localIp != null) break;
+          if (_localIp != null && _localIp != '127.0.0.1') break;
         }
       }
       
-      print('📡 IP local detectada: $_localIp');
-      
-      // Iniciar servidor HTTP
-      _localServer = await HttpServer.bind(
-        InternetAddress.anyIPv4,
-        _serverPort,
-      );
-      
-      print('✅ Servidor local iniciado en http://$_localIp:$_serverPort');
-      
-      // Escuchar requests
-      _localServer!.listen((HttpRequest request) {
-        _handleRequest(request);
-      });
-    } catch (e) {
-      print('❌ Error iniciando servidor local: $e');
-      // Intentar otro puerto
-      _serverPort = 8082;
-      try {
-        _localServer = await HttpServer.bind(
-          InternetAddress.anyIPv4,
-          _serverPort,
-        );
-        print('✅ Servidor local iniciado en puerto alternativo: $_serverPort');
-        _localServer!.listen((HttpRequest request) {
-          _handleRequest(request);
-        });
-      } catch (e2) {
-        print('❌ Error iniciando servidor en puerto alternativo: $e2');
+      if (_localIp == null || _localIp == '127.0.0.1') {
+        setState(() => _serverStatus = '❌ No se pudo obtener IP');
+        print('❌ No se pudo obtener IP local');
+        return;
       }
+      
+      print('📡 IP local detectada: $_localIp');
+      setState(() => _serverStatus = 'IP: $_localIp');
+      
+      // Intentar puertos en orden
+      final ports = [8081, 8082, 8083, 8084];
+      bool serverStarted = false;
+      
+      for (final port in ports) {
+        try {
+          _serverPort = port;
+          _localServer = await HttpServer.bind(
+            InternetAddress.anyIPv4,
+            _serverPort,
+          );
+          
+          print('✅ Servidor local iniciado en http://$_localIp:$_serverPort');
+          setState(() => _serverStatus = '✅ Activo: $_localIp:$_serverPort');
+          serverStarted = true;
+          
+          // Escuchar requests
+          _localServer!.listen((HttpRequest request) {
+            _handleRequest(request);
+          });
+          
+          break;
+        } catch (e) {
+          print('⚠️ Puerto $_serverPort ocupado, intentando siguiente...');
+          continue;
+        }
+      }
+      
+      if (!serverStarted) {
+        setState(() => _serverStatus = '❌ No se pudo iniciar servidor');
+        print('❌ No se pudo iniciar servidor en ningún puerto');
+      }
+    } catch (e) {
+      setState(() => _serverStatus = '❌ Error: $e');
+      print('❌ Error iniciando servidor local: $e');
     }
   }
 
@@ -129,7 +149,7 @@ class _TVBrowserState extends State<TVBrowser> {
     }
     
     final uri = request.uri;
-    print('📥 Request: ${request.method} ${uri.path}');
+    print('📥 Request: ${request.method} ${uri.path} from ${request.connectionInfo?.remoteAddress}');
     
     try {
       if (uri.path == '/ping' || uri.path == '/status') {
@@ -151,6 +171,8 @@ class _TVBrowserState extends State<TVBrowser> {
           ..headers.contentType = ContentType.json
           ..write(jsonEncode(response));
         await request.response.close();
+        
+        print('✅ Respondido /ping exitosamente');
         
       } else if (uri.path == '/cast' && request.method == 'POST') {
         // Endpoint para recibir transmisión (cambiar URL del WebView)
@@ -259,6 +281,75 @@ class _TVBrowserState extends State<TVBrowser> {
                 child: const Center(
                   child: CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF42B649)),
+                  ),
+                ),
+              ),
+            // Debug info (tocar 5 veces para mostrar/ocultar)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _showDebugInfo = !_showDebugInfo);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            if (_showDebugInfo)
+              Positioned(
+                top: 50,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green, width: 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Servidor Local',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _serverStatus,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (_localIp != null && _serverPort > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'http://$_localIp:$_serverPort/ping',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

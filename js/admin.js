@@ -543,9 +543,35 @@ function updateDevicesList(devicesList, foundTvs, tvUrl) {
         devicesList.innerHTML = `
             <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
                 <i class="fas fa-info-circle" style="color: #856404;"></i>
-                <strong style="color: #856404;">No se encontraron TVs</strong>
+                <strong style="color: #856404;">No se encontraron TVs automáticamente</strong>
                 <p style="margin: 8px 0 0 0; color: #856404; font-size: 14px;">
-                    Para transmitir a un TV, primero instala la app en el TV y asegúrate de que esté en la misma red WiFi.
+                    Puedes ingresar la IP del TV manualmente:
+                </p>
+                <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--dark-blue-nav);">
+                        IP del TV (ej: 192.168.1.112):
+                    </label>
+                    <input 
+                        type="text" 
+                        id="manual-tv-ip" 
+                        placeholder="192.168.1.112" 
+                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; font-family: monospace;"
+                    />
+                    <input 
+                        type="number" 
+                        id="manual-tv-port" 
+                        placeholder="8081" 
+                        value="8081"
+                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; font-family: monospace;"
+                    />
+                    <button 
+                        onclick="castToManualTv('${tvUrl.replace(/'/g, "\\'")}')"
+                        style="width: 100%; padding: 10px; background: var(--green-categories); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        <i class="fas fa-paper-plane"></i> Transmitir a esta IP
+                    </button>
+                </div>
+                <p style="margin: 15px 0 0 0; color: #856404; font-size: 12px;">
+                    💡 La IP del TV aparece en la esquina superior derecha de la app (toca el ícono de info).
                 </p>
             </div>
         `;
