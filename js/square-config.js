@@ -32,13 +32,111 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
                        window.location.hostname.includes('vercel.app') ||
                        window.location.hostname !== 'localhost';
   
-  // URL del proxy: local en desarrollo, externo en producción
-  // IMPORTANTE: Necesitas desplegar el proxy en Vercel/Heroku y actualizar esta URL
-  const PROXY_BASE_URL = isProduction 
-    ? 'https://tropiplus-proxy.vercel.app'  // ⚠️ ACTUALIZA ESTA URL con tu proxy desplegado
-    : 'http://localhost:8080';  // Proxy local en desarrollo
+  // URLs de proxy a intentar (en orden de prioridad)
+  let proxyUrls = [];
   
-  const proxyUrl = `${PROXY_BASE_URL}/api/square${endpoint}`;
+  if (isProduction) {
+    // En producción: intentar Vercel primero, luego alternativas
+    proxyUrls = [
+      'https://tropiplussupermarket.vercel.app',  // Vercel (si está desplegado)
+      'https://tropiplussupermarket-git-main-landerlopez1992-cyber.vercel.app',  // Vercel alternativa
+      'https://corsproxy.io/?',  // Proxy público 1
+      'https://api.allorigins.win/raw?url=',  // Proxy público 2
+    ];
+  } else {
+    // En desarrollo: usar proxy local
+    proxyUrls = ['http://localhost:8080'];
+  }
+  
+  // Intentar cada proxy hasta que uno funcione
+  let lastError = null;
+  
+  for (const baseUrl of proxyUrls) {
+    try {
+      let proxyUrl;
+      let options = {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      };
+      
+      if (baseUrl.includes('allorigins.win')) {
+        // Proxy público que requiere URL completa
+        const squareUrl = `https://connect.squareup.com${endpoint}`;
+        proxyUrl = `${baseUrl}${encodeURIComponent(squareUrl)}`;
+        // Headers especiales para este proxy
+        options.headers['Square-Version'] = '2024-01-18';
+        options.headers['Authorization'] = `Bearer ${SQUARE_CONFIG.accessToken}`;
+      } else if (baseUrl.includes('corsproxy.io')) {
+        // Proxy público que requiere URL completa
+        const squareUrl = `https://connect.squareup.com${endpoint}`;
+        proxyUrl = `${baseUrl}${encodeURIComponent(squareUrl)}`;
+        options.headers['Square-Version'] = '2024-01-18';
+        options.headers['Authorization'] = `Bearer ${SQUARE_CONFIG.accessToken}`;
+      } else {
+        // Proxy normal (Vercel o local)
+        proxyUrl = `${baseUrl}/api/square${endpoint}`;
+      }
+      
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+      
+      console.log(`📡 Intentando proxy: ${baseUrl}`);
+      console.log(`🔗 URL completa: ${proxyUrl}`);
+      
+      const response = await fetch(proxyUrl, options);
+      
+      // Si el proxy es allorigins, necesitamos parsear la respuesta de manera especial
+      if (baseUrl.includes('allorigins.win') || baseUrl.includes('corsproxy.io')) {
+        const responseText = await response.text();
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = JSON.parse(responseText);
+        console.log(`✅ Éxito con proxy: ${baseUrl}`);
+        return data;
+      }
+      
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        // Si es 404 o 502, probar siguiente proxy
+        if (response.status === 404 || response.status === 502) {
+          console.warn(`⚠️ Proxy ${baseUrl} no disponible (${response.status}), intentando siguiente...`);
+          lastError = new Error(`Proxy no disponible: ${response.status}`);
+          continue;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      let data;
+      try {
+        if (!responseText || responseText.trim() === '') {
+          data = {};
+        } else {
+          data = JSON.parse(responseText);
+        }
+      } catch (parseError) {
+        throw new Error(`Error parseando respuesta: ${parseError.message}`);
+      }
+      
+      console.log(`✅ Éxito con proxy: ${baseUrl}`);
+      return data;
+      
+    } catch (error) {
+      console.warn(`❌ Error con proxy ${baseUrl}:`, error.message);
+      lastError = error;
+      // Continuar con el siguiente proxy
+      continue;
+    }
+  }
+  
+  // Si todos los proxies fallaron
+  console.error('❌ Todos los proxies fallaron');
+  throw new Error(`No se pudo conectar con Square API. Último error: ${lastError?.message || 'Desconocido'}. Por favor, despliega el proxy en Vercel siguiendo las instrucciones en DEPLOY_VERCEL.md`);
+}
   
   const options = {
     method: method,
