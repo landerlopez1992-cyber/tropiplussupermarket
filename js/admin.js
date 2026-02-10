@@ -267,28 +267,6 @@ git add tvs-public.json && git commit -m "Update TVs" && git push`;
         alert('❌ Error: ' + error.message);
     }
 }
-    try {
-        const jsonStr = JSON.stringify(tvConfigs, null, 2);
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        // Intentar guardar usando GitHub API si está disponible
-        // Por ahora, solo loguear para debugging
-        console.log('💾 [Admin] JSON para app:', jsonStr);
-        
-        // Crear un enlace de descarga temporal (para debugging)
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'tvs.json';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        // No auto-descargar, solo tenerlo disponible
-        // a.click();
-        // document.body.removeChild(a);
-    } catch(e) {
-        console.error('Error creando JSON:', e);
-    }
-}
 
 function createTvId() {
     return `tv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
