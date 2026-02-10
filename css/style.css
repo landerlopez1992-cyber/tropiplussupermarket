@@ -30,6 +30,7 @@
     --purple-hero-end: #764ba2;
     --dark-blue-footer: #1a237e;
     --dark-blue-nav: #1a237e;
+    --light-blue-header: #3f51b5;
     --white: #ffffff;
     --black: #212121;
     --gray-text: #757575;
@@ -66,7 +67,7 @@ img {
    HEADER PRINCIPAL CON LOGO Y BÚSQUEDA
    ============================================ */
 .main-header-section {
-    background-color: var(--white);
+    background-color: var(--light-blue-header);
     padding: 15px 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     border-bottom: 1px solid var(--gray-border);
@@ -99,7 +100,7 @@ img {
 }
 
 .main-logo-text {
-    color: var(--red-logo);
+    color: var(--white);
     font-size: 28px;
     font-weight: 900;
     letter-spacing: -0.5px;
@@ -199,7 +200,7 @@ img {
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    color: var(--black);
+    color: var(--white);
     font-size: 12px;
     gap: 4px;
     cursor: pointer;
@@ -224,7 +225,7 @@ img {
 
 .cart-icon-wrapper i {
     font-size: 26px;
-    color: var(--black);
+    color: var(--white);
 }
 
 .cart-badge-number {
@@ -248,7 +249,7 @@ img {
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    color: var(--black);
+    color: var(--white);
     font-size: 12px;
     gap: 4px;
     cursor: pointer;
@@ -256,6 +257,10 @@ img {
 
 .pay-icon-wrapper i {
     font-size: 24px;
+}
+
+.pay-icon-wrapper span {
+    color: var(--white);
 }
 
 /* ============================================
@@ -2487,6 +2492,16 @@ img {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 24px;
     margin-bottom: 40px;
+    width: 100%;
+}
+
+.products-grid .no-products-message {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .products-loading,
@@ -2571,6 +2586,12 @@ img {
     padding: 80px 20px;
     max-width: 500px;
     margin: 0 auto;
+    width: 100%;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .no-products-icon {
