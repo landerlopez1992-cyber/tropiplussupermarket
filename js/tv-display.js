@@ -258,7 +258,8 @@ async function initTvScreen() {
     // Modo mixed: cargar todo para rotación automática
     await loadProductsForTv(selected);
     await loadOrdersForTv();
-    console.log('📦 [TV] Modo mixed - Productos cargados:', allTvProducts.length, 'Pedidos:', allTvOrders.length);
+    allQrConfigs = loadQrConfigs();
+    console.log('📦 [TV] Modo mixed - Productos:', allTvProducts.length, 'Pedidos:', allTvOrders.length, 'QRs:', allQrConfigs.length);
   } else {
     await loadProductsForTv(selected);
     console.log('📦 [TV] Productos cargados:', allTvProducts.length);
