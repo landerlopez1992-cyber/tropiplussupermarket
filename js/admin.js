@@ -383,6 +383,222 @@ async function showTvCastModal(tvUrl, tvId) {
 }
 
 async function detectAndShowTvs(tvUrl, modal) {
+    const devicesList = modal.querySelector('#tv-devices-list');
+    devicesList.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--green-categories);"></i>
+            <p style="margin-top: 10px; color: var(--gray-text);">Buscando TVs en la red local...</p>
+        </div>
+    `;
+    
+    const foundTvs = [];
+    
+    // Obtener IP local del navegador
+    const localIp = await getLocalIP();
+    if (!localIp) {
+        devicesList.innerHTML = `
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                <i class="fas fa-exclamation-triangle" style="color: #856404;"></i>
+                <strong style="color: #856404;">No se pudo detectar la red local</strong>
+                <p style="margin: 8px 0 0 0; color: #856404; font-size: 14px;">
+                    Asegúrate de estar en la misma red WiFi que los TVs.
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Extraer base de IP (ej: 192.168.1)
+    const ipParts = localIp.split('.');
+    const baseIp = ipParts.slice(0, 3).join('.');
+    
+    console.log('🔍 Escaneando red local:', baseIp + '.x');
+    
+    // Escanear rango común (1-254)
+    const scanPromises = [];
+    for (let i = 1; i <= 254; i++) {
+        const ip = `${baseIp}.${i}`;
+        scanPromises.push(checkTvApp(ip));
+    }
+    
+    // Ejecutar en lotes para no sobrecargar
+    const batchSize = 20;
+    for (let i = 0; i < scanPromises.length; i += batchSize) {
+        const batch = scanPromises.slice(i, i + batchSize);
+        const results = await Promise.allSettled(batch);
+        
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled' && result.value) {
+                foundTvs.push(result.value);
+            }
+        });
+        
+        // Actualizar UI mientras escanea
+        if (foundTvs.length > 0 || i + batchSize < scanPromises.length) {
+            updateDevicesList(devicesList, foundTvs, tvUrl);
+        }
+    }
+    
+    // Mostrar resultado final
+    updateDevicesList(devicesList, foundTvs, tvUrl);
+}
+
+async function getLocalIP() {
+    return new Promise((resolve) => {
+        // Intentar obtener IP usando WebRTC
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+        
+        pc.createDataChannel('');
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                const candidate = event.candidate.candidate;
+                const match = candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+                if (match) {
+                    const ip = match[0];
+                    // Filtrar IPs locales válidas
+                    if (ip.startsWith('192.168.') || 
+                        ip.startsWith('10.') || 
+                        ip.startsWith('172.')) {
+                        pc.close();
+                        resolve(ip);
+                        return;
+                    }
+                }
+            }
+        };
+        
+        pc.createOffer()
+            .then(offer => pc.setLocalDescription(offer))
+            .catch(() => resolve(null));
+        
+        // Timeout después de 2 segundos
+        setTimeout(() => {
+            pc.close();
+            resolve(null);
+        }, 2000);
+    });
+}
+
+async function checkTvApp(ip) {
+    // Intentar puertos comunes
+    const ports = [8081, 8082];
+    
+    for (const port of ports) {
+        try {
+            const response = await fetch(`http://${ip}:${port}/ping`, {
+                method: 'GET',
+                mode: 'no-cors', // No funciona con no-cors, necesitamos otro método
+                signal: AbortSignal.timeout(500), // Timeout de 500ms
+            });
+            
+            // Con no-cors no podemos leer la respuesta, así que usamos otro método
+            // Intentar con fetch normal pero con timeout corto
+        } catch (e) {
+            // Ignorar errores
+        }
+    }
+    
+    // Método alternativo: usar Promise.race con timeout
+    for (const port of ports) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 500);
+            
+            const response = await fetch(`http://${ip}:${port}/ping`, {
+                signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                const data = await response.json();
+                return {
+                    ip: ip,
+                    port: port,
+                    name: data.name || 'TV Sin Nombre',
+                    status: data.status || 'online',
+                };
+            }
+        } catch (e) {
+            // Timeout o error de conexión - continuar
+        }
+    }
+    
+    return null;
+}
+
+function updateDevicesList(devicesList, foundTvs, tvUrl) {
+    if (foundTvs.length === 0) {
+        devicesList.innerHTML = `
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                <i class="fas fa-info-circle" style="color: #856404;"></i>
+                <strong style="color: #856404;">No se encontraron TVs</strong>
+                <p style="margin: 8px 0 0 0; color: #856404; font-size: 14px;">
+                    Para transmitir a un TV, primero instala la app en el TV y asegúrate de que esté en la misma red WiFi.
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    devicesList.innerHTML = foundTvs.map(tv => `
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-weight: bold; color: var(--dark-blue-nav); margin-bottom: 5px;">
+                    <i class="fas fa-tv"></i> ${tv.name}
+                </div>
+                <div style="font-size: 12px; color: var(--gray-text);">
+                    ${tv.ip}:${tv.port}
+                </div>
+            </div>
+            <button 
+                class="tv-cast-btn" 
+                data-ip="${tv.ip}" 
+                data-port="${tv.port}"
+                style="padding: 8px 16px; background: var(--green-categories); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                Transmitir
+            </button>
+        </div>
+    `).join('');
+    
+    // Agregar event listeners a los botones
+    devicesList.querySelectorAll('.tv-cast-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const ip = btn.dataset.ip;
+            const port = btn.dataset.port;
+            await castToTv(ip, port, tvUrl);
+        });
+    });
+}
+
+async function castToTv(ip, port, url) {
+    try {
+        const response = await fetch(`http://${ip}:${port}/cast`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Transmisión enviada exitosamente al TV');
+            // Cerrar modal
+            const modal = document.getElementById('tv-cast-modal');
+            if (modal) modal.remove();
+        } else {
+            alert('❌ Error: ' + (result.error || 'No se pudo transmitir'));
+        }
+    } catch (e) {
+        alert('❌ Error de conexión: ' + e.message);
+    }
+}
+
+async function detectAndShowTvs_OLD(tvUrl, modal) {
     const listContainer = document.getElementById('tv-devices-list');
     const devices = [];
     
