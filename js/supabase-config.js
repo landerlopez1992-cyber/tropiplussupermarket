@@ -18,21 +18,43 @@ async function getSupabaseAnonKey() {
 // Función para leer TVs desde Supabase (público, sin autenticación)
 async function getTvConfigsFromSupabase() {
     try {
+        // Intentar obtener la anon key desde localStorage (si fue configurada manualmente)
+        let anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        // Si no hay key, intentar sin ella (puede funcionar con RLS público)
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+        }
+        
         const response = await fetch(
             `${SUPABASE_CONFIG.url}/rest/v1/tv_configs?active=eq.true&select=*`,
             {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_CONFIG.anonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiYnZmemV5aGhvcGR3enNvb2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NDU2MDAsImV4cCI6MjA1MjEyMTYwMH0.placeholder', // Se actualizará con la key real
-                    'Prefer': 'return=representation'
-                },
+                headers: headers,
                 cache: 'no-store'
             }
         );
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error respuesta:', response.status, errorText);
+            
+            // Si es 404 o 42P01, la tabla no existe
+            if (response.status === 404 || errorText.includes('42P01') || errorText.includes('does not exist')) {
+                throw new Error('TABLA_NO_EXISTE: Ejecuta el SQL de migración en Supabase Dashboard');
+            }
+            
+            // Si es 401, falta la anon key
+            if (response.status === 401) {
+                throw new Error('AUTH_REQUIRED: Configura la anon key en localStorage o en supabase-config.js');
+            }
+            
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const tvs = await response.json();
@@ -94,36 +116,26 @@ async function saveTvConfigsToSupabase(tvConfigs) {
                 qr_size: tv.qrSize || 400
             }));
 
-        // Upsert (insertar o actualizar) todos los TVs
-        // Primero eliminar todos los existentes y luego insertar los nuevos
-        // (más simple que hacer upsert individual)
-        try {
-            // Eliminar todos los existentes
-            await fetch(
-                `${SUPABASE_CONFIG.url}/rest/v1/tv_configs`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_CONFIG.anonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiYnZmemV5aGhvcGR3enNvb2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NDU2MDAsImV4cCI6MjA1MjEyMTYwMH0.placeholder',
-                        'Prefer': 'return=representation'
-                    }
-                }
-            );
-        } catch (deleteError) {
-            console.warn('⚠️ [Supabase] Error eliminando TVs existentes (continuando):', deleteError);
+        // Obtener anon key
+        let anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        // Upsert usando PATCH (más eficiente que DELETE + POST)
+        // Usar upsert con resolución de duplicados
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation,resolution=merge-duplicates'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
         }
         
-        // Insertar los nuevos
+        // Insertar/actualizar todos los TVs
         const response = await fetch(
             `${SUPABASE_CONFIG.url}/rest/v1/tv_configs`,
             {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_CONFIG.anonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiYnZmemV5aGhvcGR3enNvb2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NDU2MDAsImV4cCI6MjA1MjEyMTYwMH0.placeholder',
-                    'Prefer': 'return=representation'
-                },
+                headers: headers,
                 body: JSON.stringify(activeTvs)
             }
         );
