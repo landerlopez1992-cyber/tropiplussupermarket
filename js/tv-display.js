@@ -686,11 +686,26 @@ function startTvRotation(tvConfig) {
 
 function startAutoRefresh(tvId) {
   setInterval(async () => {
+    // Verificar horario cada vez
+    const isClosed = await checkStoreHours();
+    if (isClosed) {
+      showClosedScreen();
+      return;
+    }
+    
     const config = getTvConfigs().find(item => item.id === tvId);
     if (!config || config.active === false) return;
 
     currentTvConfig = config;
     configureTicker(config);
-    await loadProductsForTv(config);
+    
+    // Recargar contenido según el modo
+    if (config.mode === 'orders') {
+      await loadOrdersForTv();
+      await renderProductsGrid();
+    } else if (config.mode !== 'qr' && config.mode !== 'promo') {
+      await loadProductsForTv(config);
+      await renderProductsGrid();
+    }
   }, 45000);
 }
