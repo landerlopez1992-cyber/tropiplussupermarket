@@ -406,6 +406,15 @@ async function findCustomerByEmail(email) {
     try {
         console.log('📡 Buscando customer en Square con email:', email);
         
+        // Verificar que squareApiCall esté disponible
+        if (typeof squareApiCall === 'undefined' && typeof window !== 'undefined' && window.squareApiCall) {
+            var squareApiCall = window.squareApiCall;
+        }
+        
+        if (typeof squareApiCall === 'undefined') {
+            throw new Error('squareApiCall no está disponible. Verifica que square-config.js se cargue antes de auth.js');
+        }
+        
         const response = await squareApiCall(
             '/v2/customers/search',
             'POST',
