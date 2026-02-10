@@ -25,10 +25,20 @@ const SQUARE_CONFIG = {
 };
 
 // Función para hacer llamadas a la API de Square
-// Usa el proxy local para evitar problemas de CORS
+// Usa el proxy local o externo según el entorno
 async function squareApiCall(endpoint, method = 'GET', body = null) {
-  // Usar proxy local en lugar de llamar directamente a Square
-  const proxyUrl = `/api/square${endpoint}`;
+  // Detectar si estamos en producción (GitHub Pages) o desarrollo local
+  const isProduction = window.location.hostname.includes('github.io') || 
+                       window.location.hostname.includes('vercel.app') ||
+                       window.location.hostname !== 'localhost';
+  
+  // URL del proxy: local en desarrollo, externo en producción
+  // IMPORTANTE: Necesitas desplegar el proxy en Vercel/Heroku y actualizar esta URL
+  const PROXY_BASE_URL = isProduction 
+    ? 'https://tropiplus-proxy.vercel.app'  // ⚠️ ACTUALIZA ESTA URL con tu proxy desplegado
+    : 'http://localhost:8080';  // Proxy local en desarrollo
+  
+  const proxyUrl = `${PROXY_BASE_URL}/api/square${endpoint}`;
   
   const options = {
     method: method,
