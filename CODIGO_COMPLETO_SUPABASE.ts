@@ -28,8 +28,6 @@ Deno.serve(async (req) => {
     let squareEndpoint = '';
     
     // Buscar el path después de /square-proxy/
-    // El pathname puede ser: /functions/v1/square-proxy/v2/catalog/search
-    // O simplemente: /square-proxy/v2/catalog/search
     const pathMatch = url.pathname.match(/\/square-proxy\/(.+)$/);
     
     if (pathMatch && pathMatch[1]) {
@@ -41,7 +39,7 @@ Deno.serve(async (req) => {
       if (queryPath) {
         squareEndpoint = queryPath.startsWith('/') ? queryPath : '/' + queryPath;
       } else {
-        // Si no hay path, devolver error 400 en lugar de usar default
+        // Si no hay path, devolver error 400
         return new Response(
           JSON.stringify({
             error: 'Missing endpoint path',
