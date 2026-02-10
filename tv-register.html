@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de TV - Tropiplus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #061240 0%, #1f3ea8 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .register-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+        .register-container h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .register-container p {
+            font-size: 16px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: rgba(66, 182, 73, 0.2);
+            border: 2px solid #42b649;
+            color: #42b649;
+        }
+        .status.error {
+            background: rgba(217, 48, 37, 0.2);
+            border: 2px solid #d93025;
+            color: #d93025;
+        }
+        .status.info {
+            background: rgba(26, 115, 232, 0.2);
+            border: 2px solid #1a73e8;
+            color: #1a73e8;
+        }
+        .tv-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .tv-info strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .tv-info code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: block;
+            word-break: break-all;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .btn {
+            background: #42b649;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2e8b38;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h1>
+            <i class="fas fa-tv"></i>
+            Registro de TV
+        </h1>
+        <p>Este TV se registrará automáticamente para recibir transmisiones</p>
+        
+        <div id="status" class="status info">
+            <i class="fas fa-spinner fa-spin"></i> Registrando TV...
+        </div>
+        
+        <div id="tv-info" class="tv-info" style="display: none;">
+            <strong>ID del TV:</strong>
+            <code id="tv-id"></code>
+            <strong style="margin-top: 15px;">Nombre:</strong>
+            <code id="tv-name"></code>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Generar ID único para este TV
+            const tvId = 'tv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            const tvName = 'TV ' + new Date().toLocaleString('es-ES', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Registrar TV en localStorage
+            const registeredTvs = JSON.parse(localStorage.getItem('tropiplus_registered_tvs') || '[]');
+            const existingIndex = registeredTvs.findIndex(tv => tv.id === tvId);
+            
+            const tvData = {
+                id: tvId,
+                name: tvName,
+                url: window.location.origin,
+                lastSeen: Date.now(),
+                userAgent: navigator.userAgent,
+                screen: {
+                    width: window.screen.width,
+                    height: window.screen.height
+                }
+            };
+            
+            if (existingIndex >= 0) {
+                registeredTvs[existingIndex] = tvData;
+            } else {
+                registeredTvs.push(tvData);
+            }
+            
+            localStorage.setItem('tropiplus_registered_tvs', JSON.stringify(registeredTvs));
+            
+            // Escuchar mensajes de casting
+            const channel = new BroadcastChannel('tropiplus_tv_cast');
+            channel.addEventListener('message', (event) => {
+                if (event.data.type === 'open_url' && event.data.deviceId === tvId) {
+                    window.location.href = event.data.url;
+                }
+            });
+            
+            // Verificar si hay URLs pendientes
+            const pendingCasts = JSON.parse(localStorage.getItem('tropiplus_pending_casts') || '[]');
+            const pendingForThisTv = pendingCasts.find(cast => cast.deviceId === tvId);
+            if (pendingForThisTv) {
+                // Limpiar pendientes antiguos
+                const recentCasts = pendingCasts.filter(cast => 
+                    cast.deviceId === tvId && (Date.now() - cast.timestamp) < 60000
+                );
+                localStorage.setItem('tropiplus_pending_casts', JSON.stringify(recentCasts));
+                
+                if (pendingForThisTv.url) {
+                    window.location.href = pendingForThisTv.url;
+                    return;
+                }
+            }
+            
+            // Actualizar lastSeen cada minuto
+            setInterval(() => {
+                const tvs = JSON.parse(localStorage.getItem('tropiplus_registered_tvs') || '[]');
+                const tvIndex = tvs.findIndex(tv => tv.id === tvId);
+                if (tvIndex >= 0) {
+                    tvs[tvIndex].lastSeen = Date.now();
+                    localStorage.setItem('tropiplus_registered_tvs', JSON.stringify(tvs));
+                }
+            }, 60000);
+            
+            // Mostrar información
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> TV registrado correctamente';
+            document.getElementById('tv-info').style.display = 'block';
+            document.getElementById('tv-id').textContent = tvId;
+            document.getElementById('tv-name').textContent = tvName;
+            
+            console.log('✅ TV registrado:', tvId);
+        })();
+    </script>
+</body>
+</html>

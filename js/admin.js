@@ -140,6 +140,30 @@ function saveTvConfigs(tvConfigs) {
     localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
     console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
     console.log('💾 [Admin] Verificación:', localStorage.getItem(TV_STORAGE_KEY));
+    
+    // También guardar en un archivo JSON para que la app Flutter lo lea
+    // Usar GitHub API o simplemente crear un data URI que se pueda descargar
+    try {
+        const jsonStr = JSON.stringify(tvConfigs, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // Intentar guardar usando GitHub API si está disponible
+        // Por ahora, solo loguear para debugging
+        console.log('💾 [Admin] JSON para app:', jsonStr);
+        
+        // Crear un enlace de descarga temporal (para debugging)
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tvs.json';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        // No auto-descargar, solo tenerlo disponible
+        // a.click();
+        // document.body.removeChild(a);
+    } catch(e) {
+        console.error('Error creando JSON:', e);
+    }
 }
 
 function createTvId() {
@@ -279,6 +303,193 @@ function resetTvForm() {
     applyTvModeVisibility('mixed');
 }
 
+async function showTvCastModal(tvUrl, tvId) {
+    // Crear modal para seleccionar TV
+    const modal = document.createElement('div');
+    modal.id = 'tv-cast-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin: 0 0 20px 0; color: var(--dark-blue-nav);">
+                <i class="fas fa-broadcast-tower"></i> Transmitir a TV
+            </h2>
+            <div id="tv-devices-list" style="margin-bottom: 20px;">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--green-categories);"></i>
+                    <p style="margin-top: 10px; color: var(--gray-text);">Buscando TVs en la red...</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="tv-cast-cancel" style="padding: 10px 20px; background: #e0e0e0; border: none; border-radius: 6px; cursor: pointer;">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Detectar TVs
+    await detectAndShowTvs(tvUrl, modal);
+    
+    // Cerrar modal
+    document.getElementById('tv-cast-cancel').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
+async function detectAndShowTvs(tvUrl, modal) {
+    const listContainer = document.getElementById('tv-devices-list');
+    const devices = [];
+    
+    // 1. Buscar TVs registrados en localStorage (compartido entre pestañas del mismo dominio)
+    try {
+        const registeredTvs = await discoverRegisteredTvs();
+        devices.push(...registeredTvs);
+    } catch (e) {
+        console.log('Error buscando TVs registrados:', e);
+    }
+    
+    // 2. Mostrar resultados
+    if (devices.length > 0) {
+        listContainer.innerHTML = `
+            <p style="margin-bottom: 10px; color: var(--gray-text); font-weight: 500;">Selecciona un TV:</p>
+            ${devices.map(device => `
+                <div style="border: 2px solid var(--gray-border); border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s;" 
+                     onmouseover="this.style.borderColor='var(--green-categories)'; this.style.background='#f0f7ff';" 
+                     onmouseout="this.style.borderColor='var(--gray-border)'; this.style.background='white';"
+                     onclick="castToDevice('${device.id}', 'registered', '${tvUrl.replace(/'/g, "\\'")}')">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-tv" style="font-size: 24px; color: var(--green-categories);"></i>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--dark-blue-nav); display: block;">${device.name || device.id}</strong>
+                            <div style="font-size: 12px; color: var(--gray-text);">TV Registrado • ${device.id.substring(0, 20)}...</div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--gray-text);"></i>
+                    </div>
+                </div>
+            `).join('')}
+            <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #1a73e8;">
+                <strong style="color: #1a73e8; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-info-circle"></i> ¿No ves tu TV?
+                </strong>
+                <p style="margin: 0; font-size: 13px; color: #1a73e8;">
+                    Abre esta URL en el navegador del TV para registrarlo:<br>
+                    <code style="background: white; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px; font-size: 11px;">
+                        ${window.location.origin}/tv-register.html
+                    </code>
+                </p>
+            </div>
+        `;
+    } else {
+        listContainer.innerHTML = `
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 10px 0; color: #856404;">
+                    <i class="fas fa-info-circle"></i> No se encontraron TVs
+                </h3>
+                <p style="margin: 0 0 15px 0; color: #856404;">
+                    Para transmitir a un TV, primero regístralo:
+                </p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <strong style="display: block; margin-bottom: 10px;">Paso 1:</strong>
+                    <p style="margin: 0 0 10px 0; font-size: 13px;">
+                        Abre esta URL en el navegador del TV:
+                    </p>
+                    <code style="background: #f5f5f5; padding: 8px 12px; border-radius: 4px; display: block; word-break: break-all; font-size: 11px; margin-bottom: 10px;">
+                        ${window.location.origin}/tv-register.html
+                    </code>
+                    <strong style="display: block; margin: 15px 0 10px 0;">Paso 2:</strong>
+                    <p style="margin: 0; font-size: 13px;">
+                        El TV se registrará automáticamente. Luego recarga esta página y vuelve a intentar.
+                    </p>
+                </div>
+                <button onclick="document.getElementById('tv-devices-list').innerHTML = '<div style=\\'text-align: center; padding: 20px;\\'><i class=\\'fas fa-spinner fa-spin\\' style=\\'font-size: 24px; color: var(--green-categories);\\'></i><p style=\\'margin-top: 10px; color: var(--gray-text);\\'>Buscando TVs...</p></div>'; detectAndShowTvs('${tvUrl}', document.getElementById('tv-cast-modal'));" 
+                        style="padding: 10px 20px; background: var(--green-categories); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-sync-alt"></i> Buscar de nuevo
+                </button>
+            </div>
+        `;
+    }
+}
+
+async function discoverRegisteredTvs() {
+    // Buscar TVs registrados en localStorage (compartido entre pestañas del mismo dominio)
+    const registeredTvs = JSON.parse(localStorage.getItem('tropiplus_registered_tvs') || '[]');
+    
+    // Filtrar TVs que estén activos (últimos 5 minutos)
+    const now = Date.now();
+    const activeTvs = registeredTvs.filter(tv => (now - tv.lastSeen) < 300000);
+    
+    return activeTvs.map(tv => ({
+        id: tv.id,
+        name: tv.name || `TV ${tv.id.substring(0, 8)}`,
+        type: 'registered',
+        url: tv.url
+    }));
+}
+
+async function castToDevice(deviceId, deviceType, tvUrl) {
+    try {
+        // Enviar URL al TV registrado usando BroadcastChannel y localStorage
+        await sendUrlToRegisteredTv(deviceId, tvUrl);
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', `Pantalla transmitida al TV: ${deviceId}`, 'success');
+        }
+        
+        const modal = document.getElementById('tv-cast-modal');
+        if (modal) document.body.removeChild(modal);
+    } catch (e) {
+        if (typeof showModal === 'function') {
+            showModal('Error', `No se pudo transmitir: ${e.message}`, 'error');
+        }
+    }
+}
+
+async function sendUrlToRegisteredTv(deviceId, tvUrl) {
+    // Enviar URL al TV usando BroadcastChannel (comunicación entre pestañas)
+    try {
+        const channel = new BroadcastChannel('tropiplus_tv_cast');
+        channel.postMessage({
+            type: 'open_url',
+            deviceId: deviceId,
+            url: tvUrl,
+            timestamp: Date.now()
+        });
+    } catch (e) {
+        console.log('BroadcastChannel no disponible:', e);
+    }
+    
+    // También guardar en localStorage como backup (el TV lo revisa periódicamente)
+    const pendingCasts = JSON.parse(localStorage.getItem('tropiplus_pending_casts') || '[]');
+    pendingCasts.push({
+        deviceId,
+        url: tvUrl,
+        timestamp: Date.now()
+    });
+    // Mantener solo los últimos 10
+    const recentCasts = pendingCasts.slice(-10);
+    localStorage.setItem('tropiplus_pending_casts', JSON.stringify(recentCasts));
+}
+
 function renderTvList() {
     const container = document.getElementById('tv-list-container');
     if (!container) return;
@@ -314,6 +525,9 @@ function renderTvList() {
             </div>
             <div class="tv-actions">
                 <a class="tv-btn-open" href="tv.html?tv=${encodeURIComponent(tv.id)}" target="_blank" rel="noopener noreferrer">Abrir Pantalla TV</a>
+                <button class="tv-btn-cast" data-tv-action="cast" data-tv-id="${tv.id}" data-tv-url="${tvUrl}" style="background: #ff6b35; color: white; padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-broadcast-tower"></i> Transmitir a TV
+                </button>
                 <button class="tv-btn-edit" data-tv-action="edit" data-tv-id="${tv.id}">Editar</button>
                 <button class="tv-btn-delete" data-tv-action="delete" data-tv-id="${tv.id}">Eliminar</button>
             </div>
@@ -630,6 +844,7 @@ function initTvTab() {
         if (!(target instanceof HTMLElement)) return;
         const action = target.dataset.tvAction;
         const tvId = target.dataset.tvId;
+        const tvUrl = target.dataset.tvUrl;
         if (!action || !tvId) return;
 
         if (action === 'edit') {
@@ -644,6 +859,12 @@ function initTvTab() {
             if (typeof showModal === 'function') {
                 showModal('Listo', 'TV eliminado correctamente.', 'success');
             }
+            return;
+        }
+
+        if (action === 'cast') {
+            showTvCastModal(tvUrl, tvId);
+            return;
         }
     });
 
