@@ -290,7 +290,7 @@ async function updatePublicTvsFile(tvConfigs) {
         
         // Mostrar mensaje de éxito simple
         if (typeof showModal === 'function') {
-            showModal('✅ TVs Guardados', 'Los TVs se guardaron correctamente. Los cambios se reflejarán en los navegadores en unos segundos.', 'success');
+            // Modal removido - proceso silencioso
         }
         
         // Intentar actualizar automáticamente ejecutando el script si está disponible
