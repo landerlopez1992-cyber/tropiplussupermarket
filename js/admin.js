@@ -222,10 +222,7 @@ function showTvUpdateInstructions(jsonContent) {
 
 async function updateTvsJsonFile(jsonContent) {
     try {
-        // Intentar actualizar automáticamente usando GitHub API (si está disponible)
-        // Si no, descargar el archivo para que el usuario lo suba
-        
-        // Primero, intentar copiar al portapapeles y mostrar instrucciones
+        // Copiar al portapapeles
         try {
             await navigator.clipboard.writeText(jsonContent);
             console.log('✅ JSON copiado al portapapeles');
@@ -233,7 +230,7 @@ async function updateTvsJsonFile(jsonContent) {
             console.log('⚠️ No se pudo copiar al portapapeles');
         }
         
-        // Crear blob y descargar
+        // Descargar archivo
         const blob = new Blob([jsonContent], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -242,36 +239,31 @@ async function updateTvsJsonFile(jsonContent) {
         a.click();
         URL.revokeObjectURL(url);
         
-        // Intentar actualizar automáticamente ejecutando un script
-        try {
-            // Mostrar modal con botón para ejecutar actualización automática
-            if (typeof showModal === 'function') {
-                const modalContent = `
-                    <div style="text-align: left;">
-                        <p><strong>✅ JSON descargado</strong></p>
-                        <p>Para actualizar automáticamente, ejecuta en terminal:</p>
-                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
+        // Mostrar instrucciones simplificadas
+        const commands = `cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
 cat > tvs-public.json << 'EOF'
 ${jsonContent}
 EOF
-git add tvs-public.json
-git commit -m "Auto-update TVs"
-git push</pre>
-                        <button onclick="navigator.clipboard.writeText(\`cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23\\ncat > tvs-public.json << 'EOF'\\n${jsonContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\\nEOF\\ngit add tvs-public.json\\ngit commit -m 'Auto-update TVs'\\ngit push\`).then(() => alert('✅ Comandos copiados al portapapeles'))" 
-                                style="margin-top: 10px; padding: 10px 20px; background: #42b649; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            📋 Copiar Comandos
-                        </button>
-                    </div>
-                `;
-                showModal('Actualizar TVs', modalContent, 'info');
-            } else {
-                alert('✅ JSON descargado. Reemplaza tvs-public.json en GitHub.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
+git add tvs-public.json && git commit -m "Update TVs" && git push`;
+        
+        if (typeof showModal === 'function') {
+            const modalContent = `
+                <div style="text-align: left;">
+                    <p><strong>✅ JSON descargado</strong></p>
+                    <p>Ejecuta estos comandos en terminal:</p>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 300px;">${commands}</pre>
+                    <button onclick="navigator.clipboard.writeText(\`${commands.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`).then(() => { alert('✅ Comandos copiados! Pega en terminal y presiona Enter'); })" 
+                            style="margin-top: 15px; padding: 12px 24px; background: #42b649; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;">
+                        📋 Copiar Comandos
+                    </button>
+                </div>
+            `;
+            showModal('Actualizar TVs en GitHub', modalContent, 'info');
+        } else {
+            alert('✅ JSON descargado.\n\nEjecuta en terminal:\n' + commands);
         }
     } catch (error) {
-        console.error('Error descargando JSON:', error);
+        console.error('Error:', error);
         alert('❌ Error: ' + error.message);
     }
 }
