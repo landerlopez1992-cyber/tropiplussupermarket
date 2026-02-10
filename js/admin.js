@@ -474,9 +474,12 @@ function initPromotionTab() {
 
         savePromotionConfig(config);
         updatePromotionPreview();
+        
+        console.log('✅ [Admin] Promoción guardada:', config);
+        console.log('✅ [Admin] localStorage actualizado:', localStorage.getItem(PROMO_STORAGE_KEY));
 
         if (typeof showModal === 'function') {
-            showModal('Éxito', 'Promoción guardada correctamente.', 'success');
+            showModal('Éxito', 'Promoción guardada correctamente. La barra promocional aparecerá en la página principal.', 'success');
         }
     });
 }
