@@ -129,6 +129,9 @@ function configureTicker(tvConfig) {
   textA.textContent = finalTicker;
   textB.textContent = finalTicker;
 
+  // Usar la velocidad del TV si está configurada, sino usar la promoción global
+  const speed = tvConfig.tickerSpeed || promo.speed || 'normal';
+  
   // Calcular duración basada en la velocidad y longitud del texto
   const baseDuration = {
     slow: 30,    // 30 segundos por 100 caracteres
@@ -137,12 +140,11 @@ function configureTicker(tvConfig) {
   };
   
   const textLength = text.length;
-  const speed = promo.speed || 'normal';
   const baseSpeed = baseDuration[speed] || baseDuration.normal;
   const calculatedDuration = Math.max(8, Math.round((textLength / 100) * baseSpeed));
   const duration = `${calculatedDuration}s`;
   
-  console.log('⚡ [TV] Velocidad configurada:', speed);
+  console.log('⚡ [TV] Velocidad configurada:', speed, '(TV:', tvConfig.tickerSpeed, '| Global:', promo.speed, ')');
   console.log('⚡ [TV] Longitud del texto:', textLength, 'caracteres');
   console.log('⚡ [TV] Duración calculada:', duration);
   
@@ -159,8 +161,32 @@ function configureTicker(tvConfig) {
 
 async function loadProductsForTv(tvConfig) {
   try {
-    const data = await getSquareProducts();
-    const items = Array.isArray(data) ? data : [];
+    // Intentar obtener productos desde square-integration.js si está disponible
+    let items = [];
+    if (typeof window.squareProducts !== 'undefined' && Array.isArray(window.squareProducts) && window.squareProducts.length > 0) {
+      console.log('✅ [TV] Usando productos cargados desde square-integration.js');
+      items = window.squareProducts;
+    } else if (typeof loadSquareProducts === 'function') {
+      console.log('⏳ [TV] Cargando productos desde Square API...');
+      await loadSquareProducts();
+      items = window.squareProducts || [];
+    } else {
+      // Fallback: cargar directamente desde Square API
+      console.log('⏳ [TV] Cargando productos directamente desde Square API...');
+      const response = await squareApiCall('/v2/catalog/search', 'POST', {
+        object_types: ['ITEM'],
+        query: {
+          exact_query: {
+            attribute_name: 'name',
+            attribute_value: ''
+          }
+        },
+        limit: 1000
+      });
+      items = response?.objects || [];
+      // Guardar en window para uso futuro
+      window.squareProducts = items;
+    }
 
     const filtered = items.filter(item => {
       const itemData = item?.item_data;

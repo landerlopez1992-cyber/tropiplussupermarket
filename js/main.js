@@ -132,6 +132,16 @@ function createPromotionBar() {
     // Solo crear UNA copia del item para que pase completo y luego se repita
     track.appendChild(createItem());
     bar.appendChild(track);
+    
+    // Asegurar que el track tenga el ancho correcto para la animación
+    // Esperar a que se inserte en el DOM para calcular el ancho
+    setTimeout(() => {
+        const trackWidth = track.scrollWidth;
+        if (trackWidth > 0) {
+            track.style.width = `${trackWidth}px`;
+            console.log('📏 [Tropiplus] Ancho del track calculado:', trackWidth, 'px');
+        }
+    }, 100);
 
     // Intentar insertar después de la barra de navegación oscura
     const navBar = document.querySelector('.nav-bar-dark-blue');

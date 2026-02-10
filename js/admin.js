@@ -235,6 +235,22 @@ function renderTvList() {
 function loadTvIntoForm(tvId) {
     const tv = getTvConfigs().find(item => item.id === tvId);
     if (!tv) return;
+    
+    // Cargar todos los campos del formulario
+    document.getElementById('tv-id').value = tv.id || '';
+    document.getElementById('tv-name').value = tv.name || '';
+    document.getElementById('tv-mode').value = tv.mode || 'mixed';
+    document.getElementById('tv-category').value = tv.categoryId || '';
+    document.getElementById('tv-product-count').value = tv.productCount || 8;
+    document.getElementById('tv-slide-seconds').value = tv.slideSeconds || 10;
+    document.getElementById('tv-show-price').checked = tv.showPrice !== false;
+    document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
+    document.getElementById('tv-promo-text').value = tv.promoText || '';
+    const tickerSpeedInput = document.getElementById('tv-ticker-speed');
+    if (tickerSpeedInput) {
+        tickerSpeedInput.value = tv.tickerSpeed || 'normal';
+    }
+    document.getElementById('tv-active').checked = tv.active !== false;
 
     document.getElementById('tv-id').value = tv.id || '';
     document.getElementById('tv-name').value = tv.name || '';
@@ -296,6 +312,7 @@ function initTvTab() {
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
         const promoText = document.getElementById('tv-promo-text').value.trim();
+        const tickerSpeed = document.getElementById('tv-ticker-speed')?.value || 'normal';
         const active = document.getElementById('tv-active').checked;
 
         if (!name) {
@@ -316,6 +333,7 @@ function initTvTab() {
             showPrice,
             showOffer,
             promoText,
+            tickerSpeed,
             active,
             updatedAt: Date.now()
         };

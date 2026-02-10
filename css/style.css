@@ -19,8 +19,9 @@
 .promo-ticker-track {
   display: inline-flex;
   white-space: nowrap;
-  min-width: 200%;
+  width: max-content;
   animation: promoTickerSlide var(--promo-duration, 14s) linear infinite;
+  will-change: transform;
 }
 
 .promo-ticker-item {
@@ -47,7 +48,7 @@
 
 @keyframes promoTickerSlide {
   0% { 
-    transform: translateX(100%); 
+    transform: translateX(100vw); 
   }
   100% { 
     transform: translateX(-100%); 
