@@ -496,25 +496,6 @@ async function renderBestSellers(products) {
   }
 }
 
-async function renderYeyaCombos(products) {
-  const carousel = document.getElementById('yeya-combos-carousel');
-  if (!carousel) return;
-  
-  carousel.innerHTML = '';
-  
-  const yeyaProducts = products.filter(item => {
-    const itemData = item.item_data;
-    return itemData && itemData.name?.toUpperCase().includes('YEYA');
-  });
-  
-  const combosToShow = yeyaProducts.slice(0, 4);
-  
-  for (const item of combosToShow) {
-    const productCard = await createProductCard(item);
-    carousel.appendChild(productCard);
-  }
-}
-
 async function renderRecommendations(products) {
   const carousel = document.getElementById('recommendations-carousel');
   if (!carousel) return;
@@ -565,11 +546,9 @@ async function createProductCard(item) {
     }
   }
   
-  const isYEYA = itemData.name?.toUpperCase().includes('YEYA');
   const priceFormatted = price ? formatSquarePrice(price) : 'Precio no disponible';
   
   productCard.innerHTML = `
-    ${isYEYA ? '<span class="product-promo-badge">★ PROMO YEYA</span>' : ''}
     ${!isAvailable ? '<span class="product-out-of-stock-badge">AGOTADO</span>' : ''}
     <div class="product-image-container ${!isAvailable ? 'out-of-stock-overlay' : ''}">
       <img src="${imageUrl}" 
