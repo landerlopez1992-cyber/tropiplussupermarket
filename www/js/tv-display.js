@@ -35,49 +35,26 @@ async function checkStoreHours() {
     
     const now = new Date();
     const currentDay = now.getDay(); // 0 = Domingo, 6 = Sábado
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeMinutes = currentHour * 60 + currentMinute; // Minutos desde medianoche
-    
-    // Convertir día de JS a Square: Square usa 0=Lunes, 6=Domingo; JS usa 0=Domingo, 6=Sábado
-    const squareDay = currentDay === 0 ? 6 : currentDay - 1;
+    const currentTime = now.getHours() * 100 + now.getMinutes(); // HHMM formato
     
     // Buscar horario para el día actual
     const todayPeriod = businessHours.periods.find(period => {
-      return period.day_of_week === squareDay;
+      const dayOfWeek = period.day_of_week;
+      // Convertir: Square usa 0=Lunes, 6=Domingo, JS usa 0=Domingo, 6=Sábado
+      const squareDay = currentDay === 0 ? 6 : currentDay - 1;
+      return dayOfWeek === squareDay;
     });
     
     if (!todayPeriod) {
-      console.log(`ℹ️ [TV] No hay horario para hoy (día ${squareDay}), asumiendo cerrado`);
+      console.log('ℹ️ [TV] No hay horario para hoy, asumiendo cerrado');
       return true; // Cerrado si no hay horario
     }
     
-    // Parsear horarios (formato HH:MM)
-    const parseTime = (timeStr) => {
-      if (!timeStr) return 0;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes; // Minutos desde medianoche
-    };
+    const startTime = parseInt(todayPeriod.start_local_time?.replace(':', '') || '0');
+    const endTime = parseInt(todayPeriod.end_local_time?.replace(':', '') || '2359');
     
-    const startTimeMinutes = parseTime(todayPeriod.start_local_time);
-    const endTimeMinutes = parseTime(todayPeriod.end_local_time);
-    
-    let isOpen = false;
-    
-    // Si el horario cruza la medianoche (end < start), por ejemplo 9:00 AM a 4:00 AM
-    if (endTimeMinutes < startTimeMinutes) {
-      // Horario que cruza medianoche: abierto si currentTime >= startTime O currentTime <= endTime
-      isOpen = currentTimeMinutes >= startTimeMinutes || currentTimeMinutes <= endTimeMinutes;
-    } else {
-      // Horario normal: abierto si currentTime está entre startTime y endTime
-      isOpen = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
-    }
-    
-    const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
-    console.log(`🕐 [TV] Día: ${['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][currentDay]}`);
-    console.log(`🕐 [TV] Horario configurado: ${todayPeriod.start_local_time} - ${todayPeriod.end_local_time}`);
-    console.log(`🕐 [TV] Hora actual: ${timeStr} (${currentTimeMinutes} minutos)`);
-    console.log(`🕐 [TV] Estado: ${isOpen ? 'ABIERTO ✅' : 'CERRADO 🔴'}`);
+    const isOpen = currentTime >= startTime && currentTime <= endTime;
+    console.log(`🕐 [TV] Horario: ${todayPeriod.start_local_time} - ${todayPeriod.end_local_time}, Hora actual: ${now.getHours()}:${now.getMinutes()}, Abierto: ${isOpen}`);
     
     return !isOpen;
   } catch (error) {
@@ -254,11 +231,6 @@ async function initTvScreen() {
     await loadOrdersForTv();
   } else if (selected.mode === 'qr') {
     // No necesita cargar productos
-  } else if (selected.mode === 'mixed') {
-    // Modo mixed: cargar todo para rotación automática
-    await loadProductsForTv(selected);
-    await loadOrdersForTv();
-    console.log('📦 [TV] Modo mixed - Productos cargados:', allTvProducts.length, 'Pedidos:', allTvOrders.length);
   } else {
     await loadProductsForTv(selected);
     console.log('📦 [TV] Productos cargados:', allTvProducts.length);
@@ -468,167 +440,9 @@ async function getProductImage(product) {
   }
 }
 
-// Cargar QRs configurados
-function loadQrConfigs() {
-  try {
-    const raw = localStorage.getItem(QR_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(qr => qr.active !== false) : [];
-  } catch (error) {
-    console.error('Error cargando QRs:', error);
-    return [];
-  }
-}
-
 async function renderProductsGrid() {
   const gridEl = document.getElementById('tv-products-grid');
   if (!gridEl || !currentTvConfig) return;
-  
-  // Modo Mixed: Rotar entre productos, promos, pedidos y QRs
-  if (currentTvConfig.mode === 'mixed') {
-    const modes = ['products', 'promo', 'orders', 'qr'];
-    const currentMode = modes[tvMixedModeIndex % modes.length];
-    
-    if (currentMode === 'products' && allTvProducts.length > 0) {
-      // Mostrar productos
-      const productsHtml = await Promise.all(
-        allTvProducts.slice(0, 8).map(async (product) => {
-          const itemData = product.item_data || {};
-          const variation = itemData.variations?.[0];
-          const currentPrice = formatMoneyFromVariation(variation);
-          const imageUrl = await getProductImage(product);
-          
-          const amount = variation?.item_variation_data?.price_money?.amount;
-          const showOffer = currentTvConfig.showOffer !== false && currentPrice !== '--';
-          const previousPrice = showOffer && typeof amount === 'number' 
-            ? `${((amount * 1.12) / 100).toFixed(2)} US$` 
-            : '';
-          
-          const priceHtml = currentTvConfig.showPrice !== false
-            ? `
-              <div class="tv-product-price-container">
-                <span class="tv-product-price">${currentPrice}</span>
-                ${previousPrice ? `<span class="tv-product-old-price">${previousPrice}</span>` : ''}
-              </div>
-            `
-            : '';
-          
-          const badgeHtml = showOffer
-            ? '<span class="tv-product-badge">OFERTA</span>'
-            : '';
-          
-          return `
-            <div class="tv-product-card">
-              <div class="tv-product-image-container">
-                <img src="${imageUrl}" alt="${itemData.name || 'Producto'}" loading="lazy">
-              </div>
-              <div class="tv-product-info">
-                ${badgeHtml}
-                <h2 class="tv-product-name">${itemData.name || 'Producto'}</h2>
-                ${priceHtml}
-              </div>
-            </div>
-          `;
-        })
-      );
-      gridEl.innerHTML = productsHtml.join('');
-      return;
-    } else if (currentMode === 'promo') {
-      // Mostrar promoción
-      const promoText = currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día';
-      gridEl.innerHTML = `
-        <div class="tv-product-card" style="grid-column: 1 / -1;">
-          <div class="tv-product-image-container">
-            <img src="images/Barnner1.png" alt="Promoción">
-          </div>
-          <div class="tv-product-info">
-            <h1 class="tv-product-name">${promoText}</h1>
-          </div>
-        </div>
-      `;
-      return;
-    } else if (currentMode === 'orders' && allTvOrders.length > 0) {
-      // Mostrar pedidos
-      const ordersHtml = allTvOrders.slice(0, 6).map(order => {
-        const customerName = order.recipient_name || 'Cliente';
-        const orderId = order.id || 'N/A';
-        const fulfillments = order.fulfillments || [];
-        const pickupFulfillment = fulfillments.find(f => f.type === 'PICKUP');
-        const state = pickupFulfillment?.state || 'PROPOSED';
-        
-        const stateLabels = {
-          'PROPOSED': 'Pendiente',
-          'RESERVED': 'Procesando',
-          'PREPARED': 'Listo',
-          'COMPLETED': 'Recogido'
-        };
-        
-        const stateColors = {
-          'PROPOSED': '#ff9800',
-          'RESERVED': '#2196f3',
-          'PREPARED': '#4caf50',
-          'COMPLETED': '#9e9e9e'
-        };
-        
-        const stateLabel = stateLabels[state] || 'Pendiente';
-        const stateColor = stateColors[state] || '#ff9800';
-        
-        return `
-          <div class="tv-product-card" style="min-height: 200px;">
-            <div class="tv-product-info" style="width: 100%;">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
-                <div>
-                  <h2 class="tv-product-name" style="font-size: 28px; margin-bottom: 8px;">${customerName}</h2>
-                  <p style="font-size: 18px; color: rgba(255,255,255,0.8);">Orden: ${orderId.substring(0, 12)}...</p>
-                </div>
-                <span style="background: ${stateColor}; color: white; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 16px;">
-                  ${stateLabel}
-                </span>
-              </div>
-              <div style="display: flex; gap: 16px; margin-top: 16px;">
-                <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
-                  <i class="fas fa-shopping-bag"></i>
-                  ${order.line_items?.length || 0} artículos
-                </span>
-                <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
-                  <i class="fas fa-dollar-sign"></i>
-                  ${order.total_money ? ((order.total_money.amount / 100).toFixed(2)) : '0.00'} US$
-                </span>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-      gridEl.innerHTML = ordersHtml;
-      return;
-    } else if (currentMode === 'qr') {
-      // Mostrar QR (tomar el primero activo)
-      allQrConfigs = loadQrConfigs();
-      if (allQrConfigs.length > 0) {
-        const qr = allQrConfigs[0];
-        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qr.size || 400}x${qr.size || 400}&data=${encodeURIComponent(qr.url)}`;
-        gridEl.innerHTML = `
-          <div class="tv-product-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 500px;">
-            <div style="text-align: center;">
-              <div style="position: relative; display: inline-block;">
-                <img src="${qrApiUrl}" alt="QR Code" style="width: ${qr.size || 400}px; height: ${qr.size || 400}px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffffff; border-radius: 50%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
-                  <img src="images/logo.png" alt="Tropiplus" style="width: 80px; height: 80px; object-fit: contain;">
-                </div>
-              </div>
-              <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">${qr.name || 'Escanea para más información'}</p>
-            </div>
-          </div>
-        `;
-        return;
-      }
-    }
-    
-    // Si no hay contenido para el modo actual, intentar siguiente
-    tvMixedModeIndex++;
-    return;
-  }
   
   // Modo QR
   if (currentTvConfig.mode === 'qr' && currentTvConfig.qrEnabled && currentTvConfig.qrUrl) {

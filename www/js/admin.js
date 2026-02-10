@@ -110,8 +110,6 @@ function initAdminPage() {
 
     // Inicializar pestaña de promoción
     initPromotionTab();
-    // Inicializar pestaña QR
-    initQrTab();
     // Inicializar pestaña TV
     initTvTab();
 

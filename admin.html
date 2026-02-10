@@ -445,6 +445,9 @@
             <button class="admin-internal-btn" data-subtab="promotion">
                 <i class="fas fa-bullhorn"></i> Promocion
             </button>
+            <button class="admin-internal-btn" data-subtab="qr">
+                <i class="fas fa-qrcode"></i> QR
+            </button>
             <button class="admin-internal-btn" data-subtab="tv">
                 <i class="fas fa-tv"></i> TV
             </button>
@@ -745,6 +748,70 @@
                     </div>
                 </form>
             </div>
+            </div>
+
+            <!-- Subtab de QR -->
+            <div id="qr-content" class="admin-subcontent">
+                <div style="margin-bottom: 25px; text-align: center;">
+                    <h2 style="margin-bottom: 12px; font-size: 24px;">
+                        <i class="fas fa-qrcode"></i> Configuración de Códigos QR
+                    </h2>
+                    <p style="color: var(--gray-text); margin-bottom: 0; font-size: 14px;">
+                        Crea y configura códigos QR que se pueden mostrar en los TVs.
+                    </p>
+                </div>
+
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <form id="qr-config-form" style="background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div class="supplier-form-group">
+                            <label for="qr-name">Nombre del QR *</label>
+                            <input type="text" id="qr-name" placeholder="Ej: QR Menú, QR Pedidos" required>
+                        </div>
+
+                        <div class="supplier-form-group">
+                            <label for="qr-url">URL *</label>
+                            <input type="url" id="qr-url" placeholder="https://..." required>
+                            <small style="color: var(--gray-text); display:block; margin-top:6px; font-size:12px;">
+                                URL que se codificará en el código QR.
+                            </small>
+                        </div>
+
+                        <div class="supplier-form-group">
+                            <label for="qr-size">Tamaño del QR (píxeles)</label>
+                            <select id="qr-size">
+                                <option value="200">200px (Pequeño)</option>
+                                <option value="300" selected>300px (Mediano)</option>
+                                <option value="400">400px (Grande)</option>
+                                <option value="500">500px (Extra Grande)</option>
+                            </select>
+                        </div>
+
+                        <div class="supplier-form-group">
+                            <label style="display:flex; align-items:center; gap:10px;">
+                                <input type="checkbox" id="qr-active" checked style="width:auto;">
+                                QR Activo
+                            </label>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button type="button" id="qr-reset-btn" class="btn-secondary" style="flex: 1;">
+                                Limpiar
+                            </button>
+                            <button type="submit" class="btn-primary" style="flex: 1;">
+                                <i class="fas fa-save"></i> Guardar QR
+                            </button>
+                        </div>
+                    </form>
+
+                    <div style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 16px; font-size: 18px;">QRs Configurados</h3>
+                        <div id="qr-list" style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <p style="color: var(--gray-text); text-align: center; padding: 20px;">
+                                No hay QRs configurados aún.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Subtab de TV -->
