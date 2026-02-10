@@ -78,6 +78,8 @@ async function initTvScreen() {
 
   configureTicker(selected);
   await loadProductsForTv(selected);
+  // Renderizar grid inicial
+  await renderProductsGrid();
   startTvRotation(selected);
   startAutoRefresh(selected.id);
 }
