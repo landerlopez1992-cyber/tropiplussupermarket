@@ -1,4 +1,5 @@
 // Sistema de Administración - Gestión de Inventario y Proveedores
+// Updated: 2026-02-10 14:10
 
 document.addEventListener('DOMContentLoaded', function() {
     // Verificar si el usuario es administrador
