@@ -28,14 +28,23 @@ function getTvConfigs() {
 function getPromoConfig() {
   try {
     const raw = localStorage.getItem(PROMO_STORAGE_KEY);
-    if (!raw) return { text: '' };
+    if (!raw) {
+      console.log('⚠️ [TV] No hay configuración de promoción global');
+      return { text: '', speed: 'normal' };
+    }
     const parsed = JSON.parse(raw);
-    return {
+    const config = {
       text: String(parsed.text || '').trim(),
-      speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal'
+      speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal',
+      fontSize: String(parsed.fontSize || '14px'),
+      textColor: String(parsed.textColor || '#ffffff'),
+      bgColor: String(parsed.bgColor || '#1f318a')
     };
-  } catch (_error) {
-    return { text: '' };
+    console.log('📋 [TV] Configuración de promoción global:', config);
+    return config;
+  } catch (error) {
+    console.error('❌ [TV] Error leyendo promoción global:', error);
+    return { text: '', speed: 'normal' };
   }
 }
 
@@ -76,8 +85,18 @@ async function initTvScreen() {
   localStorage.setItem(TV_SELECTED_KEY, selected.id);
   document.getElementById('tv-title').textContent = `Tropiplus TV - ${selected.name}`;
 
+  console.log('📺 [TV] Configuración del TV cargada:', selected);
+  console.log('📺 [TV] Ticker config:', {
+    enabled: selected.tickerEnabled,
+    speed: selected.tickerSpeed,
+    fontSize: selected.tickerFontSize,
+    textColor: selected.tickerTextColor,
+    bgColor: selected.tickerBgColor
+  });
+
   configureTicker(selected);
   await loadProductsForTv(selected);
+  console.log('📦 [TV] Productos cargados:', allTvProducts.length);
   // Renderizar grid inicial
   await renderProductsGrid();
   startTvRotation(selected);

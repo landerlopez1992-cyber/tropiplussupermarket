@@ -262,25 +262,39 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-show-price').checked = tv.showPrice !== false;
     document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
     document.getElementById('tv-promo-text').value = tv.promoText || '';
+    console.log('📋 [Admin] Cargando TV en formulario:', tv);
+    console.log('📋 [Admin] Ticker config del TV:', {
+        enabled: tv.tickerEnabled,
+        speed: tv.tickerSpeed,
+        fontSize: tv.tickerFontSize,
+        textColor: tv.tickerTextColor,
+        bgColor: tv.tickerBgColor
+    });
+    
     const tickerEnabledInput = document.getElementById('tv-ticker-enabled');
     if (tickerEnabledInput) {
         tickerEnabledInput.checked = tv.tickerEnabled !== false;
+        console.log('✅ [Admin] Ticker enabled cargado:', tickerEnabledInput.checked);
     }
     const tickerSpeedInput = document.getElementById('tv-ticker-speed');
     if (tickerSpeedInput) {
         tickerSpeedInput.value = tv.tickerSpeed || 'normal';
+        console.log('✅ [Admin] Ticker speed cargado:', tickerSpeedInput.value);
     }
     const tickerFontSizeInput = document.getElementById('tv-ticker-font-size');
     if (tickerFontSizeInput) {
         tickerFontSizeInput.value = tv.tickerFontSize || '28px';
+        console.log('✅ [Admin] Ticker fontSize cargado:', tickerFontSizeInput.value);
     }
     const tickerTextColorInput = document.getElementById('tv-ticker-text-color');
     if (tickerTextColorInput) {
         tickerTextColorInput.value = tv.tickerTextColor || '#ffec67';
+        console.log('✅ [Admin] Ticker textColor cargado:', tickerTextColorInput.value);
     }
     const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
     if (tickerBgColorInput) {
         tickerBgColorInput.value = tv.tickerBgColor || '#000000';
+        console.log('✅ [Admin] Ticker bgColor cargado:', tickerBgColorInput.value);
     }
     document.getElementById('tv-active').checked = tv.active !== false;
 
