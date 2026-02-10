@@ -110,10 +110,19 @@
             font-size: 16px;
             font-weight: bold;
             transition: all 0.3s;
+            width: 100%;
         }
         .refresh-btn:hover {
             background: #35a03a;
             transform: scale(1.05);
+        }
+        .error-message {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff4444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #ffcccc;
         }
     </style>
 </head>
@@ -123,6 +132,7 @@
             <h1><i class="fas fa-tv"></i> Seleccionar TV</h1>
             <p>Elige qué pantalla deseas visualizar</p>
         </div>
+        <div id="error-container"></div>
         <div class="tv-list" id="tv-list">
             <div class="no-tvs">
                 <i class="fas fa-spinner fa-spin"></i>
@@ -137,17 +147,28 @@
     </div>
 
     <script>
-        const TV_STORAGE_KEY = 'tropiplus_tv_configs';
-        const TV_SELECTED_KEY = 'tropiplus_tv_selected';
         const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
+        const TV_SELECTED_KEY = 'tropiplus_tv_selected';
         
         function selectTv(tvId) {
             localStorage.setItem(TV_SELECTED_KEY, tvId);
             window.location.href = 'tv.html?tv=' + encodeURIComponent(tvId);
         }
         
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i> ${message}
+                </div>
+            `;
+        }
+        
         async function loadTVs() {
             const container = document.getElementById('tv-list');
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.innerHTML = '';
+            
             container.innerHTML = `
                 <div class="no-tvs">
                     <i class="fas fa-spinner fa-spin"></i>
@@ -156,43 +177,51 @@
             `;
             
             try {
-                // Intentar cargar desde JSON público
-                const response = await fetch(TVS_JSON_URL + '?t=' + Date.now());
-                if (response.ok) {
-                    const tvs = await response.json();
-                    if (Array.isArray(tvs) && tvs.length > 0) {
-                        // Guardar en localStorage como backup
-                        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
-                        renderTvList(tvs.filter(tv => tv.active !== false));
-                        return;
+                // Leer directamente desde el JSON público (sin cache)
+                const response = await fetch(TVS_JSON_URL + '?t=' + Date.now(), {
+                    method: 'GET',
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache'
                     }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-            } catch (error) {
-                console.log('Error cargando desde JSON:', error);
-            }
-            
-            // Fallback: intentar desde localStorage
-            try {
-                const raw = localStorage.getItem(TV_STORAGE_KEY);
-                if (raw) {
-                    const tvs = JSON.parse(raw);
-                    if (Array.isArray(tvs) && tvs.length > 0) {
-                        renderTvList(tvs.filter(tv => tv.active !== false));
-                        return;
-                    }
+                
+                const tvs = await response.json();
+                
+                if (!Array.isArray(tvs)) {
+                    throw new Error('Formato de datos inválido');
                 }
+                
+                const activeTvs = tvs.filter(tv => tv.active !== false);
+                
+                if (activeTvs.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-tvs">
+                            <i class="fas fa-tv"></i>
+                            <p>No hay TVs configurados</p>
+                            <p style="margin-top: 8px; font-size: 12px;">Ve a Admin > TV para configurar una pantalla</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                renderTvList(activeTvs);
+                
             } catch (error) {
-                console.error('Error cargando desde localStorage:', error);
+                console.error('Error cargando TVs:', error);
+                showError(`Error cargando TVs: ${error.message}. Verifica que el archivo tvs-public.json exista en GitHub.`);
+                container.innerHTML = `
+                    <div class="no-tvs">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error al cargar TVs</p>
+                        <p style="margin-top: 8px; font-size: 12px;">${error.message}</p>
+                    </div>
+                `;
             }
-            
-            // Si no hay nada, mostrar mensaje
-            container.innerHTML = `
-                <div class="no-tvs">
-                    <i class="fas fa-tv"></i>
-                    <p>No hay TVs configurados</p>
-                    <p style="margin-top: 8px; font-size: 12px;">Ve a Admin > TV para configurar una pantalla</p>
-                </div>
-            `;
         }
         
         function renderTvList(configs) {
