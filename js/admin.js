@@ -576,13 +576,15 @@ function initPromotionTab() {
             // Publicar siempre que exista texto.
             enabled: enabledToggle ? enabledToggle.checked && promoText.length > 0 : promoText.length > 0,
             text: promoText,
-            speed: speedInput.value,
+            speed: speedInput.value || 'normal',
             fontSize: fontSizeInput ? fontSizeInput.value : '14px',
             textColor: textColorInput ? textColorInput.value : '#ffffff',
             bgColor: bgColorInput ? bgColorInput.value : '#1f318a',
             linkEnabled: linkEnabledInput.checked,
             url: urlInput.value.trim()
         };
+        
+        console.log('💾 [Admin] Guardando configuración de promoción:', config);
 
         if (!config.text) {
             if (typeof showModal === 'function') {
