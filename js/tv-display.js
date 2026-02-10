@@ -195,29 +195,47 @@ async function loadProductsForTv(tvConfig) {
   try {
     // Intentar obtener productos desde square-integration.js si está disponible
     let items = [];
+    
+    // Esperar a que squareApiCall esté disponible
+    let retries = 0;
+    while (typeof window.squareApiCall === 'undefined' && retries < 10) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      retries++;
+    }
+    
     if (typeof window.squareProducts !== 'undefined' && Array.isArray(window.squareProducts) && window.squareProducts.length > 0) {
-      console.log('✅ [TV] Usando productos cargados desde square-integration.js');
+      console.log('✅ [TV] Usando productos cargados desde square-integration.js:', window.squareProducts.length, 'productos');
       items = window.squareProducts;
     } else if (typeof loadSquareProducts === 'function') {
-      console.log('⏳ [TV] Cargando productos desde Square API...');
+      console.log('⏳ [TV] Cargando productos desde Square API usando loadSquareProducts...');
       await loadSquareProducts();
       items = window.squareProducts || [];
-    } else {
+      console.log('✅ [TV] Productos cargados:', items.length);
+    } else if (typeof window.squareApiCall === 'function') {
       // Fallback: cargar directamente desde Square API
       console.log('⏳ [TV] Cargando productos directamente desde Square API...');
-      const response = await squareApiCall('/v2/catalog/search', 'POST', {
-        object_types: ['ITEM'],
-        query: {
-          exact_query: {
-            attribute_name: 'name',
-            attribute_value: ''
-          }
-        },
-        limit: 1000
-      });
-      items = response?.objects || [];
-      // Guardar en window para uso futuro
-      window.squareProducts = items;
+      try {
+        const response = await window.squareApiCall('/v2/catalog/search', 'POST', {
+          object_types: ['ITEM'],
+          query: {
+            exact_query: {
+              attribute_name: 'name',
+              attribute_value: ''
+            }
+          },
+          limit: 1000
+        });
+        items = response?.objects || [];
+        // Guardar en window para uso futuro
+        window.squareProducts = items;
+        console.log('✅ [TV] Productos cargados directamente:', items.length);
+      } catch (error) {
+        console.error('❌ [TV] Error cargando productos:', error);
+        items = [];
+      }
+    } else {
+      console.error('❌ [TV] squareApiCall no está disponible');
+      items = [];
     }
 
     const filtered = items.filter(item => {

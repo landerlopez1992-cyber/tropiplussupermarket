@@ -399,22 +399,34 @@ function getPromotionConfig() {
         enabled: false,
         text: '',
         speed: 'normal',
+        fontSize: '14px',
+        textColor: '#ffffff',
+        bgColor: '#1f318a',
         linkEnabled: false,
         url: ''
     };
     try {
         const raw = localStorage.getItem(PROMO_STORAGE_KEY);
-        if (!raw) return fallback;
+        if (!raw) {
+            console.log('⚠️ [Admin] No hay configuración de promoción en localStorage');
+            return fallback;
+        }
         const parsed = JSON.parse(raw);
-        return {
+        console.log('📋 [Admin] Configuración leída de localStorage:', parsed);
+        const config = {
             enabled: Boolean(parsed.enabled) || Boolean(String(parsed.text || '').trim()),
             text: String(parsed.text || ''),
             speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal',
+            fontSize: String(parsed.fontSize || '14px'),
+            textColor: String(parsed.textColor || '#ffffff'),
+            bgColor: String(parsed.bgColor || '#1f318a'),
             linkEnabled: Boolean(parsed.linkEnabled),
             url: String(parsed.url || '')
         };
+        console.log('📋 [Admin] Configuración procesada:', config);
+        return config;
     } catch (error) {
-        console.warn('No se pudo leer configuración de promoción:', error);
+        console.error('❌ [Admin] Error leyendo configuración de promoción:', error);
         return fallback;
     }
 }
