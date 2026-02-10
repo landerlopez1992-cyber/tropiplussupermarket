@@ -130,8 +130,24 @@ async function loadSquareProducts() {
     const products = await getSquareProducts();
     squareProducts = products;
     
+    console.log('📦 Productos recibidos de Square:', products.length);
+    console.log('📦 Primeros 3 productos:', products.slice(0, 3).map(p => ({
+      id: p.id,
+      name: p.item_data?.name,
+      variations: p.item_data?.variations?.length
+    })));
+    
     if (products.length === 0) {
       console.warn('⚠️ No se encontraron productos en Square');
+      // Mostrar mensaje en la página
+      const bestSellersCarousel = document.getElementById('best-sellers-carousel');
+      const recommendationsCarousel = document.getElementById('recommendations-carousel');
+      if (bestSellersCarousel) {
+        bestSellersCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento.</p></div>';
+      }
+      if (recommendationsCarousel) {
+        recommendationsCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento.</p></div>';
+      }
       return;
     }
     
@@ -142,12 +158,23 @@ async function loadSquareProducts() {
       renderCategoriesSidebar(squareCategories);
     }
     
-    renderBestSellers(products);
-    renderRecommendations(products);
+    console.log('🎨 Renderizando productos...');
+    await renderBestSellers(products);
+    await renderRecommendations(products);
     
-    console.log('✅ Productos cargados:', products.length);
+    console.log('✅ Productos cargados y renderizados:', products.length);
   } catch (error) {
     console.error('❌ Error cargando productos:', error);
+    console.error('❌ Stack trace:', error.stack);
+    // Mostrar mensaje de error en la página
+    const bestSellersCarousel = document.getElementById('best-sellers-carousel');
+    const recommendationsCarousel = document.getElementById('recommendations-carousel');
+    if (bestSellersCarousel) {
+      bestSellersCarousel.innerHTML = `<div class="no-products-message"><p>Error cargando productos: ${error.message}</p></div>`;
+    }
+    if (recommendationsCarousel) {
+      recommendationsCarousel.innerHTML = `<div class="no-products-message"><p>Error cargando productos: ${error.message}</p></div>`;
+    }
   }
 }
 
@@ -482,8 +509,12 @@ async function renderInterestCategories(categories) {
 
 async function renderBestSellers(products) {
   const carousel = document.getElementById('best-sellers-carousel');
-  if (!carousel) return;
+  if (!carousel) {
+    console.warn('⚠️ No se encontró el elemento #best-sellers-carousel');
+    return;
+  }
   
+  console.log('🎨 Renderizando "Más vendidos"...');
   carousel.innerHTML = '';
   
   const validProducts = products.filter(item => {
@@ -496,18 +527,31 @@ async function renderBestSellers(products) {
     return true;
   });
   
+  console.log('📦 Productos válidos para "Más vendidos":', validProducts.length);
+  
   const productsToShow = validProducts.slice(0, 5);
+  console.log('📦 Productos a mostrar en "Más vendidos":', productsToShow.length);
   
   for (const item of productsToShow) {
-    const productCard = await createProductCard(item);
-    carousel.appendChild(productCard);
+    try {
+      const productCard = await createProductCard(item);
+      carousel.appendChild(productCard);
+    } catch (error) {
+      console.error('❌ Error creando tarjeta de producto:', error, item);
+    }
   }
+  
+  console.log('✅ "Más vendidos" renderizado:', carousel.children.length, 'productos');
 }
 
 async function renderRecommendations(products) {
   const carousel = document.getElementById('recommendations-carousel');
-  if (!carousel) return;
+  if (!carousel) {
+    console.warn('⚠️ No se encontró el elemento #recommendations-carousel');
+    return;
+  }
   
+  console.log('🎨 Renderizando "Recomendaciones"...');
   carousel.innerHTML = '';
   
   const validProducts = products.filter(item => {
@@ -516,15 +560,25 @@ async function renderRecommendations(products) {
     const name = itemData.name?.toLowerCase() || '';
     // Filtrar Remesa del catálogo
     if (name.includes('remesa')) return false;
+    if (name.includes('renta') || name.includes('car rental')) return false;
     return true;
   });
   
+  console.log('📦 Productos válidos para "Recomendaciones":', validProducts.length);
+  
   const productsToShow = validProducts.slice(5, 11);
+  console.log('📦 Productos a mostrar en "Recomendaciones":', productsToShow.length);
   
   for (const item of productsToShow) {
-    const productCard = await createProductCard(item);
-    carousel.appendChild(productCard);
+    try {
+      const productCard = await createProductCard(item);
+      carousel.appendChild(productCard);
+    } catch (error) {
+      console.error('❌ Error creando tarjeta de producto:', error, item);
+    }
   }
+  
+  console.log('✅ "Recomendaciones" renderizado:', carousel.children.length, 'productos');
 }
 
 async function createProductCard(item) {
