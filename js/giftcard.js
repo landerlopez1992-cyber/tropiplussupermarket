@@ -88,10 +88,12 @@ function initGiftCardSystem() {
         try {
             // Buscar la tarjeta en Square usando el número
             // Square Gift Cards API: POST /v2/gift-cards/search
-            // Intentar buscar por GAN completo primero
+            // Según la documentación de Square, podemos buscar por GAN o por los últimos 4 dígitos
             let response = null;
             
+            // Primero intentar buscar por GAN completo
             try {
+                console.log('🔍 Buscando tarjeta por GAN completo:', cardNumber);
                 response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
                     query: {
                         exact_query: {
@@ -99,13 +101,16 @@ function initGiftCardSystem() {
                         }
                     }
                 });
+                console.log('✅ Respuesta de Square (GAN completo):', response);
             } catch (error) {
-                console.warn('Error buscando por GAN completo, intentando por últimos 4 dígitos:', error);
+                console.warn('⚠️ Error buscando por GAN completo:', error);
+                console.log('📋 Detalles del error:', JSON.stringify(error, null, 2));
             }
             
             // Si no se encuentra, intentar buscar por los últimos 4 dígitos
             if (!response || !response.gift_cards || response.gift_cards.length === 0) {
                 const last4 = cardNumber.slice(-4);
+                console.log('🔍 Buscando tarjeta por últimos 4 dígitos:', last4);
                 try {
                     response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
                         query: {
@@ -114,8 +119,29 @@ function initGiftCardSystem() {
                             }
                         }
                     });
+                    console.log('✅ Respuesta de Square (últimos 4):', response);
                 } catch (error2) {
-                    console.warn('Error buscando por últimos 4 dígitos:', error2);
+                    console.warn('⚠️ Error buscando por últimos 4 dígitos:', error2);
+                    console.log('📋 Detalles del error:', JSON.stringify(error2, null, 2));
+                }
+            }
+            
+            // Si aún no se encuentra, intentar buscar sin exact_query (búsqueda más amplia)
+            if (!response || !response.gift_cards || response.gift_cards.length === 0) {
+                console.log('🔍 Intentando búsqueda más amplia...');
+                try {
+                    // Intentar buscar todas las tarjetas y filtrar localmente
+                    response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
+                        query: {
+                            exact_query: {
+                                gan: cardNumber
+                            }
+                        },
+                        limit: 100
+                    });
+                    console.log('✅ Respuesta de Square (búsqueda amplia):', response);
+                } catch (error3) {
+                    console.error('❌ Error en búsqueda amplia:', error3);
                 }
             }
 

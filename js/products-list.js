@@ -87,11 +87,8 @@ function loadSaleProducts() {
     document.getElementById('page-title').textContent = 'Productos rebajados - Tropiplus Supermarket';
     document.getElementById('breadcrumb-category').textContent = 'Productos rebajados';
     
-    // Filtrar productos con descuento (ejemplo: productos YEYA)
-    filteredProducts = squareProducts.filter(product => {
-        const itemData = product.item_data;
-        return itemData && itemData.name?.toUpperCase().includes('YEYA');
-    });
+    // Filtrar productos - todos los productos disponibles
+    filteredProducts = squareProducts;
     
     renderProducts();
 }
