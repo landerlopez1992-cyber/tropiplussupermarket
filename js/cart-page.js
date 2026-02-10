@@ -97,6 +97,35 @@ async function renderCartItems() {
     let html = '';
     
     for (const item of cart) {
+        // Si es una remesa, renderizar de forma especial
+        if (item.type === 'remesa' && item.remesaData) {
+            const remesaData = item.remesaData;
+            const symbol = remesaData.currency === 'USD' ? '$' : '₱';
+            html += `
+                <div class="cart-item-card cart-item-remesa" data-item-id="${item.id}">
+                    <div class="cart-item-image-wrapper remesa-icon-wrapper">
+                        <i class="fas fa-money-bill-wave remesa-icon"></i>
+                    </div>
+                    <div class="cart-item-details">
+                        <h3 class="cart-item-name-large">${item.name}</h3>
+                        <div class="remesa-details">
+                            <p><strong>Cantidad a enviar:</strong> ${symbol}${remesaData.amount.toFixed(2)}</p>
+                            <p><strong>Comisión (10%):</strong> ${symbol}${remesaData.fee.toFixed(2)}</p>
+                            <p><strong>Moneda:</strong> ${remesaData.currency}</p>
+                        </div>
+                        <div class="cart-item-price-large">$${item.price.toFixed(2)}</div>
+                    </div>
+                    <div class="cart-item-total-section">
+                        <div class="cart-item-total-large">$${(item.price * item.quantity).toFixed(2)}</div>
+                        <button class="cart-item-remove" data-item-id="${item.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            continue;
+        }
+        
         let imageUrl = 'images/placeholder.svg';
         if (item.image) {
             try {

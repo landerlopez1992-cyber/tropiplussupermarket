@@ -2622,6 +2622,40 @@ img {
     color: var(--gray-text);
 }
 
+/* ============================================
+   ESTILOS PARA REMESA EN EL CARRITO
+   ============================================ */
+.cart-item-remesa {
+    border-left: 4px solid var(--green-categories);
+}
+
+.remesa-icon-wrapper {
+    background: linear-gradient(135deg, var(--green-categories) 0%, var(--green-categories-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.remesa-icon {
+    font-size: 48px;
+    color: var(--white);
+}
+
+.remesa-details {
+    margin: 12px 0;
+    padding: 12px;
+    background: var(--gray-light);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.remesa-details p {
+    margin: 6px 0;
+    color: var(--black);
+    line-height: 1.5;
+}
+
 .pagination {
     display: flex;
     justify-content: center;
