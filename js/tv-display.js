@@ -444,6 +444,96 @@ async function renderProductsGrid() {
   const gridEl = document.getElementById('tv-products-grid');
   if (!gridEl || !currentTvConfig) return;
   
+  // Modo QR
+  if (currentTvConfig.mode === 'qr' && currentTvConfig.qrEnabled && currentTvConfig.qrUrl) {
+    const qrUrl = currentTvConfig.qrUrl;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
+    
+    gridEl.innerHTML = `
+      <div class="tv-product-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 500px;">
+        <div style="text-align: center;">
+          <div style="position: relative; display: inline-block;">
+            <img src="${qrApiUrl}" alt="QR Code" style="width: 400px; height: 400px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffffff; border-radius: 50%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
+              <img src="images/logo.png" alt="Tropiplus" style="width: 80px; height: 80px; object-fit: contain;">
+            </div>
+          </div>
+          <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">Escanea para más información</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Modo Listado de Pedidos
+  if (currentTvConfig.mode === 'orders') {
+    if (!allTvOrders.length) {
+      gridEl.innerHTML = `
+        <div class="tv-product-card" style="grid-column: 1 / -1;">
+          <div class="tv-product-info">
+            <h1 class="tv-product-name">No hay pedidos pendientes</h1>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    const ordersHtml = allTvOrders.map(order => {
+      const customerName = order.recipient_name || 'Cliente';
+      const orderId = order.id || 'N/A';
+      const fulfillments = order.fulfillments || [];
+      const pickupFulfillment = fulfillments.find(f => f.type === 'PICKUP');
+      const state = pickupFulfillment?.state || 'PROPOSED';
+      
+      const stateLabels = {
+        'PROPOSED': 'Pendiente',
+        'RESERVED': 'Procesando',
+        'PREPARED': 'Listo',
+        'COMPLETED': 'Recogido'
+      };
+      
+      const stateColors = {
+        'PROPOSED': '#ff9800',
+        'RESERVED': '#2196f3',
+        'PREPARED': '#4caf50',
+        'COMPLETED': '#9e9e9e'
+      };
+      
+      const stateLabel = stateLabels[state] || 'Pendiente';
+      const stateColor = stateColors[state] || '#ff9800';
+      
+      return `
+        <div class="tv-product-card" style="min-height: 200px;">
+          <div class="tv-product-info" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+              <div>
+                <h2 class="tv-product-name" style="font-size: 28px; margin-bottom: 8px;">${customerName}</h2>
+                <p style="font-size: 18px; color: rgba(255,255,255,0.8);">Orden: ${orderId.substring(0, 12)}...</p>
+              </div>
+              <span style="background: ${stateColor}; color: white; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 16px;">
+                ${stateLabel}
+              </span>
+            </div>
+            <div style="display: flex; gap: 16px; margin-top: 16px;">
+              <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
+                <i class="fas fa-shopping-bag"></i>
+                ${order.line_items?.length || 0} artículos
+              </span>
+              <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
+                <i class="fas fa-dollar-sign"></i>
+                ${order.total_money ? ((order.total_money.amount / 100).toFixed(2)) : '0.00'} US$
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    gridEl.innerHTML = ordersHtml;
+    return;
+  }
+  
+  // Modo Promoción
   if (currentTvConfig.mode === 'promo') {
     gridEl.innerHTML = `
       <div class="tv-product-card" style="grid-column: 1 / -1;">
@@ -458,6 +548,7 @@ async function renderProductsGrid() {
     return;
   }
   
+  // Modo Productos (mixed o products)
   if (!allTvProducts.length) {
     gridEl.innerHTML = `
       <div class="tv-product-card" style="grid-column: 1 / -1;">

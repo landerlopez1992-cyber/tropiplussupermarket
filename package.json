@@ -1,0 +1,28 @@
+{
+  "name": "tropiplus-tv-app",
+  "version": "1.0.0",
+  "description": "Tropiplus Supermarket TV App para Android TV",
+  "main": "android-tv-app.html",
+  "scripts": {
+    "build": "npm run sync",
+    "sync": "npx cap sync",
+    "open:android": "npx cap open android",
+    "build:apk": "cd android && ./gradlew assembleDebug",
+    "build:apk:release": "cd android && ./gradlew assembleRelease"
+  },
+  "keywords": [
+    "android-tv",
+    "capacitor",
+    "tropiplus"
+  ],
+  "author": "Tropiplus",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^5.5.0",
+    "@capacitor/core": "^5.5.0",
+    "@capacitor/app": "^5.0.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.5.0"
+  }
+}

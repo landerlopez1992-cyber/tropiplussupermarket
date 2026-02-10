@@ -1,35 +1,16 @@
-# Dependencies
+# Capacitor
+.capacitor/
 node_modules/
-package-lock.json
-npm-debug.log*
-
-# Environment variables
-.env
-.env.local
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+*.iml
 
 # Logs
 *.log
-logs/
+npm-debug.log*
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Temporary files
-*.tmp
-*.temp
-
-# Build files
-dist/
-build/
-
-# Cache
-.cache/
-*.cache
