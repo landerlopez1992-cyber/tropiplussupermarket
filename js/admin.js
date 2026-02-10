@@ -171,24 +171,80 @@ function saveTvConfigs(tvConfigs) {
 }
 
 function saveTvsToJsonFile(tvConfigs) {
-    // Guardar el JSON en el archivo local (se subirá a GitHub manualmente o automáticamente)
     const jsonContent = JSON.stringify(tvConfigs, null, 2);
     
-    // Crear un link de descarga para que el usuario pueda descargar y subir el archivo
-    const blob = new Blob([jsonContent], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'tvs-public.json';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    
-    // No descargar automáticamente, solo guardar en localStorage para referencia
+    // Guardar en localStorage
     localStorage.setItem('tvs_json_content', jsonContent);
     localStorage.setItem('tvs_json_last_update', Date.now().toString());
     
-    console.log('💾 [Admin] JSON generado. Contenido:', jsonContent);
-    console.log('💡 Para actualizar: descarga tvs-public.json y súbelo a GitHub, o usa el script de actualización automática.');
+    // Mostrar botón para copiar JSON y actualizar archivo
+    showTvUpdateInstructions(jsonContent);
+    
+    console.log('💾 [Admin] JSON guardado. Usa el botón "Actualizar archivo JSON" para subirlo a GitHub.');
+}
+
+function showTvUpdateInstructions(jsonContent) {
+    // Crear o actualizar botón de actualización
+    let updateBtn = document.getElementById('update-tvs-json-btn');
+    if (!updateBtn) {
+        updateBtn = document.createElement('button');
+        updateBtn.id = 'update-tvs-json-btn';
+        updateBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Actualizar archivo JSON';
+        updateBtn.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #42b649;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(updateBtn);
+        
+        updateBtn.addEventListener('click', () => {
+            updateTvsJsonFile(jsonContent);
+        });
+    }
+    
+    // Auto-ocultar después de 10 segundos
+    setTimeout(() => {
+        if (updateBtn && updateBtn.parentNode) {
+            updateBtn.style.opacity = '0.7';
+        }
+    }, 10000);
+}
+
+async function updateTvsJsonFile(jsonContent) {
+    try {
+        // Crear blob y descargar
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tvs-public.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        // Mostrar instrucciones
+        if (typeof showModal === 'function') {
+            showModal(
+                'JSON Descargado',
+                `✅ Archivo tvs-public.json descargado.\n\nAhora ejecuta en terminal:\n\ncd supermarket23\ngit add tvs-public.json\ngit commit -m "Update TVs"\ngit push\n\nO reemplaza el archivo en GitHub manualmente.`,
+                'info'
+            );
+        } else {
+            alert('✅ JSON descargado. Reemplaza tvs-public.json en GitHub y haz commit.');
+        }
+    } catch (error) {
+        console.error('Error descargando JSON:', error);
+        alert('❌ Error: ' + error.message);
+    }
 }
     try {
         const jsonStr = JSON.stringify(tvConfigs, null, 2);
