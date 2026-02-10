@@ -76,8 +76,9 @@ function createPromotionBar() {
         existing.remove();
     }
 
-    if (!config.text || config.text.trim() === '') {
-        console.log('⚠️ [Tropiplus] No hay texto de promoción configurado. Config:', config);
+    // Verificar si está habilitado y si hay texto
+    if (!config.enabled || !config.text || config.text.trim() === '') {
+        console.log('⚠️ [Tropiplus] Promoción deshabilitada o sin texto. Config:', config);
         console.log('💡 [Tropiplus] Para mostrar la promoción, ve a Admin > Promocion y configura el texto');
         return;
     }
