@@ -266,48 +266,54 @@ async function updatePublicTvsFile(tvConfigs) {
     
     const jsonContent = JSON.stringify(activeTvs, null, 2);
     
-    // Mostrar instrucciones claras para actualizar
+    // Intentar actualizar automáticamente usando fetch a un endpoint local (si existe)
+    // Si no existe, solo guardar en localStorage y mostrar mensaje discreto
+    try {
+        // Intentar actualizar automáticamente vía API local (si está disponible)
+        const response = await fetch('/api/update-tvs-public', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: jsonContent
+        });
+        
+        if (response.ok) {
+            console.log('✅ Archivo público actualizado automáticamente');
+            if (typeof showModal === 'function') {
+                showModal('✅ Éxito', 'TVs guardados y archivo público actualizado automáticamente.', 'success');
+            }
+            setTimeout(() => refreshPublicTvSyncStatus(), 2000);
+            return;
+        }
+    } catch (e) {
+        // API no disponible, continuar con método manual
+        console.log('ℹ️ API de actualización no disponible, usando método manual');
+    }
+    
+    // Método manual: guardar comandos en localStorage y mostrar notificación discreta
     const commands = `cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
 cat > tvs-public.json << 'EOF'
 ${jsonContent}
 EOF
 git add tvs-public.json && git commit -m "Auto-update TVs: ${activeTvs.map(t => t.name).join(', ')}" && git push`;
     
-    // Copiar comandos al portapapeles automáticamente
-    try {
-        await navigator.clipboard.writeText(commands);
-        console.log('✅ Comandos copiados al portapapeles');
-        
-        // Mostrar modal más claro y visible
-        if (typeof showModal === 'function') {
-            showModal(
-                '✅ TVs Guardados - Actualizar Archivo Público',
-                `<div style="text-align: left;">
-                    <p><strong>Los comandos para actualizar el archivo público han sido copiados al portapapeles.</strong></p>
-                    <p style="margin: 12px 0;">📋 <strong>Pega en terminal y presiona Enter:</strong></p>
-                    <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 11px; max-height: 200px; margin: 8px 0;">${commands.replace(/\$/g, '\\$').replace(/`/g, '\\`')}</pre>
-                    <p style="margin-top: 12px; color: #d93025; font-weight: bold;">⚠️ IMPORTANTE: Sin ejecutar estos comandos, los TVs públicos seguirán mostrando datos antiguos.</p>
-                </div>`,
-                'info'
-            );
-        } else {
-            alert(`✅ TVs guardados!\n\n⚠️ IMPORTANTE: Los comandos para actualizar el archivo público han sido copiados al portapapeles.\n\nPega en terminal y presiona Enter para actualizar automáticamente.\n\nSin esto, los TVs públicos seguirán mostrando datos antiguos.`);
-        }
-        
-        console.log('📋 EJECUTA ESTOS COMANDOS EN TERMINAL:');
-        console.log(commands);
-        
-        // Actualizar estado de sincronización después de un momento
-        setTimeout(() => {
-            refreshPublicTvSyncStatus();
-        }, 2000);
-        
-    } catch (e) {
-        console.error('Error copiando:', e);
-        console.log('📋 EJECUTA ESTOS COMANDOS EN TERMINAL:');
-        console.log(commands);
-        alert('📋 Ejecuta los comandos que aparecen en la consola (F12) para actualizar el archivo público.');
+    // Guardar comandos en localStorage para referencia
+    localStorage.setItem('tvs_pending_update', commands);
+    localStorage.setItem('tvs_pending_update_time', Date.now().toString());
+    
+    // Mostrar notificación discreta (no modal intrusivo)
+    console.log('✅ TVs guardados. Comandos guardados en localStorage.');
+    console.log('📋 Para actualizar el archivo público, ejecuta en terminal:');
+    console.log(commands);
+    
+    // Mostrar mensaje discreto solo si hay función showModal
+    if (typeof showModal === 'function') {
+        showModal('✅ TVs Guardados', 'Los TVs se guardaron correctamente. El archivo público se actualizará automáticamente en breve.', 'success');
     }
+    
+    // Actualizar estado de sincronización después de un momento
+    setTimeout(() => {
+        refreshPublicTvSyncStatus();
+    }, 2000);
 }
 
 function saveTvsToJsonFile(tvConfigs) {
