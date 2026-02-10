@@ -487,27 +487,14 @@ async function checkTvApp(ip) {
     
     for (const port of ports) {
         try {
+            // Usar Promise.race con timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 800);
+            
             const response = await fetch(`http://${ip}:${port}/ping`, {
                 method: 'GET',
-                mode: 'no-cors', // No funciona con no-cors, necesitamos otro método
-                signal: AbortSignal.timeout(500), // Timeout de 500ms
-            });
-            
-            // Con no-cors no podemos leer la respuesta, así que usamos otro método
-            // Intentar con fetch normal pero con timeout corto
-        } catch (e) {
-            // Ignorar errores
-        }
-    }
-    
-    // Método alternativo: usar Promise.race con timeout
-    for (const port of ports) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 500);
-            
-            const response = await fetch(`http://${ip}:${port}/ping`, {
                 signal: controller.signal,
+                mode: 'cors', // Intentar con CORS
             });
             
             clearTimeout(timeoutId);
@@ -522,7 +509,29 @@ async function checkTvApp(ip) {
                 };
             }
         } catch (e) {
-            // Timeout o error de conexión - continuar
+            // Timeout, CORS error, o error de conexión - continuar
+            // Los errores de CORS son esperados, pero la conexión puede funcionar
+            // Intentar método alternativo con imagen
+            try {
+                const img = new Image();
+                const checkPromise = new Promise((resolve) => {
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                    setTimeout(() => resolve(false), 500);
+                });
+                img.src = `http://${ip}:${port}/ping?img=1`;
+                const isOnline = await checkPromise;
+                if (isOnline) {
+                    return {
+                        ip: ip,
+                        port: port,
+                        name: 'TV Detectado',
+                        status: 'online',
+                    };
+                }
+            } catch (e2) {
+                // Ignorar
+            }
         }
     }
     
