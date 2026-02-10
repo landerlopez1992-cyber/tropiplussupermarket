@@ -33,23 +33,60 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function waitForSquareProducts() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+        console.log('⏳ [Products List] Esperando a que se carguen los productos de Square...');
+        
+        // Si ya están cargados, resolver inmediatamente
         if (typeof squareProducts !== 'undefined' && squareProducts.length > 0) {
+            console.log('✅ [Products List] Productos ya disponibles:', squareProducts.length);
             resolve();
-        } else {
-            const checkInterval = setInterval(() => {
-                if (typeof squareProducts !== 'undefined' && squareProducts.length > 0) {
-                    clearInterval(checkInterval);
-                    resolve();
-                }
-            }, 100);
-            
-            // Timeout después de 10 segundos
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                resolve();
-            }, 10000);
+            return;
         }
+        
+        // Escuchar evento personalizado de carga
+        const onProductsLoaded = (event) => {
+            console.log('✅ [Products List] Productos cargados mediante evento:', event.detail.products.length);
+            clearInterval(checkInterval);
+            clearTimeout(timeoutId);
+            resolve();
+        };
+        window.addEventListener('squareProductsLoaded', onProductsLoaded, { once: true });
+        
+        // También verificar periódicamente por si el evento se perdió
+        const checkInterval = setInterval(() => {
+            if (typeof squareProducts !== 'undefined' && squareProducts.length > 0) {
+                console.log('✅ [Products List] Productos disponibles (verificación periódica):', squareProducts.length);
+                clearInterval(checkInterval);
+                clearTimeout(timeoutId);
+                window.removeEventListener('squareProductsLoaded', onProductsLoaded);
+                resolve();
+            }
+        }, 100);
+        
+        // Timeout después de 15 segundos
+        const timeoutId = setTimeout(() => {
+            clearInterval(checkInterval);
+            window.removeEventListener('squareProductsLoaded', onProductsLoaded);
+            
+            if (typeof squareProducts === 'undefined' || squareProducts.length === 0) {
+                console.error('❌ [Products List] Timeout: Los productos no se cargaron en 15 segundos');
+                console.error('❌ [Products List] squareProducts:', typeof squareProducts, squareProducts ? squareProducts.length : 'undefined');
+                
+                // Mostrar error en la página
+                const productsGrid = document.getElementById('products-grid');
+                if (productsGrid) {
+                    productsGrid.innerHTML = `<div class="no-products-message" style="grid-column: 1 / -1; color: red; padding: 40px; text-align: center;">
+                        <h3>⚠️ Error: Tiempo de espera agotado</h3>
+                        <p>Los productos no pudieron cargarse desde Square API.</p>
+                        <p><strong>Por favor, recargue la página o contacte al administrador.</strong></p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Recargar Página
+                        </button>
+                    </div>`;
+                }
+            }
+            resolve(); // Resolver de todas formas para no bloquear
+        }, 15000);
     });
 }
 

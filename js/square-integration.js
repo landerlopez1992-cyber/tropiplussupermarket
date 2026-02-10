@@ -126,55 +126,94 @@ function buildCategoryHierarchy(categories) {
 
 async function loadSquareProducts() {
   try {
-    console.log('🔄 Cargando productos de Square...');
+    console.log('🔄 [Tropiplus] Iniciando carga de productos desde Square API...');
+    console.log('🌐 [Tropiplus] Hostname:', window.location.hostname);
+    console.log('🌐 [Tropiplus] Entorno:', window.location.hostname === 'localhost' ? 'LOCAL' : 'PRODUCCIÓN');
+    
     const products = await getSquareProducts();
+    
+    console.log('📦 [Tropiplus] Respuesta recibida de getSquareProducts');
+    console.log('📦 [Tropiplus] Tipo de respuesta:', typeof products);
+    console.log('📦 [Tropiplus] Es array:', Array.isArray(products));
+    console.log('📦 [Tropiplus] Longitud:', products ? products.length : 'undefined');
+    
+    if (!products) {
+      console.error('❌ [Tropiplus] getSquareProducts devolvió null o undefined');
+      throw new Error('No se recibió respuesta de la API');
+    }
+    
+    if (!Array.isArray(products)) {
+      console.error('❌ [Tropiplus] getSquareProducts no devolvió un array:', products);
+      throw new Error('La respuesta de la API no es un array');
+    }
+    
     squareProducts = products;
     
-    console.log('📦 Productos recibidos de Square:', products.length);
-    console.log('📦 Primeros 3 productos:', products.slice(0, 3).map(p => ({
-      id: p.id,
-      name: p.item_data?.name,
-      variations: p.item_data?.variations?.length
-    })));
+    console.log('📦 [Tropiplus] Productos recibidos de Square:', products.length);
+    
+    if (products.length > 0) {
+      console.log('📦 [Tropiplus] Primeros 3 productos:', products.slice(0, 3).map(p => ({
+        id: p.id,
+        name: p.item_data?.name,
+        type: p.type,
+        variations: p.item_data?.variations?.length
+      })));
+    }
     
     if (products.length === 0) {
-      console.warn('⚠️ No se encontraron productos en Square');
+      console.warn('⚠️ [Tropiplus] No se encontraron productos en Square');
       // Mostrar mensaje en la página
       const bestSellersCarousel = document.getElementById('best-sellers-carousel');
       const recommendationsCarousel = document.getElementById('recommendations-carousel');
       if (bestSellersCarousel) {
-        bestSellersCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento.</p></div>';
+        bestSellersCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento. Por favor, contacte al administrador.</p></div>';
       }
       if (recommendationsCarousel) {
-        recommendationsCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento.</p></div>';
+        recommendationsCarousel.innerHTML = '<div class="no-products-message"><p>No hay productos disponibles en este momento. Por favor, contacte al administrador.</p></div>';
       }
       return;
     }
     
     // Reconstruir jerarquía ahora que tenemos productos
     if (squareCategories.length > 0) {
+      console.log('🏗️ [Tropiplus] Reconstruyendo jerarquía de categorías...');
       buildCategoryHierarchy(squareCategories);
       // Re-renderizar sidebar con la jerarquía actualizada
       renderCategoriesSidebar(squareCategories);
     }
     
-    console.log('🎨 Renderizando productos...');
+    console.log('🎨 [Tropiplus] Renderizando productos...');
     await renderBestSellers(products);
     await renderRecommendations(products);
     
-    console.log('✅ Productos cargados y renderizados:', products.length);
+    console.log('✅ [Tropiplus] Productos cargados y renderizados exitosamente:', products.length);
+    
+    // Disparar evento personalizado para que products-list.js sepa que los productos están listos
+    window.dispatchEvent(new CustomEvent('squareProductsLoaded', { detail: { products: squareProducts } }));
+    
   } catch (error) {
-    console.error('❌ Error cargando productos:', error);
-    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ [Tropiplus] Error CRÍTICO cargando productos:', error);
+    console.error('❌ [Tropiplus] Mensaje:', error.message);
+    console.error('❌ [Tropiplus] Stack:', error.stack);
+    
     // Mostrar mensaje de error en la página
     const bestSellersCarousel = document.getElementById('best-sellers-carousel');
     const recommendationsCarousel = document.getElementById('recommendations-carousel');
+    const errorHtml = `<div class="no-products-message" style="color: red; padding: 20px; text-align: center;">
+      <h3>⚠️ Error cargando productos</h3>
+      <p><strong>Mensaje:</strong> ${error.message}</p>
+      <p><strong>Por favor, contacte al administrador.</strong></p>
+    </div>`;
+    
     if (bestSellersCarousel) {
-      bestSellersCarousel.innerHTML = `<div class="no-products-message"><p>Error cargando productos: ${error.message}</p></div>`;
+      bestSellersCarousel.innerHTML = errorHtml;
     }
     if (recommendationsCarousel) {
-      recommendationsCarousel.innerHTML = `<div class="no-products-message"><p>Error cargando productos: ${error.message}</p></div>`;
+      recommendationsCarousel.innerHTML = errorHtml;
     }
+    
+    // Re-lanzar el error para que se vea en la consola
+    throw error;
   }
 }
 
