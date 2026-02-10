@@ -105,12 +105,20 @@ function addRemesaToCart() {
     const idNumber = recipientId ? recipientId.value.trim() : '';
 
     if (!amount || amount <= 0) {
-        alert('Por favor, ingrese una cantidad válida');
+        if (typeof showModal === 'function') {
+            showModal('Cantidad inválida', 'Por favor, ingrese una cantidad válida', 'warning');
+        } else {
+            alert('Por favor, ingrese una cantidad válida');
+        }
         return;
     }
 
     if (!name) {
-        alert('Por favor, ingrese el nombre de quien recogerá la remesa');
+        if (typeof showModal === 'function') {
+            showModal('Nombre requerido', 'Por favor, ingrese el nombre de quien recogerá la remesa', 'warning');
+        } else {
+            alert('Por favor, ingrese el nombre de quien recogerá la remesa');
+        }
         return;
     }
 
@@ -165,10 +173,18 @@ function addRemesaToCart() {
         updateRemesaCalculation();
         
         // Mostrar mensaje de éxito
-        alert(`Remesa agregada al carrito: ${currency === 'USD' ? '$' : '₱'}${total.toFixed(2)}`);
+        if (typeof showModal === 'function') {
+            showModal('Remesa agregada', `Remesa agregada al carrito: ${currency === 'USD' ? '$' : '₱'}${total.toFixed(2)}`, 'success');
+        } else {
+            alert(`Remesa agregada al carrito: ${currency === 'USD' ? '$' : '₱'}${total.toFixed(2)}`);
+        }
     } else {
         console.error('addToCart function not available');
-        alert('Error: No se pudo agregar la remesa al carrito');
+        if (typeof showModal === 'function') {
+            showModal('Error', 'No se pudo agregar la remesa al carrito', 'error');
+        } else {
+            alert('Error: No se pudo agregar la remesa al carrito');
+        }
     }
 }
 

@@ -51,12 +51,31 @@ async function loadOrders(tabType) {
         // Obtener órdenes desde Square
         const orders = await getCustomerOrders(user.id);
         
+        // Filtrar recargas de tarjetas - no deben aparecer como órdenes
+        // Las recargas se procesan directamente sin crear órdenes
+        const ordersWithoutGiftCardReloads = orders.filter(order => {
+            // Si la orden solo contiene recargas de tarjetas, excluirla
+            if (!order.line_items || order.line_items.length === 0) {
+                return true; // Mantener órdenes sin items (por si acaso)
+            }
+            
+            // Verificar si todos los items son recargas de tarjetas
+            const allAreGiftCardReloads = order.line_items.every(item => {
+                const isGiftCardReload = (item.note && item.note.includes('Recarga Tarjeta')) || 
+                                        (item.name && item.name.includes('Recarga Tarjeta'));
+                return isGiftCardReload;
+            });
+            
+            // Excluir si todos los items son recargas
+            return !allAreGiftCardReloads;
+        });
+        
         // Filtrar según el tab
-        let filteredOrders = orders;
+        let filteredOrders = ordersWithoutGiftCardReloads;
         if (tabType === 'unpaid') {
             // "Órdenes NO cobradas": SOLO órdenes con pago declinado o canceladas
             // NO incluir órdenes en proceso (RESERVED, PREPARED) aunque sean cash
-            filteredOrders = orders.filter(order => {
+            filteredOrders = ordersWithoutGiftCardReloads.filter(order => {
                 const isPaid = isOrderPaidSuccessfully(order);
                 const paymentMethod = order.metadata?.payment_method || 'CARD';
                 const fulfillmentState = getFulfillmentState(order);
@@ -209,13 +228,42 @@ function renderOrders(orders, container) {
 
     orders.forEach(order => {
         const orderCard = createOrderCard(order);
-        container.appendChild(orderCard);
+        // Solo agregar si la tarjeta fue creada (puede ser null si es recarga)
+        if (orderCard) {
+            container.appendChild(orderCard);
+        }
     });
 }
 
 function createOrderCard(order) {
+    // Detectar si es una remesa
+    // NOTA: Las recargas de tarjetas ya fueron filtradas y no deberían llegar aquí
+    const isRemesa = order.line_items && order.line_items.some(item => 
+        (item.note && item.note.includes('Remesa')) || 
+        (item.name && item.name.includes('Remesa'))
+    );
+    
+    // Verificar si hay recargas (por si acaso alguna pasó el filtro)
+    const hasGiftCardReload = order.line_items && order.line_items.some(item => 
+        (item.note && item.note.includes('Recarga Tarjeta')) || 
+        (item.name && item.name.includes('Recarga Tarjeta'))
+    );
+    
+    // Si es solo recarga, no renderizar (no debería pasar, pero por seguridad)
+    if (hasGiftCardReload && !isRemesa) {
+        const allAreGiftCardReloads = order.line_items.every(item => {
+            const isGiftCardReload = (item.note && item.note.includes('Recarga Tarjeta')) || 
+                                    (item.name && item.name.includes('Recarga Tarjeta'));
+            return isGiftCardReload;
+        });
+        if (allAreGiftCardReloads) {
+            // No renderizar recargas de tarjetas
+            return null;
+        }
+    }
+    
     const card = document.createElement('div');
-    card.className = 'order-card';
+    card.className = isRemesa ? 'order-card order-card-remesa' : 'order-card';
 
     const orderDate = new Date(order.created_at);
     const formattedDate = orderDate.toLocaleDateString('es-ES', {
@@ -229,9 +277,19 @@ function createOrderCard(order) {
     const totalAmount = order.total_money ? (order.total_money.amount / 100).toFixed(2) : '0.00';
     // Obtener el estado del fulfillment (más preciso que el estado de la orden)
     const fulfillmentState = getFulfillmentState(order);
-    const stateText = getOrderStateText(fulfillmentState, order.state);
-    const stateClass = getOrderStateClass(fulfillmentState, order.state);
-    const progressTimeline = createOrderProgressTimeline(fulfillmentState, order.state);
+    
+    // Para remesas, usar estados diferentes
+    let stateText, stateClass, progressTimeline;
+    if (isRemesa) {
+        stateText = getRemesaStateText(fulfillmentState, order.state, isOrderPaidSuccessfully(order));
+        stateClass = getRemesaStateClass(fulfillmentState, order.state, isOrderPaidSuccessfully(order));
+        progressTimeline = createRemesaProgressTimeline(fulfillmentState, order.state, isOrderPaidSuccessfully(order));
+    } else {
+        stateText = getOrderStateText(fulfillmentState, order.state);
+        stateClass = getOrderStateClass(fulfillmentState, order.state);
+        progressTimeline = createOrderProgressTimeline(fulfillmentState, order.state);
+    }
+    
     const isPaid = isOrderPaidSuccessfully(order);
     const paymentMethod = order.metadata?.payment_method || 'CARD';
     
@@ -246,52 +304,138 @@ function createOrderCard(order) {
     const isCashOrder = paymentMethod === 'CASH';
     const showPickupWarning = isCashOrder && !isPaid && hoursRemaining > 0 && hoursRemaining <= 24;
     
-    card.innerHTML = `
-        <div class="order-card-header">
-            <div class="order-card-info">
-                <h3 class="order-number">Orden #${order.id}</h3>
-                <p class="order-date">${formattedDate}</p>
-            </div>
-            <div class="order-status">
-                <span class="order-state ${stateClass}">${stateText}</span>
-            </div>
-        </div>
-        ${progressTimeline}
-        ${showPickupWarning ? `
-            <div class="order-pickup-warning">
-                <i class="fas fa-clock"></i>
-                <div class="pickup-warning-content">
-                    <strong>Tienes ${hoursRemaining} horas para recoger tu pedido</strong>
-                    <p>Si no recoges en 24 horas, la orden se cancelará por falta de pago.</p>
+    // Extraer información de la remesa del note
+    let remesaInfo = null;
+    if (isRemesa && order.line_items) {
+        const remesaItem = order.line_items.find(item => item.note && item.note.includes('Remesa'));
+        if (remesaItem && remesaItem.note) {
+            // Parsear el note para extraer información
+            const noteParts = remesaItem.note.split('|');
+            remesaInfo = {
+                currency: remesaItem.note.includes('USD') ? 'USD' : 'CUP',
+                amount: remesaItem.note.match(/\$(\d+\.?\d*)/)?.[1] || '0',
+                recipient: noteParts.find(p => p.includes('Recogerá:'))?.replace('Recogerá:', '').trim() || null,
+                idNumber: noteParts.find(p => p.includes('CI:'))?.replace('CI:', '').trim() || null
+            };
+        }
+    }
+    
+    // Si es una remesa, mostrar diseño especial
+    if (isRemesa) {
+        card.innerHTML = `
+            <div class="order-card-header remesa-header">
+                <div class="remesa-icon-large">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="order-card-info">
+                    <h3 class="order-number remesa-title">Remesa #${order.id}</h3>
+                    <p class="order-date">${formattedDate}</p>
+                </div>
+                <div class="order-status">
+                    <span class="order-state remesa-state ${stateClass}">${stateText}</span>
                 </div>
             </div>
-        ` : ''}
-        <div class="order-card-body">
-            <div class="order-items">
-                ${order.line_items ? order.line_items.map(item => `
-                    <div class="order-item">
-                        <span class="order-item-name">${item.name || 'Producto'}</span>
-                        <span class="order-item-quantity">x${item.quantity || 1}</span>
-                        <span class="order-item-price">$${item.total_money ? (item.total_money.amount / 100).toFixed(2) : '0.00'}</span>
+            ${progressTimeline}
+            <div class="remesa-details-section">
+                ${remesaInfo ? `
+                    <div class="remesa-info-card">
+                        <div class="remesa-info-row">
+                            <span class="remesa-label">Moneda:</span>
+                            <span class="remesa-value">${remesaInfo.currency}</span>
+                        </div>
+                        <div class="remesa-info-row">
+                            <span class="remesa-label">Cantidad enviada:</span>
+                            <span class="remesa-value">${remesaInfo.currency === 'USD' ? '$' : '₱'}${remesaInfo.amount}</span>
+                        </div>
+                        ${remesaInfo.recipient ? `
+                            <div class="remesa-info-row">
+                                <span class="remesa-label">Recogerá:</span>
+                                <span class="remesa-value">${remesaInfo.recipient}</span>
+                            </div>
+                        ` : ''}
+                        ${remesaInfo.idNumber ? `
+                            <div class="remesa-info-row">
+                                <span class="remesa-label">Carnet de Identidad:</span>
+                                <span class="remesa-value">${remesaInfo.idNumber}</span>
+                            </div>
+                        ` : ''}
                     </div>
-                `).join('') : '<p>No hay items en esta orden</p>'}
+                ` : ''}
             </div>
-            <div class="order-card-footer">
-                <div class="order-total">
-                    <span>Total:</span>
-                    <strong>$${totalAmount} US$</strong>
+            <div class="order-card-body">
+                <div class="order-items">
+                    ${order.line_items ? order.line_items.map(item => `
+                        <div class="order-item remesa-item">
+                            <i class="fas fa-coins remesa-item-icon"></i>
+                            <span class="order-item-name">${item.note || item.name || 'Remesa'}</span>
+                            <span class="order-item-price">$${item.total_money ? (item.total_money.amount / 100).toFixed(2) : '0.00'}</span>
+                        </div>
+                    `).join('') : '<p>No hay items en esta orden</p>'}
                 </div>
-                <div class="order-payment-info">
-                    <span class="payment-method ${paymentMethod === 'CASH' ? 'payment-method-cash' : 'payment-method-card'}">
-                        <i class="fas ${paymentMethod === 'CASH' ? 'fa-money-bill-wave' : 'fa-credit-card'}"></i>
-                        <span>${paymentMethod === 'CASH' ? 'Pago en efectivo' : 'Pago con tarjeta'}</span>
-                    </span>
-                    ${isDeclined ? '<span class="payment-declined">Pago declinado</span>' : ''}
-                    ${!isPaid && paymentMethod === 'CASH' && !isDeclined ? '<span class="payment-pending">Pendiente de pago</span>' : ''}
+                <div class="order-card-footer">
+                    <div class="order-total">
+                        <span>Total:</span>
+                        <strong>$${totalAmount} US$</strong>
+                    </div>
+                    <div class="order-payment-info">
+                        <span class="payment-method ${paymentMethod === 'CASH' ? 'payment-method-cash' : 'payment-method-card'}">
+                            <i class="fas ${paymentMethod === 'CASH' ? 'fa-money-bill-wave' : 'fa-credit-card'}"></i>
+                            <span>${paymentMethod === 'CASH' ? 'Pago en efectivo' : 'Pago con tarjeta'}</span>
+                        </span>
+                        ${isDeclined ? '<span class="payment-declined">Pago declinado</span>' : ''}
+                        ${!isPaid && paymentMethod === 'CASH' && !isDeclined ? '<span class="payment-pending">Pendiente de pago</span>' : ''}
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
+    } else {
+        card.innerHTML = `
+            <div class="order-card-header">
+                <div class="order-card-info">
+                    <h3 class="order-number">Orden #${order.id}</h3>
+                    <p class="order-date">${formattedDate}</p>
+                </div>
+                <div class="order-status">
+                    <span class="order-state ${stateClass}">${stateText}</span>
+                </div>
+            </div>
+            ${progressTimeline}
+            ${showPickupWarning ? `
+                <div class="order-pickup-warning">
+                    <i class="fas fa-clock"></i>
+                    <div class="pickup-warning-content">
+                        <strong>Tienes ${hoursRemaining} horas para recoger tu pedido</strong>
+                        <p>Si no recoges en 24 horas, la orden se cancelará por falta de pago.</p>
+                    </div>
+                </div>
+            ` : ''}
+            <div class="order-card-body">
+                <div class="order-items">
+                    ${order.line_items ? order.line_items.map(item => `
+                        <div class="order-item">
+                            <span class="order-item-name">${item.name || item.note || 'Producto'}</span>
+                            <span class="order-item-quantity">x${item.quantity || 1}</span>
+                            <span class="order-item-price">$${item.total_money ? (item.total_money.amount / 100).toFixed(2) : '0.00'}</span>
+                        </div>
+                    `).join('') : '<p>No hay items en esta orden</p>'}
+                </div>
+                <div class="order-card-footer">
+                    <div class="order-total">
+                        <span>Total:</span>
+                        <strong>$${totalAmount} US$</strong>
+                    </div>
+                    <div class="order-payment-info">
+                        <span class="payment-method ${paymentMethod === 'CASH' ? 'payment-method-cash' : 'payment-method-card'}">
+                            <i class="fas ${paymentMethod === 'CASH' ? 'fa-money-bill-wave' : 'fa-credit-card'}"></i>
+                            <span>${paymentMethod === 'CASH' ? 'Pago en efectivo' : 'Pago con tarjeta'}</span>
+                        </span>
+                        ${isDeclined ? '<span class="payment-declined">Pago declinado</span>' : ''}
+                        ${!isPaid && paymentMethod === 'CASH' && !isDeclined ? '<span class="payment-pending">Pendiente de pago</span>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
     return card;
 }
@@ -339,6 +483,89 @@ function getOrderStateText(fulfillmentState, orderState) {
     };
     
     return orderStates[orderState] || fulfillmentState || 'PENDIENTE';
+}
+
+/**
+ * Obtiene el estado de texto para una remesa
+ */
+function getRemesaStateText(fulfillmentState, orderState, isPaid) {
+    if (!isPaid) {
+        return 'PROCESÁNDOSE';
+    }
+    
+    // Si está pagada, verificar el estado del fulfillment
+    const remesaStates = {
+        'PROPOSED': 'PROCESÁNDOSE',      // Remesa pagada, procesándose
+        'RESERVED': 'PROCESÁNDOSE',      // Remesa en proceso
+        'PREPARED': 'COBRADA EXITOSAMENTE', // Remesa lista para recoger
+        'COMPLETED': 'PAGADA Y ENVIADA',   // Remesa completada/recogida
+        'CANCELED': 'CANCELADA',
+        'FAILED': 'FALLIDA'
+    };
+    
+    if (remesaStates[fulfillmentState]) {
+        return remesaStates[fulfillmentState];
+    }
+    
+    // Si está pagada pero no hay fulfillment específico
+    if (isPaid && orderState === 'COMPLETED') {
+        return 'PAGADA Y ENVIADA';
+    }
+    
+    return 'PROCESÁNDOSE';
+}
+
+/**
+ * Obtiene la clase CSS para el estado de una remesa
+ */
+function getRemesaStateClass(fulfillmentState, orderState, isPaid) {
+    if (!isPaid) {
+        return 'remesa-processing';
+    }
+    
+    if (fulfillmentState === 'COMPLETED' || orderState === 'COMPLETED') {
+        return 'remesa-completed';
+    }
+    
+    if (fulfillmentState === 'PREPARED') {
+        return 'remesa-ready';
+    }
+    
+    return 'remesa-processing';
+}
+
+/**
+ * Crea la línea de progreso para una remesa
+ */
+function createRemesaProgressTimeline(fulfillmentState, orderState, isPaid) {
+    const steps = [
+        { id: 'processing', label: 'PROCESÁNDOSE', icon: 'fa-cog', active: !isPaid || fulfillmentState === 'PROPOSED' || fulfillmentState === 'RESERVED' },
+        { id: 'paid', label: 'COBRADA EXITOSAMENTE', icon: 'fa-check-circle', active: isPaid && (fulfillmentState === 'PREPARED' || fulfillmentState === 'COMPLETED') },
+        { id: 'sent', label: 'PAGADA Y ENVIADA', icon: 'fa-paper-plane', active: fulfillmentState === 'COMPLETED' || orderState === 'COMPLETED' }
+    ];
+    
+    let html = '<div class="order-progress-tracker remesa-progress">';
+    
+    steps.forEach((step, index) => {
+        const isActive = step.active;
+        const isPast = steps.slice(0, index).some(s => s.active);
+        
+        html += `
+            <div class="progress-step ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}">
+                <div class="step-icon">
+                    <i class="fas ${step.icon}"></i>
+                </div>
+                <div class="step-label">${step.label}</div>
+            </div>
+        `;
+        
+        if (index < steps.length - 1) {
+            html += `<div class="progress-line ${isActive || isPast ? 'filled' : ''}"></div>`;
+        }
+    });
+    
+    html += '</div>';
+    return html;
 }
 
 /**

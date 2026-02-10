@@ -1,4 +1,4 @@
-// Funcionalidad principal Supermarket23
+// Funcionalidad principal Tropiplus Supermarket
 
 document.addEventListener('DOMContentLoaded', function() {
     initCartSidebar();
@@ -9,7 +9,162 @@ document.addEventListener('DOMContentLoaded', function() {
     initCategoriesSidebar();
     initMainMenu();
     initUserAccount();
+    initPromotionTicker();
 });
+
+function getPromotionConfig() {
+    const fallback = {
+        enabled: false,
+        text: '',
+        speed: 'normal',
+        linkEnabled: false,
+        url: ''
+    };
+    try {
+        const raw = localStorage.getItem('tropiplus_promo_config');
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        const parsedText = String(parsed.text || '').trim();
+        return {
+            // Compatibilidad: si hay texto guardado, la barra se considera activa.
+            enabled: Boolean(parsed.enabled) || Boolean(parsedText),
+            text: parsedText,
+            speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal',
+            linkEnabled: Boolean(parsed.linkEnabled),
+            url: String(parsed.url || '')
+        };
+    } catch (error) {
+        console.warn('No se pudo leer configuración de promoción:', error);
+        return fallback;
+    }
+}
+
+function initPromotionTicker() {
+    console.log('🎯 Inicializando barra promocional...');
+    
+    // Esperar a que el DOM esté completamente cargado
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(createPromotionBar, 200);
+        });
+    } else {
+        setTimeout(createPromotionBar, 200);
+    }
+}
+
+function createPromotionBar() {
+    const config = getPromotionConfig();
+    console.log('📋 Configuración de promoción:', config);
+    console.log('📋 localStorage raw:', localStorage.getItem('tropiplus_promo_config'));
+    
+    const existing = document.getElementById('promo-ticker-bar');
+    if (existing) {
+        console.log('🗑️ Eliminando barra promocional existente');
+        existing.remove();
+    }
+
+    if (!config.text || config.text.trim() === '') {
+        console.log('⚠️ No hay texto de promoción configurado');
+        return;
+    }
+
+    const durationBySpeed = {
+        slow: '22s',
+        normal: '14s',
+        fast: '8s'
+    };
+    const duration = durationBySpeed[config.speed] || '14s';
+    console.log('⚡ Velocidad:', config.speed, 'Duración:', duration);
+
+    const bar = document.createElement('div');
+    bar.id = 'promo-ticker-bar';
+    bar.className = 'promo-ticker-bar';
+    bar.style.setProperty('--promo-duration', duration);
+    bar.style.display = 'block';
+    bar.style.visibility = 'visible';
+    bar.style.opacity = '1';
+
+    const track = document.createElement('div');
+    track.className = 'promo-ticker-track';
+
+    const textContent = `${config.text}   •   ${config.text}   •   ${config.text}`;
+
+    const createItem = () => {
+        if (config.linkEnabled && config.url) {
+            const link = document.createElement('a');
+            link.className = 'promo-ticker-item promo-ticker-link';
+            link.href = config.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = textContent;
+            console.log('🔗 Creando enlace promocional:', config.url);
+            return link;
+        }
+        const span = document.createElement('span');
+        span.className = 'promo-ticker-item';
+        span.textContent = textContent;
+        return span;
+    };
+
+    track.appendChild(createItem());
+    track.appendChild(createItem());
+    bar.appendChild(track);
+
+    // Intentar insertar después de la barra de navegación oscura
+    const navBar = document.querySelector('.nav-bar-dark-blue');
+    const categoriesBar = document.querySelector('.categories-yellow-bar');
+
+    let inserted = false;
+    if (navBar && navBar.parentNode) {
+        // Insertar después de la barra de navegación, antes de la barra de categorías
+        if (categoriesBar && categoriesBar.parentNode === navBar.parentNode) {
+            navBar.parentNode.insertBefore(bar, categoriesBar);
+            console.log('✅ Barra promocional insertada después de nav-bar, antes de categories-bar');
+            inserted = true;
+        } else {
+            navBar.parentNode.insertBefore(bar, navBar.nextSibling);
+            console.log('✅ Barra promocional insertada después de nav-bar');
+            inserted = true;
+        }
+    } else if (categoriesBar && categoriesBar.parentNode) {
+        categoriesBar.parentNode.insertBefore(bar, categoriesBar);
+        console.log('✅ Barra promocional insertada antes de categories-bar');
+        inserted = true;
+    }
+    
+    if (!inserted) {
+        // Fallback: insertar después del header
+        const header = document.querySelector('header.main-header-section');
+        if (header && header.parentNode) {
+            if (header.nextSibling) {
+                header.parentNode.insertBefore(bar, header.nextSibling);
+            } else {
+                header.parentNode.appendChild(bar);
+            }
+            console.log('✅ Barra promocional insertada después del header (fallback)');
+        } else {
+            const body = document.body;
+            if (body.firstChild) {
+                body.insertBefore(bar, body.firstChild);
+            } else {
+                body.appendChild(bar);
+            }
+            console.log('✅ Barra promocional insertada al inicio del body (fallback final)');
+        }
+    }
+    
+    // Verificar que se insertó correctamente
+    const insertedElement = document.getElementById('promo-ticker-bar');
+    if (insertedElement) {
+        console.log('🎉 Barra promocional inicializada correctamente');
+        console.log('📍 Elemento insertado:', insertedElement);
+        console.log('📍 Estilos aplicados:', window.getComputedStyle(insertedElement).display);
+        console.log('📍 Visibilidad:', window.getComputedStyle(insertedElement).visibility);
+        console.log('📍 Opacidad:', window.getComputedStyle(insertedElement).opacity);
+    } else {
+        console.error('❌ ERROR: La barra promocional no se insertó correctamente');
+    }
+}
 
 function initUserAccount() {
     const userAccountLink = document.getElementById('user-account-link');
@@ -35,6 +190,42 @@ function initUserAccount() {
         }
     } else {
         console.error('❌ No se encontraron elementos user-account-link o user-account-text');
+    }
+    
+    // Agregar pestaña "Administrar" si el usuario es admin
+    initAdminTab();
+}
+
+function initAdminTab() {
+    // Verificar si el usuario es administrador
+    if (typeof isUserAdmin === 'function' && isUserAdmin()) {
+        const navLinksMain = document.querySelector('.nav-links-main');
+        if (navLinksMain) {
+            // Verificar si ya existe el enlace de administrar
+            const existingAdminLink = navLinksMain.querySelector('.nav-link-item[href="admin.html"]');
+            if (!existingAdminLink) {
+                // Crear enlace de administrar
+                const adminLink = document.createElement('a');
+                adminLink.href = 'admin.html';
+                adminLink.className = 'nav-link-item';
+                adminLink.innerHTML = '<i class="fas fa-cog"></i> Admin';
+                
+                // Insertar después de "Todos los productos"
+                const allProductsLink = navLinksMain.querySelector('a[href="products.html"]');
+                if (allProductsLink) {
+                    allProductsLink.insertAdjacentElement('afterend', adminLink);
+                } else {
+                    // Si no existe, insertar al principio
+                    navLinksMain.insertBefore(adminLink, navLinksMain.firstChild);
+                }
+            }
+        }
+    } else {
+        // Remover enlace de administrar si el usuario no es admin
+        const adminLink = document.querySelector('.nav-link-item[href="admin.html"]');
+        if (adminLink) {
+            adminLink.remove();
+        }
     }
 }
 
@@ -130,8 +321,35 @@ function initSearch() {
 }
 
 function performSearch(query) {
-    console.log('Buscando:', query);
-    // Implementar búsqueda con Square API
+    if (!query || query.trim() === '') return;
+    
+    // Filtrar productos que contengan el término de búsqueda
+    const searchTerm = query.toLowerCase().trim();
+    
+    // Si la búsqueda es "remesa", redirigir al botón de remesa
+    if (searchTerm.includes('remesa')) {
+        const remesaBtn = document.getElementById('remesa-btn');
+        if (remesaBtn) {
+            remesaBtn.click();
+            return;
+        }
+    }
+    
+    // Filtrar productos de Square (excluyendo Remesa)
+    const filteredProducts = squareProducts.filter(product => {
+        const itemData = product.item_data;
+        if (!itemData) return false;
+        const name = itemData.name?.toLowerCase() || '';
+        // Excluir Remesa de las búsquedas
+        if (name.includes('remesa')) return false;
+        // Buscar coincidencias
+        return name.includes(searchTerm);
+    });
+    
+    // Guardar resultados en localStorage y navegar a products.html
+    localStorage.setItem('tropiplus_search_results', JSON.stringify(filteredProducts));
+    localStorage.setItem('tropiplus_search_query', query);
+    window.location.href = `products.html?search=${encodeURIComponent(query)}`;
 }
 
 function initHeroBannerCarousel() {

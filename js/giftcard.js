@@ -75,7 +75,11 @@ function initGiftCardSystem() {
         const cardNumber = giftcardNumber?.value.trim();
         
         if (!cardNumber) {
-            alert('Por favor, ingrese el número de tarjeta');
+            if (typeof showModal === 'function') {
+                showModal('Número de tarjeta requerido', 'Por favor, ingrese el número de tarjeta', 'warning');
+            } else {
+                alert('Por favor, ingrese el número de tarjeta');
+            }
             return;
         }
 
@@ -175,11 +179,19 @@ function initGiftCardSystem() {
                 
                 updateGiftCardCalculation();
             } else {
-                alert('Tarjeta no encontrada. Verifique el número e intente nuevamente.');
+                if (typeof showModal === 'function') {
+                    showModal('Tarjeta no encontrada', 'Verifique el número e intente nuevamente.', 'error');
+                } else {
+                    alert('Tarjeta no encontrada. Verifique el número e intente nuevamente.');
+                }
             }
         } catch (error) {
             console.error('Error verificando tarjeta:', error);
-            alert('Error al verificar la tarjeta. Por favor, intente nuevamente.');
+            if (typeof showModal === 'function') {
+                showModal('Error al verificar tarjeta', 'Por favor, intente nuevamente.', 'error');
+            } else {
+                alert('Error al verificar la tarjeta. Por favor, intente nuevamente.');
+            }
         } finally {
             if (giftcardBtnCheck) {
                 giftcardBtnCheck.disabled = false;
@@ -201,14 +213,22 @@ function initGiftCardSystem() {
 
     async function addGiftCardReloadToCart() {
         if (!currentGiftCard) {
-            alert('Por favor, verifique primero el saldo de la tarjeta');
+            if (typeof showModal === 'function') {
+                showModal('Verificar saldo primero', 'Por favor, verifique primero el saldo de la tarjeta', 'warning');
+            } else {
+                alert('Por favor, verifique primero el saldo de la tarjeta');
+            }
             return;
         }
 
         const reloadAmount = parseFloat(giftcardReloadAmount?.value);
         
         if (!reloadAmount || reloadAmount <= 0) {
-            alert('Por favor, ingrese una cantidad válida para recargar');
+            if (typeof showModal === 'function') {
+                showModal('Cantidad inválida', 'Por favor, ingrese una cantidad válida para recargar', 'warning');
+            } else {
+                alert('Por favor, ingrese una cantidad válida para recargar');
+            }
             return;
         }
 
@@ -234,10 +254,18 @@ function initGiftCardSystem() {
             closeModal();
             
             // Mostrar mensaje de éxito
-            alert(`Recarga de $${reloadAmount.toFixed(2)} agregada al carrito`);
+            if (typeof showModal === 'function') {
+                showModal('Recarga agregada', `Recarga de $${reloadAmount.toFixed(2)} agregada al carrito`, 'success');
+            } else {
+                alert(`Recarga de $${reloadAmount.toFixed(2)} agregada al carrito`);
+            }
         } else {
             console.error('addToCart function not available');
-            alert('Error: No se pudo agregar la recarga al carrito');
+            if (typeof showModal === 'function') {
+                showModal('Error', 'No se pudo agregar la recarga al carrito', 'error');
+            } else {
+                alert('Error: No se pudo agregar la recarga al carrito');
+            }
         }
     }
 

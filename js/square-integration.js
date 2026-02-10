@@ -1,4 +1,4 @@
-// Integración de Square con Supermarket23
+// Integración de Square con Tropiplus Supermarket
 let squareCategories = [];
 let squareProducts = [];
 let categoryHierarchy = {}; // Estructura: { parentCategoryId: [childCategories] }
@@ -159,7 +159,11 @@ function renderCategoriesBar(categories) {
   
   const validCategories = categories.filter(cat => {
     const catData = cat.category_data;
-    return catData && catData.name && catData.name.trim() !== '';
+    if (!catData || !catData.name || !catData.name.trim()) return false;
+    // Ocultar categoría "Remesa" del menú de categorías
+    const catName = catData.name.toLowerCase();
+    if (catName.includes('remesa')) return false;
+    return true;
   });
   
   validCategories.forEach(category => {
@@ -188,6 +192,9 @@ function renderCategoriesSidebar(categories) {
   const validCategories = categories.filter(cat => {
     const catData = cat.category_data;
     if (!catData || !catData.name || !catData.name.trim()) return false;
+    // Ocultar categoría "Remesa" del menú de categorías
+    const catName = catData.name.toLowerCase();
+    if (catName.includes('remesa')) return false;
     // Mostrar solo categorías principales o categorías que no son subcategorías
     return parentCategoryIds.includes(cat.id) || !allSubcategoryIds.has(cat.id);
   });
@@ -483,7 +490,9 @@ async function renderBestSellers(products) {
     const itemData = item.item_data;
     if (!itemData) return false;
     const name = itemData.name?.toLowerCase() || '';
+    // Filtrar productos que no deben mostrarse en el catálogo
     if (name.includes('renta') || name.includes('car rental')) return false;
+    if (name.includes('remesa')) return false; // Ocultar Remesa del catálogo
     return true;
   });
   
@@ -503,7 +512,11 @@ async function renderRecommendations(products) {
   
   const validProducts = products.filter(item => {
     const itemData = item.item_data;
-    return itemData && itemData.name;
+    if (!itemData || !itemData.name) return false;
+    const name = itemData.name?.toLowerCase() || '';
+    // Filtrar Remesa del catálogo
+    if (name.includes('remesa')) return false;
+    return true;
   });
   
   const productsToShow = validProducts.slice(5, 11);
@@ -917,19 +930,55 @@ async function updateCartContent() {
   
   for (const item of shoppingCart) {
     const imageUrl = item.image ? (await getCachedProductImageUrl(item.image) || 'images/placeholder.svg') : 'images/placeholder.svg';
-    html += `
-      <div class="cart-item-row">
-        <img src="${imageUrl}" alt="${item.name}" class="cart-item-image">
-        <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price-info">$${item.price.toFixed(2)} x ${item.quantity}</div>
-          <div class="cart-item-total">Total: $${(item.price * item.quantity).toFixed(2)}</div>
-        </div>
-        <button class="cart-item-remove-btn" onclick="removeFromCartSidebar('${item.id}')" title="Eliminar">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    `;
+    // Si es una recarga de tarjeta, mostrar icono especial
+    if (item.type === 'giftcard_reload') {
+        html += `
+          <div class="cart-item-row cart-item-giftcard-reload">
+            <div class="cart-item-icon-wrapper giftcard-icon-cart">
+              <i class="fas fa-gift"></i>
+            </div>
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-price-info">$${item.price.toFixed(2)} x ${item.quantity}</div>
+              <div class="cart-item-total">Total: $${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+            <button class="cart-item-remove-btn" onclick="removeFromCartSidebar('${item.id}')" title="Eliminar">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+    } else if (item.type === 'remesa') {
+        // Si es una remesa, mostrar icono de monedas
+        html += `
+          <div class="cart-item-row cart-item-remesa">
+            <div class="cart-item-icon-wrapper remesa-icon-cart">
+              <i class="fas fa-coins"></i>
+            </div>
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-price-info">$${item.price.toFixed(2)} x ${item.quantity}</div>
+              <div class="cart-item-total">Total: $${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+            <button class="cart-item-remove-btn" onclick="removeFromCartSidebar('${item.id}')" title="Eliminar">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+    } else {
+        html += `
+          <div class="cart-item-row">
+            <img src="${imageUrl}" alt="${item.name}" class="cart-item-image">
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-price-info">$${item.price.toFixed(2)} x ${item.quantity}</div>
+              <div class="cart-item-total">Total: $${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+            <button class="cart-item-remove-btn" onclick="removeFromCartSidebar('${item.id}')" title="Eliminar">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+    }
   }
   
   storeSection.innerHTML = html;

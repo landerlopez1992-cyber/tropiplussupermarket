@@ -43,34 +43,67 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
   
   try {
     console.log('📡 Llamando a Square API vía proxy:', proxyUrl);
+    if (body) {
+      console.log('📤 Body enviado:', JSON.stringify(body, null, 2));
+    }
+    
     const response = await fetch(proxyUrl, options);
     
     console.log('📥 Respuesta de Square API:', response.status, response.statusText);
     
+    // Leer el texto de la respuesta primero
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const errorText = await response.text();
       let errorData;
       try {
-        errorData = JSON.parse(errorText);
+        errorData = JSON.parse(responseText);
       } catch (e) {
-        errorData = { message: errorText };
+        // Si no es JSON, crear un objeto de error con el texto
+        errorData = { 
+          message: responseText || `HTTP error! status: ${response.status}`,
+          raw: responseText.substring(0, 500) // Primeros 500 caracteres para debugging
+        };
       }
+      
       console.error('❌ Error de Square API:', errorData);
       console.error('❌ Status:', response.status, response.statusText);
       console.error('❌ URL:', proxyUrl);
-      console.error('❌ Body enviado:', body ? JSON.stringify(JSON.parse(body), null, 2) : 'N/A');
+      if (body) {
+        console.error('❌ Body enviado:', JSON.stringify(body, null, 2));
+      }
       
       // Si es un 404, proporcionar más información
       if (response.status === 404) {
         throw new Error(`Endpoint no encontrado (404). Verifica que el endpoint ${proxyUrl} existe en Square API. Detalles: ${errorData.errors?.[0]?.detail || errorData.message || 'Resource not found'}`);
       }
       
-      throw new Error(errorData.message || errorData.errors?.[0]?.detail || `HTTP error! status: ${response.status}`);
+      // Construir mensaje de error más detallado
+      let errorMessage = errorData.message || errorData.errors?.[0]?.detail || `HTTP error! status: ${response.status}`;
+      if (errorData.errors && errorData.errors.length > 0) {
+        const firstError = errorData.errors[0];
+        errorMessage = firstError.detail || firstError.code || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
     }
     
-    const data = await response.json();
-    console.log('✅ Datos recibidos de Square:', data);
-    return data;
+    // Intentar parsear JSON de forma segura
+    let data;
+    try {
+      if (!responseText || responseText.trim() === '') {
+        // Respuesta vacía, retornar objeto vacío
+        console.log('⚠️ Respuesta vacía de Square API');
+        return {};
+      }
+      data = JSON.parse(responseText);
+      console.log('✅ Datos recibidos de Square:', data);
+      return data;
+    } catch (parseError) {
+      console.error('❌ Error parseando respuesta JSON:', parseError);
+      console.error('❌ Texto recibido (primeros 500 chars):', responseText.substring(0, 500));
+      throw new Error(`Error parseando respuesta de Square API: ${parseError.message}. Respuesta recibida: ${responseText.substring(0, 200)}`);
+    }
   } catch (error) {
     console.error('❌ Error en Square API:', error);
     throw error;

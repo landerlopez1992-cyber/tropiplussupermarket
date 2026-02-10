@@ -11,6 +11,14 @@
  */
 async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', paymentToken = null) {
     try {
+        // Filtrar recargas de tarjetas - no deben estar en la orden
+        cartItems = cartItems.filter(item => item.type !== 'giftcard_reload');
+        
+        // Si no hay items después de filtrar, no crear orden
+        if (cartItems.length === 0) {
+            throw new Error('No hay productos para crear una orden');
+        }
+        
         const user = getCurrentUser();
         if (!user || !user.id) {
             throw new Error('Usuario no autenticado');
@@ -176,17 +184,8 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
             console.log('💰 Pago en efectivo registrado correctamente en Square.');
         }
 
-        // Procesar recargas de tarjetas de regalo
-        const giftCardReloads = cartItems.filter(item => item.type === 'giftcard_reload' && item.giftCardData);
-        for (const reloadItem of giftCardReloads) {
-            try {
-                await reloadGiftCard(reloadItem.giftCardData);
-                console.log('✅ Tarjeta de regalo recargada:', reloadItem.giftCardData.giftCardGan);
-            } catch (error) {
-                console.error('❌ Error recargando tarjeta de regalo:', error);
-                // No lanzar error - la orden ya se creó, solo loguear
-            }
-        }
+        // NO procesar recargas aquí - se procesan directamente en checkout.js
+        // Las recargas no deben crear órdenes
 
         return order;
 
@@ -507,6 +506,121 @@ window.updateOrderState = updateOrderState;
  * @param {Object} giftCardData - Datos de la tarjeta y recarga
  * @returns {Promise} Respuesta de Square
  */
+/**
+ * Procesa una recarga de tarjeta directamente, sin crear una orden
+ */
+async function processGiftCardReloadDirectly(reloadItem, amountInCents, paymentMethod, paymentToken, customerId) {
+    try {
+        const giftCardId = reloadItem.giftCardId;
+        const giftCardGan = reloadItem.giftCardGan || 'N/A';
+        
+        if (!giftCardId) {
+            throw new Error('ID de tarjeta no encontrado');
+        }
+
+        // Primero, procesar el pago
+        let paymentId = null;
+        
+        if (paymentMethod === 'CARD' && paymentToken) {
+            // Procesar pago con tarjeta
+            const paymentData = {
+                idempotency_key: `giftcard_payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                source_id: paymentToken,
+                amount_money: {
+                    amount: amountInCents,
+                    currency: 'USD'
+                },
+                location_id: SQUARE_CONFIG.locationId,
+                note: `Pago para recarga de tarjeta Tropiplus - ${giftCardGan}`,
+                customer_id: customerId
+            };
+
+            const paymentResponse = await squareApiCall('/v2/payments', 'POST', paymentData);
+            
+            if (paymentResponse && paymentResponse.payment) {
+                paymentId = paymentResponse.payment.id;
+                console.log('✅ Pago procesado para recarga:', paymentId);
+            } else {
+                throw new Error('No se pudo procesar el pago para la recarga');
+            }
+        } else if (paymentMethod === 'CASH') {
+            // Para cash, crear un pago directo
+            const cashPaymentData = {
+                idempotency_key: `giftcard_cash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                source_id: 'CASH',
+                amount_money: {
+                    amount: amountInCents,
+                    currency: 'USD'
+                },
+                location_id: SQUARE_CONFIG.locationId,
+                note: `Pago en efectivo para recarga de tarjeta Tropiplus - ${giftCardGan}`,
+                customer_id: customerId,
+                cash_details: {
+                    buyer_supplied_money: {
+                        amount: amountInCents,
+                        currency: 'USD'
+                    }
+                }
+            };
+
+            const cashPaymentResponse = await squareApiCall('/v2/payments', 'POST', cashPaymentData);
+            
+            if (cashPaymentResponse && cashPaymentResponse.payment) {
+                paymentId = cashPaymentResponse.payment.id;
+                console.log('✅ Pago en efectivo procesado para recarga:', paymentId);
+            } else {
+                throw new Error('No se pudo procesar el pago en efectivo para la recarga');
+            }
+        }
+
+        // Segundo, recargar la tarjeta usando Square Gift Cards API
+        // Square Gift Cards API: POST /v2/gift-cards/{id}/link
+        // O usar: POST /v2/gift-cards/{id}/activate (si está inactiva)
+        // O mejor: usar el endpoint de recarga directa
+        
+        // Según la documentación de Square, para recargar una tarjeta existente:
+        // Necesitamos usar el endpoint de "link" o crear un nuevo pago que se asocie a la tarjeta
+        // La forma más directa es usar el endpoint de Payments API con gift_card_id
+        
+        // Intentar recargar usando el endpoint de Gift Cards
+        try {
+            // Square Gift Cards API: Para recargar, necesitamos usar el endpoint correcto
+            // Según la documentación, podemos usar: POST /v2/gift-cards/{id}/link
+            // O crear un pago que se asocie directamente a la tarjeta
+            
+            // Método alternativo: usar el endpoint de Payments con gift_card_id como source
+            const reloadPaymentData = {
+                idempotency_key: `giftcard_reload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                source_id: giftCardId,
+                amount_money: {
+                    amount: amountInCents,
+                    currency: 'USD'
+                },
+                location_id: SQUARE_CONFIG.locationId,
+                note: `Recarga de tarjeta de regalo Tropiplus - ${giftCardGan}`,
+                customer_id: customerId
+            };
+
+            const reloadResponse = await squareApiCall('/v2/payments', 'POST', reloadPaymentData);
+            
+            if (reloadResponse && reloadResponse.payment) {
+                console.log('✅ Tarjeta de regalo recargada exitosamente:', reloadResponse.payment.id);
+                return reloadResponse.payment;
+            } else {
+                throw new Error('No se pudo recargar la tarjeta de regalo');
+            }
+        } catch (reloadError) {
+            console.error('❌ Error en recarga de tarjeta:', reloadError);
+            // Si falla la recarga pero el pago fue exitoso, lanzar error
+            throw new Error(`Error al recargar la tarjeta: ${reloadError.message}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error procesando recarga de tarjeta:', error);
+        throw error;
+    }
+}
+
 async function reloadGiftCard(giftCardData) {
     try {
         const { giftCardId, reloadAmount } = giftCardData;
@@ -543,3 +657,4 @@ window.processCashPayment = processCashPayment;
 window.saveCardForFutureUse = saveCardForFutureUse;
 window.adjustInventoryForOrder = adjustInventoryForOrder;
 window.reloadGiftCard = reloadGiftCard;
+window.processGiftCardReloadDirectly = processGiftCardReloadDirectly;

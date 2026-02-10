@@ -207,30 +207,61 @@ async function renderCheckoutItems() {
     
     for (const item of getCart()) {
         console.log('📦 Renderizando item:', item);
-        let imageUrl = 'images/placeholder.svg';
-        if (item.image) {
-            try {
-                imageUrl = await getCheckoutItemImageUrl(item.image) || 'images/placeholder.svg';
-            } catch (error) {
-                console.warn('Error cargando imagen para', item.name, error);
-                imageUrl = 'images/placeholder.svg';
-            }
-        }
-        
         const itemPrice = item.price || 0;
         const itemQuantity = item.quantity || 1;
         const itemTotal = itemPrice * itemQuantity;
         
-        html += `
-            <div class="checkout-item-row">
-                <img src="${imageUrl}" alt="${item.name}" class="checkout-item-image">
-                <div class="checkout-item-info">
-                    <div class="checkout-item-name">${item.name || 'Producto sin nombre'}</div>
-                    <div class="checkout-item-details">$${itemPrice.toFixed(2)} x ${itemQuantity}</div>
+        // Si es una recarga de tarjeta, mostrar icono
+        if (item.type === 'giftcard_reload') {
+            html += `
+                <div class="checkout-item-row">
+                    <div class="checkout-item-icon-wrapper giftcard-icon-cart">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <div class="checkout-item-info">
+                        <div class="checkout-item-name">${item.name || 'Recarga de tarjeta'}</div>
+                        <div class="checkout-item-details">$${itemPrice.toFixed(2)} x ${itemQuantity}</div>
+                    </div>
+                    <div class="checkout-item-total">$${itemTotal.toFixed(2)}</div>
                 </div>
-                <div class="checkout-item-total">$${itemTotal.toFixed(2)}</div>
-            </div>
-        `;
+            `;
+        } else if (item.type === 'remesa') {
+            // Si es una remesa, mostrar icono de monedas
+            html += `
+                <div class="checkout-item-row">
+                    <div class="checkout-item-icon-wrapper remesa-icon-cart">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="checkout-item-info">
+                        <div class="checkout-item-name">${item.name || 'Remesa'}</div>
+                        <div class="checkout-item-details">$${itemPrice.toFixed(2)} x ${itemQuantity}</div>
+                    </div>
+                    <div class="checkout-item-total">$${itemTotal.toFixed(2)}</div>
+                </div>
+            `;
+        } else {
+            // Producto normal con imagen
+            let imageUrl = 'images/placeholder.svg';
+            if (item.image) {
+                try {
+                    imageUrl = await getCheckoutItemImageUrl(item.image) || 'images/placeholder.svg';
+                } catch (error) {
+                    console.warn('Error cargando imagen para', item.name, error);
+                    imageUrl = 'images/placeholder.svg';
+                }
+            }
+            
+            html += `
+                <div class="checkout-item-row">
+                    <img src="${imageUrl}" alt="${item.name}" class="checkout-item-image">
+                    <div class="checkout-item-info">
+                        <div class="checkout-item-name">${item.name || 'Producto sin nombre'}</div>
+                        <div class="checkout-item-details">$${itemPrice.toFixed(2)} x ${itemQuantity}</div>
+                    </div>
+                    <div class="checkout-item-total">$${itemTotal.toFixed(2)}</div>
+                </div>
+            `;
+        }
     }
 
     itemsList.innerHTML = html;
@@ -273,6 +304,39 @@ async function initializePaymentForm() {
     try {
         console.log('💳 Inicializando formulario de pago...');
         
+        // Verificar si hay remesas o recargas de tarjetas en el carrito
+        const cart = getCart();
+        const hasRemesa = cart.some(item => item.type === 'remesa');
+        const hasGiftCardReload = cart.some(item => item.type === 'giftcard_reload');
+        const requiresCardOnly = hasRemesa || hasGiftCardReload;
+        
+        // Ocultar información de recogida si hay recargas de tarjetas (no se recogen físicamente)
+        const pickupInfoSection = document.querySelector('.checkout-pickup-info');
+        const pickupInfoTitle = document.querySelector('.checkout-section-title');
+        if (hasGiftCardReload) {
+            // Ocultar toda la sección de información de recogida
+            if (pickupInfoSection) {
+                pickupInfoSection.style.display = 'none';
+            }
+            // Buscar el título que contiene "Información de Recogida"
+            const allTitles = document.querySelectorAll('.checkout-section-title');
+            allTitles.forEach(title => {
+                if (title.textContent.includes('Información de Recogida')) {
+                    title.style.display = 'none';
+                }
+            });
+        } else {
+            if (pickupInfoSection) {
+                pickupInfoSection.style.display = 'block';
+            }
+            const allTitles = document.querySelectorAll('.checkout-section-title');
+            allTitles.forEach(title => {
+                if (title.textContent.includes('Información de Recogida')) {
+                    title.style.display = 'block';
+                }
+            });
+        }
+        
         // Selector de método de pago
         const paymentMethodInputs = document.querySelectorAll('input[name="payment-method"]');
         const cardSection = document.getElementById('card-container');
@@ -281,14 +345,73 @@ async function initializePaymentForm() {
         const form = document.getElementById('payment-form');
         const cardRadio = document.querySelector('input[name="payment-method"][value="CARD"]');
         const cashRadio = document.querySelector('input[name="payment-method"][value="CASH"]');
+        const cashRadioLabel = cashRadio ? cashRadio.closest('label.payment-method-option') : null;
         
-        // Mostrar mensaje de carga inicial
-        if (statusContainer) {
-            statusContainer.innerHTML = '<div class="payment-loading"><i class="fas fa-spinner fa-spin"></i> Cargando formulario de pago...</div>';
+        // Si hay remesas o recargas, ocultar opción de efectivo y forzar tarjeta
+        if (requiresCardOnly) {
+            console.log('💳 Carrito contiene remesas o recargas - solo se permite pago con tarjeta');
+            
+            // Ocultar opción de efectivo
+            if (cashRadioLabel) {
+                cashRadioLabel.style.display = 'none';
+            }
+            if (cashRadio) {
+                cashRadio.disabled = true;
+                cashRadio.checked = false;
+            }
+            
+            // Forzar selección de tarjeta
+            if (cardRadio) {
+                cardRadio.checked = true;
+                cardRadio.disabled = false;
+            }
+            
+            // Ocultar sección de efectivo
+            if (cashSection) {
+                cashSection.style.display = 'none';
+            }
+            
+            // Mostrar sección de tarjeta
+            if (cardSection) {
+                cardSection.style.display = 'block';
+            }
+            
+            // Mostrar mensaje informativo
+            if (statusContainer) {
+                let messageText = '';
+                if (hasRemesa && hasGiftCardReload) {
+                    messageText = 'Las remesas y recargas de tarjetas solo se pueden pagar con tarjeta de crédito/débito.';
+                } else if (hasRemesa) {
+                    messageText = 'Las remesas solo se pueden pagar con tarjeta de crédito/débito.';
+                } else if (hasGiftCardReload) {
+                    messageText = 'Las recargas de tarjetas solo se pueden pagar con tarjeta de crédito/débito.';
+                }
+                
+                statusContainer.innerHTML = `
+                    <div class="payment-info-message">
+                        <i class="fas fa-info-circle"></i>
+                        <span>${messageText}</span>
+                    </div>
+                `;
+            }
+        } else {
+            // Mostrar mensaje de carga inicial solo si no hay restricciones
+            if (statusContainer) {
+                statusContainer.innerHTML = '<div class="payment-loading"><i class="fas fa-spinner fa-spin"></i> Cargando formulario de pago...</div>';
+            }
         }
         
         paymentMethodInputs.forEach(input => {
             input.addEventListener('change', () => {
+                // Si hay remesas o recargas, no permitir cambiar a efectivo
+                if (requiresCardOnly && input.value === 'CASH') {
+                    if (cardRadio) cardRadio.checked = true;
+                    if (typeof showModal === 'function') {
+                        showModal('Pago requerido', 'Las remesas y recargas de tarjetas solo se pueden pagar con tarjeta de crédito/débito.', 'warning');
+                    }
+                    return;
+                }
+                
                 const saveCardOption = document.getElementById('save-card-option');
                 if (input.value === 'CARD') {
                     if (cardSection) cardSection.style.display = 'block';
@@ -351,12 +474,42 @@ async function initializePaymentForm() {
                     </div>
                 `;
             }
-            // Deshabilitar tarjeta y seleccionar efectivo
-            if (cardRadio) cardRadio.disabled = true;
-            if (cashRadio) {
-                cashRadio.checked = true;
-                if (cardSection) cardSection.style.display = 'none';
-                if (cashSection) cashSection.style.display = 'block';
+            // Verificar si hay remesas o recargas - si las hay, no permitir efectivo
+            const cart = getCart();
+            const hasRemesa = cart.some(item => item.type === 'remesa');
+            const hasGiftCardReload = cart.some(item => item.type === 'giftcard_reload');
+            const requiresCardOnly = hasRemesa || hasGiftCardReload;
+            
+            if (requiresCardOnly) {
+                // Si hay remesas o recargas, mostrar error pero no permitir efectivo
+                if (statusContainer) {
+                    statusContainer.innerHTML = `
+                        <div class="payment-error">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Error inicializando tarjeta: ${error.message}
+                            <br><small>Las remesas y recargas de tarjetas requieren pago con tarjeta. Por favor, recarga la página o verifica tu conexión.</small>
+                        </div>
+                    `;
+                }
+                // Mantener tarjeta seleccionada y deshabilitar efectivo
+                if (cardRadio) {
+                    cardRadio.checked = true;
+                    cardRadio.disabled = false;
+                }
+                if (cashRadio) {
+                    cashRadio.disabled = true;
+                    cashRadio.checked = false;
+                }
+                if (cashSection) cashSection.style.display = 'none';
+                if (cardSection) cardSection.style.display = 'block';
+            } else {
+                // Solo deshabilitar tarjeta y seleccionar efectivo si NO hay remesas/recargas
+                if (cardRadio) cardRadio.disabled = true;
+                if (cashRadio) {
+                    cashRadio.checked = true;
+                    if (cardSection) cardSection.style.display = 'none';
+                    if (cashSection) cashSection.style.display = 'block';
+                }
             }
         }
 
@@ -371,7 +524,29 @@ async function initializePaymentForm() {
             const selectedPaymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value;
             
             if (!selectedPaymentMethod) {
-                alert('Por favor, selecciona un método de pago');
+                if (typeof showModal === 'function') {
+                    showModal('Método de pago requerido', 'Por favor, selecciona un método de pago', 'warning');
+                } else {
+                    alert('Por favor, selecciona un método de pago');
+                }
+                return;
+            }
+            
+            // Verificar que si hay remesas o recargas, solo se permita tarjeta
+            const cart = getCart();
+            const hasRemesa = cart.some(item => item.type === 'remesa');
+            const hasGiftCardReload = cart.some(item => item.type === 'giftcard_reload');
+            const requiresCardOnly = hasRemesa || hasGiftCardReload;
+            
+            if (requiresCardOnly && selectedPaymentMethod !== 'CARD') {
+                if (typeof showModal === 'function') {
+                    showModal('Pago requerido', 'Las remesas y recargas de tarjetas solo se pueden pagar con tarjeta de crédito/débito.', 'warning');
+                } else {
+                    alert('Las remesas y recargas de tarjetas solo se pueden pagar con tarjeta de crédito/débito.');
+                }
+                // Forzar selección de tarjeta
+                const cardRadio = document.querySelector('input[name="payment-method"][value="CARD"]');
+                if (cardRadio) cardRadio.checked = true;
                 return;
             }
             
@@ -434,8 +609,70 @@ async function initializePaymentForm() {
                     }
                 }
 
-                // Procesar el pago y crear la orden
-                await processPayment(selectedPaymentMethod, paymentToken, user.id);
+                // Separar recargas de tarjetas del resto del carrito
+                const cart = getCart();
+                const giftCardReloads = cart.filter(item => item.type === 'giftcard_reload');
+                const regularItems = cart.filter(item => item.type !== 'giftcard_reload');
+                
+                // Procesar recargas de tarjetas directamente (sin crear orden)
+                if (giftCardReloads.length > 0) {
+                    console.log('💳 Procesando recargas de tarjeta directamente...');
+                    for (const reloadItem of giftCardReloads) {
+                        try {
+                            // Procesar pago para la recarga
+                            const reloadAmount = reloadItem.price * reloadItem.quantity;
+                            const reloadAmountInCents = Math.round(reloadAmount * 100);
+                            
+                            let reloadPaymentToken = paymentToken;
+                            
+                            // Si es pago en efectivo, no necesitamos token
+                            if (selectedPaymentMethod === 'CASH') {
+                                // Para cash, crear un pago directo sin orden
+                                if (typeof processGiftCardReloadDirectly === 'function') {
+                                    await processGiftCardReloadDirectly(reloadItem, reloadAmountInCents, selectedPaymentMethod, null, user.id);
+                                } else {
+                                    throw new Error('Función de recarga no disponible');
+                                }
+                            } else {
+                                // Para tarjeta, usar el mismo token
+                                if (typeof processGiftCardReloadDirectly === 'function') {
+                                    await processGiftCardReloadDirectly(reloadItem, reloadAmountInCents, selectedPaymentMethod, reloadPaymentToken, user.id);
+                                } else {
+                                    throw new Error('Función de recarga no disponible');
+                                }
+                            }
+                            
+                            console.log('✅ Recarga procesada exitosamente:', reloadItem.giftCardGan);
+                        } catch (error) {
+                            console.error('❌ Error procesando recarga:', error);
+                            throw new Error(`Error al procesar recarga de tarjeta: ${error.message}`);
+                        }
+                    }
+                    
+                    // Remover recargas del carrito después de procesarlas
+                    const updatedCart = getCart().filter(item => item.type !== 'giftcard_reload');
+                    saveCart(updatedCart);
+                }
+                
+                // Procesar productos regulares (crear orden solo si hay productos)
+                if (regularItems.length > 0) {
+                    await processPayment(selectedPaymentMethod, paymentToken, user.id);
+                } else if (giftCardReloads.length > 0) {
+                    // Si solo había recargas, mostrar mensaje de éxito
+                    statusContainer.innerHTML = `
+                        <div class="payment-success">
+                            <i class="fas fa-check-circle"></i>
+                            <h3>¡Recarga exitosa!</h3>
+                            <p>Las tarjetas han sido recargadas correctamente.</p>
+                        </div>
+                    `;
+                    
+                    // Redirigir después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                    return;
+                }
                 
                 // Si llegamos aquí, el pago fue exitoso, no hay error
                 
@@ -469,8 +706,14 @@ async function processPayment(paymentMethod, paymentToken, customerId) {
     const submitButton = document.getElementById('card-button');
     
     try {
+        // Filtrar recargas - no deben estar en la verificación de inventario ni en la orden
+        const cart = getCart().filter(item => item.type !== 'giftcard_reload');
+        
+        if (cart.length === 0) {
+            throw new Error('No hay productos para procesar');
+        }
+        
         // Verificar inventario antes de procesar el pago
-        const cart = getCart();
         const outOfStockItems = [];
         const lowStockItems = [];
         

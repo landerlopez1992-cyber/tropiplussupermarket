@@ -63,7 +63,12 @@
                 </button>
                 <div class="nav-links-main">
                     <a href="products.html" class="nav-link-item">Todos los productos</a>
-                    <a href="#" class="nav-link-item">Comprar de nuevo</a>
+                    <button class="nav-link-item remesa-btn" id="remesa-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-coins"></i> Remesa
+                    </button>
+                    <button class="nav-link-item giftcard-btn" id="giftcard-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-gift"></i> Recargar Tarjeta
+                    </button>
                     <a href="ayuda.html" class="nav-link-item">Ayuda</a>
                     <a href="sobre-nosotros.html" class="nav-link-item">Sobre nosotros</a>
                     <a href="que-debe-saber.html" class="nav-link-item">Qué debe saber!</a>
@@ -208,20 +213,15 @@
                     <h4 class="footer-col-title">Ayuda?</h4>
                     <p class="footer-phone">(772) 985-1015</p>
                     <a href="que-debe-saber.html" class="footer-link">Qué debe saber!</a>
-                    <a href="#" class="footer-link">Vende con nosotros</a>
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-col-title">Tienda</h4>
                     <a href="products.html?sale=true" class="footer-link">Productos rebajados</a>
-                    <a href="products.html?free_shipping=true" class="footer-link">Productos con envío gratis</a>
-                    <a href="#" class="footer-link">Mapa del sitio</a>
                     <a href="#" class="footer-link">Términos y condiciones</a>
                     <a href="#" class="footer-link">Política de privacidad</a>
                     <a href="que-debe-saber.html" class="footer-link">Política de entregas</a>
                     <a href="que-debe-saber.html" class="footer-link">Tiempos y tarifas de entrega</a>
                     <a href="que-debe-saber.html" class="footer-link">Política de devoluciones</a>
-                    <a href="que-debe-saber.html" class="footer-link">Métodos de pago</a>
-                    <a href="#" class="footer-link">Limpiar datos</a>
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-col-title">Cliente</h4>
@@ -237,7 +237,6 @@
                     <a href="products.html" class="footer-link">Compras online</a>
                     <a href="products.html" class="footer-link">Combos de Alimentos</a>
                     <a href="que-debe-saber.html" class="footer-link">Tarifas de Entrega</a>
-                    <a href="que-debe-saber.html" class="footer-link">Entregas Días Específicos</a>
                 </div>
             </div>
             <div class="footer-pickup-info">
@@ -324,19 +323,19 @@
             <div class="main-menu-divider"></div>
             
             <div class="main-menu-help-section">
-                <a href="#" class="main-menu-nav-link">
+                <a href="ayuda.html" class="main-menu-nav-link">
                     Ayuda
                     <i class="fas fa-chevron-right"></i>
                 </a>
-                <a href="#" class="main-menu-nav-link">
+                <a href="sobre-nosotros.html" class="main-menu-nav-link">
                     Sobre nosotros
                     <i class="fas fa-chevron-right"></i>
                 </a>
-                <a href="#" class="main-menu-nav-link">
+                <a href="que-debe-saber.html" class="main-menu-nav-link">
                     Qué debe saber!
                     <i class="fas fa-chevron-right"></i>
                 </a>
-                <a href="#" class="main-menu-nav-link">
+                <a href="contacto.html" class="main-menu-nav-link">
                     Contacto
                     <i class="fas fa-chevron-right"></i>
                 </a>
@@ -437,8 +436,11 @@
     <script src="js/square-config.js"></script>
     <script src="js/square-integration.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/square-orders.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/remesa.js"></script>
+    <script src="js/giftcard.js"></script>
+    <script src="js/square-orders.js"></script>
     <script src="js/checkout.js"></script>
 </body>
 </html>

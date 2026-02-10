@@ -41,9 +41,10 @@ async function loadProductDetails(productId) {
         // Renderizar detalles del producto
         renderProductDetails(currentProduct);
         
-        // Cargar productos relacionados
-        if (itemData.categories && itemData.categories.length > 0) {
-            loadRelatedProducts(itemData.categories[0].id);
+        // Cargar productos relacionados por la misma categoría real del producto.
+        const currentCategoryId = itemData.category_id || itemData.categories?.[0]?.id;
+        if (currentCategoryId) {
+            loadRelatedProducts(currentCategoryId);
         }
         
         console.log('✅ Producto cargado:', currentProduct);
@@ -135,8 +136,14 @@ async function renderProductDetails(product) {
     }
     
     // Categoría
-    if (itemData.categories && itemData.categories.length > 0) {
-        const categoryName = itemData.categories[0].name || 'Sin categoría';
+    const categoryId = itemData.category_id || itemData.categories?.[0]?.id;
+    if (categoryId) {
+        let categoryName =
+            itemData.categories?.[0]?.name ||
+            (typeof squareCategories !== 'undefined'
+                ? (squareCategories.find(c => c.id === categoryId)?.category_data?.name || null)
+                : null) ||
+            'Sin categoría';
         document.getElementById('product-category').textContent = categoryName;
         document.getElementById('breadcrumb-category').textContent = categoryName;
     }
@@ -156,11 +163,30 @@ async function renderProductDetails(product) {
 
 async function loadRelatedProducts(categoryId) {
     try {
-        // Obtener productos de la misma categoría
-        const products = squareProducts.filter(product => {
+        if (!categoryId) {
+            renderRelatedProducts([]);
+            return;
+        }
+
+        // En esta página squareProducts puede no estar cargado aún.
+        // Si está vacío, consultamos directamente a Square.
+        let sourceProducts = Array.isArray(squareProducts) ? squareProducts : [];
+        if (sourceProducts.length === 0) {
+            const response = await squareApiCall('/v2/catalog/search', 'POST', {
+                object_types: ['ITEM']
+            });
+            sourceProducts = response?.objects || [];
+        }
+
+        // Obtener productos de la misma categoría usando category_id y categories[].
+        const products = sourceProducts.filter(product => {
             const itemData = product.item_data;
-            if (!itemData || !itemData.categories) return false;
-            return itemData.categories.some(cat => cat.id === categoryId);
+            if (!itemData) return false;
+            const categoryIds = new Set([
+                itemData.category_id,
+                ...(Array.isArray(itemData.categories) ? itemData.categories.map(c => c?.id) : [])
+            ].filter(Boolean));
+            return categoryIds.has(categoryId);
         });
         
         // Filtrar el producto actual y tomar solo 5

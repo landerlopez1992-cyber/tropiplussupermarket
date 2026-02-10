@@ -170,6 +170,19 @@ async function handleLogin(e) {
         
         console.log('✅ Contraseña válida, procediendo con login');
 
+        // Verificar si el usuario es administrador desde customer.note o metadata
+        const customerNote = customer.note || '';
+        const customerEmail = customer.email_address || '';
+        const isAdmin = customerNote.includes('"isAdmin":true') || 
+                       customerNote.includes('"credenciales":true') ||
+                       customerEmail.toLowerCase() === 'tallercell0133@gmail.com'; // Usuario específico como admin
+        
+        console.log('🔐 Verificando admin:', {
+            email: customerEmail,
+            note: customerNote,
+            isAdmin: isAdmin
+        });
+
         // Crear sesión de usuario
         const userSession = {
             id: customer.id,
@@ -179,6 +192,8 @@ async function handleLogin(e) {
             phone_number: customer.phone_number,
             address: customer.address,
             loggedIn: true,
+            isAdmin: isAdmin,
+            credenciales: isAdmin,
             loginTime: Date.now()
         };
 
@@ -212,9 +227,9 @@ async function handleLogin(e) {
         console.log('🔄 Redirigiendo a index.html en 1 segundo...');
         setTimeout(() => {
             console.log('✅ Redirigiendo ahora a index.html...');
-            // Forzar recarga completa
+            // Forzar recarga completa (aumentado medio segundo más)
             window.location.replace('index.html');
-        }, 1000);
+        }, 1500);
 
     } catch (error) {
         console.error('Error en login:', error);
@@ -311,6 +326,12 @@ async function handleRegister(e) {
         if (newCustomer && newCustomer.customer) {
             // Guardar información del usuario (sin contraseña por seguridad)
             // En producción, la contraseña debe manejarse en el servidor
+            // Verificar si el usuario es administrador desde customer.note o metadata
+            const customerNote = newCustomer.customer.note || '';
+            const isAdmin = customerNote.includes('"isAdmin":true') || 
+                           customerNote.includes('"credenciales":true') ||
+                           newCustomer.customer.email_address === 'tallercell0133@gmail.com'; // Usuario específico como admin
+            
             const userSession = {
                 id: newCustomer.customer.id,
                 email: newCustomer.customer.email_address,
@@ -319,6 +340,8 @@ async function handleRegister(e) {
                 phone_number: newCustomer.customer.phone_number,
                 address: newCustomer.customer.address,
                 loggedIn: true,
+                isAdmin: isAdmin,
+                credenciales: isAdmin,
                 loginTime: Date.now()
             };
 
@@ -475,6 +498,13 @@ function getCurrentUser() {
     }
 }
 
+// Función para verificar si el usuario es administrador
+function isUserAdmin() {
+    const user = getCurrentUser();
+    if (!user) return false;
+    return user.isAdmin === true || user.credenciales === true;
+}
+
 // Función para cerrar sesión
 function logout() {
     console.log('🚪 Cerrando sesión...');
@@ -523,4 +553,5 @@ function showLoginSpinner() {
 // Hacer funciones disponibles globalmente
 window.isUserLoggedIn = isUserLoggedIn;
 window.getCurrentUser = getCurrentUser;
+window.isUserAdmin = isUserAdmin;
 window.logout = logout;

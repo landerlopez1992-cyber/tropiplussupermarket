@@ -51,7 +51,7 @@
         </div>
     </header>
 
-    <!-- Barra de Navegación -->
+    <!-- Barra de Navegación Azul Oscuro -->
     <div class="nav-bar-dark-blue">
         <div class="container">
             <div class="nav-bar-inner">
@@ -60,7 +60,12 @@
                 </button>
                 <div class="nav-links-main">
                     <a href="products.html" class="nav-link-item">Todos los productos</a>
-                    <a href="#" class="nav-link-item">Comprar de nuevo</a>
+                    <button class="nav-link-item remesa-btn" id="remesa-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-coins"></i> Remesa
+                    </button>
+                    <button class="nav-link-item giftcard-btn" id="giftcard-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-gift"></i> Recargar Tarjeta
+                    </button>
                     <a href="ayuda.html" class="nav-link-item">Ayuda</a>
                     <a href="sobre-nosotros.html" class="nav-link-item">Sobre nosotros</a>
                     <a href="que-debe-saber.html" class="nav-link-item">Qué debe saber!</a>
@@ -217,20 +222,15 @@
                     <h4 class="footer-col-title">Ayuda?</h4>
                     <p class="footer-phone">(772) 985-1015</p>
                     <a href="que-debe-saber.html" class="footer-link">Qué debe saber!</a>
-                    <a href="#" class="footer-link">Vende con nosotros</a>
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-col-title">Tienda</h4>
                     <a href="products.html?sale=true" class="footer-link">Productos rebajados</a>
-                    <a href="products.html?free_shipping=true" class="footer-link">Productos con envío gratis</a>
-                    <a href="#" class="footer-link">Mapa del sitio</a>
                     <a href="#" class="footer-link">Términos y condiciones</a>
                     <a href="#" class="footer-link">Política de privacidad</a>
                     <a href="que-debe-saber.html" class="footer-link">Política de entregas</a>
                     <a href="que-debe-saber.html" class="footer-link">Tiempos y tarifas de entrega</a>
                     <a href="que-debe-saber.html" class="footer-link">Política de devoluciones</a>
-                    <a href="que-debe-saber.html" class="footer-link">Métodos de pago</a>
-                    <a href="#" class="footer-link">Limpiar datos</a>
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-col-title">Cliente</h4>
@@ -246,7 +246,6 @@
                     <a href="products.html" class="footer-link">Compras online</a>
                     <a href="products.html" class="footer-link">Combos de Alimentos</a>
                     <a href="que-debe-saber.html" class="footer-link">Tarifas de Entrega</a>
-                    <a href="que-debe-saber.html" class="footer-link">Entregas Días Específicos</a>
                 </div>
             </div>
             <div class="footer-pickup-info">
@@ -264,6 +263,135 @@
             </div>
         </div>
     </footer>
+
+    <!-- Modal de Remesa -->
+    <div class="remesa-modal" id="remesa-modal">
+        <div class="remesa-modal-content">
+            <div class="remesa-modal-header">
+                <h2 class="remesa-modal-title">
+                    <i class="fas fa-coins"></i> Enviar Remesa
+                </h2>
+                <button class="remesa-modal-close" id="remesa-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="remesa-modal-body">
+                <p class="remesa-description">Envíe una remesa a su ser querido. Se aplica un 10% de comisión por el servicio.</p>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-recipient-name" class="remesa-label">Nombre y Apellidos de quien recogerá:</label>
+                    <input type="text" id="remesa-recipient-name" class="remesa-input" placeholder="Nombre completo" required>
+                </div>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-recipient-id" class="remesa-label">Carnet de Identidad:</label>
+                    <input type="text" id="remesa-recipient-id" class="remesa-input" placeholder="CI" required>
+                </div>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-currency" class="remesa-label">Moneda a entregar:</label>
+                    <select id="remesa-currency" class="remesa-select">
+                        <option value="USD">USD (Dólares)</option>
+                        <option value="CUP">CUP (Pesos Cubanos)</option>
+                    </select>
+                </div>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-amount" class="remesa-label">Cantidad a enviar:</label>
+                    <div class="remesa-amount-input-wrapper">
+                        <span class="remesa-currency-symbol" id="remesa-currency-symbol">$</span>
+                        <input type="number" id="remesa-amount" class="remesa-amount-input" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="remesa-calculation">
+                    <div class="remesa-calculation-row">
+                        <span>Cantidad:</span>
+                        <span id="remesa-base-amount">$0.00</span>
+                    </div>
+                    <div class="remesa-calculation-row">
+                        <span>Comisión (10%):</span>
+                        <span id="remesa-fee-amount">$0.00</span>
+                    </div>
+                    <div class="remesa-calculation-row remesa-total">
+                        <span><strong>Total a pagar:</strong></span>
+                        <span id="remesa-total-amount"><strong>$0.00</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div class="remesa-modal-footer">
+                <button class="remesa-btn-cancel" id="remesa-btn-cancel">Cancelar</button>
+                <button class="remesa-btn-add" id="remesa-btn-add">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Recarga de Tarjeta de Regalo -->
+    <div class="giftcard-modal" id="giftcard-modal">
+        <div class="giftcard-modal-content">
+            <div class="giftcard-modal-header">
+                <h2 class="giftcard-modal-title">
+                    <i class="fas fa-gift"></i> Recargar Tarjeta Tropiplus Supermarket
+                </h2>
+                <button class="giftcard-modal-close" id="giftcard-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="giftcard-modal-body">
+                <p class="giftcard-description">Recargue su tarjeta de regalo de Tropiplus Supermarket o verifique el saldo disponible.</p>
+                
+                <div class="giftcard-form-group">
+                    <label for="giftcard-number" class="giftcard-label">Número de Tarjeta:</label>
+                    <input type="text" id="giftcard-number" class="giftcard-input" placeholder="Ingrese el número de la tarjeta" maxlength="20">
+                </div>
+                
+                <div class="giftcard-actions">
+                    <button class="giftcard-btn-check" id="giftcard-btn-check">
+                        <i class="fas fa-search-dollar"></i> Verificar Saldo
+                    </button>
+                </div>
+                
+                <div class="giftcard-balance-info" id="giftcard-balance-info" style="display: none;">
+                    <div class="giftcard-balance-card">
+                        <h3>Información de la Tarjeta</h3>
+                        <div class="giftcard-balance-details">
+                            <p><strong>Saldo actual:</strong> <span id="giftcard-current-balance">$0.00</span></p>
+                            <p><strong>Estado:</strong> <span id="giftcard-status">-</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="giftcard-reload-section" id="giftcard-reload-section" style="display: none;">
+                    <div class="giftcard-form-group">
+                        <label for="giftcard-reload-amount" class="giftcard-label">Cantidad a recargar:</label>
+                        <div class="giftcard-amount-input-wrapper">
+                            <span class="giftcard-currency-symbol">$</span>
+                            <input type="number" id="giftcard-reload-amount" class="giftcard-amount-input" placeholder="0.00" min="1" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div class="giftcard-calculation">
+                        <div class="giftcard-calculation-row">
+                            <span>Saldo actual:</span>
+                            <span id="giftcard-balance-display">$0.00</span>
+                        </div>
+                        <div class="giftcard-calculation-row">
+                            <span>Recarga:</span>
+                            <span id="giftcard-reload-display">$0.00</span>
+                        </div>
+                        <div class="giftcard-calculation-row giftcard-total">
+                            <span><strong>Nuevo saldo:</strong></span>
+                            <span id="giftcard-new-balance"><strong>$0.00</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="giftcard-modal-footer">
+                <button class="giftcard-btn-cancel" id="giftcard-btn-cancel">Cancelar</button>
+                <button class="giftcard-btn-reload" id="giftcard-btn-reload" style="display: none;">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Sidebar de Menú Principal -->
     <div class="main-menu-overlay" id="main-menu-overlay"></div>
@@ -314,6 +442,14 @@
                 </a>
                 <a href="#" class="main-menu-nav-link" id="open-categories-from-menu">
                     Categorías
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="products.html?sale=true" class="main-menu-nav-link">
+                    Productos rebajados
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                <a href="products.html?free_shipping=true" class="main-menu-nav-link">
+                    Productos con envío gratis
                     <i class="fas fa-chevron-right"></i>
                 </a>
             </div>
@@ -414,8 +550,12 @@
         </div>
     </aside>
 
-    <script src="js/main.js"></script>
+    <script src="js/square-config.js"></script>
     <script src="js/square-integration.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/remesa.js"></script>
+    <script src="js/giftcard.js"></script>
 </body>
 </html>

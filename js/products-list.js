@@ -62,7 +62,10 @@ function loadAllProducts() {
         const itemData = product.item_data;
         if (!itemData) return false;
         const name = itemData.name?.toLowerCase() || '';
-        return !name.includes('renta') && !name.includes('car rental');
+        // Filtrar productos que no deben mostrarse
+        if (name.includes('renta') || name.includes('car rental')) return false;
+        if (name.includes('remesa')) return false; // Ocultar Remesa del catálogo
+        return true;
     });
     
     renderProducts();
@@ -76,6 +79,9 @@ function loadProductsByCategory(categoryId, categoryName) {
     filteredProducts = squareProducts.filter(product => {
         const itemData = product.item_data;
         if (!itemData || !itemData.categories) return false;
+        const name = itemData.name?.toLowerCase() || '';
+        // Filtrar Remesa del catálogo
+        if (name.includes('remesa')) return false;
         return itemData.categories.some(cat => cat.id === categoryId);
     });
     
@@ -87,8 +93,14 @@ function loadSaleProducts() {
     document.getElementById('page-title').textContent = 'Productos rebajados - Tropiplus Supermarket';
     document.getElementById('breadcrumb-category').textContent = 'Productos rebajados';
     
-    // Filtrar productos - todos los productos disponibles
-    filteredProducts = squareProducts;
+    // Filtrar productos - excluir Remesa
+    filteredProducts = squareProducts.filter(product => {
+        const itemData = product.item_data;
+        if (!itemData) return false;
+        const name = itemData.name?.toLowerCase() || '';
+        if (name.includes('remesa')) return false; // Ocultar Remesa
+        return true;
+    });
     
     renderProducts();
 }
@@ -98,10 +110,156 @@ function loadFreeShippingProducts() {
     document.getElementById('page-title').textContent = 'Productos con envío gratis - Tropiplus Supermarket';
     document.getElementById('breadcrumb-category').textContent = 'Productos con envío gratis';
     
-    // Por ahora, mostrar todos los productos
-    filteredProducts = squareProducts;
+    // Filtrar productos - excluir Remesa
+    filteredProducts = squareProducts.filter(product => {
+        const itemData = product.item_data;
+        if (!itemData) return false;
+        const name = itemData.name?.toLowerCase() || '';
+        if (name.includes('remesa')) return false; // Ocultar Remesa
+        return true;
+    });
     
     renderProducts();
+}
+
+function loadSearchResults(query) {
+    document.getElementById('category-title').textContent = `Resultados de búsqueda: "${query}"`;
+    document.getElementById('page-title').textContent = `Búsqueda: "${query}" - Tropiplus Supermarket`;
+    document.getElementById('breadcrumb-category').textContent = `Búsqueda: "${query}"`;
+    
+    // Intentar obtener resultados guardados en localStorage
+    const savedResults = localStorage.getItem('tropiplus_search_results');
+    if (savedResults) {
+        try {
+            filteredProducts = JSON.parse(savedResults);
+            localStorage.removeItem('tropiplus_search_results');
+            renderProducts();
+            return;
+        } catch (e) {
+            console.error('Error parsing search results:', e);
+        }
+    }
+    
+    // Si no hay resultados guardados, buscar en tiempo real
+    const searchTerm = query.toLowerCase().trim();
+    filteredProducts = squareProducts.filter(product => {
+        const itemData = product.item_data;
+        if (!itemData) return false;
+        const name = itemData.name?.toLowerCase() || '';
+        // Excluir Remesa de las búsquedas
+        if (name.includes('remesa')) return false;
+        // Buscar coincidencias
+        return name.includes(searchTerm);
+    });
+    
+    renderProducts();
+}
+
+async function loadBuyAgainProducts() {
+    document.getElementById('category-title').textContent = 'Comprar de nuevo';
+    document.getElementById('page-title').textContent = 'Comprar de nuevo - Tropiplus Supermarket';
+    document.getElementById('breadcrumb-category').textContent = 'Comprar de nuevo';
+    
+    // Verificar si el usuario está logueado
+    if (typeof isUserLoggedIn !== 'function' || !isUserLoggedIn()) {
+        showModal('Iniciar sesión requerido', 'Debes iniciar sesión para ver tus compras anteriores.', 'info');
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 2000);
+        return;
+    }
+    
+    try {
+        const user = getCurrentUser();
+        if (!user || !user.id) {
+            throw new Error('Usuario no encontrado');
+        }
+        
+        // Obtener órdenes del usuario desde Square
+        const orders = await getCustomerOrders(user.id);
+        
+        // Extraer todos los productos únicos de las órdenes completadas
+        const purchasedProductIds = new Set();
+        const purchasedProducts = [];
+        
+        orders.forEach(order => {
+            // Solo considerar órdenes completadas y pagadas
+            // Usar función helper si está disponible, sino verificar directamente
+            let isPaid = false;
+            if (typeof isOrderPaidSuccessfully === 'function') {
+                isPaid = isOrderPaidSuccessfully(order);
+            } else {
+                // Fallback: verificar tenders
+                isPaid = order.tenders && order.tenders.some(t => 
+                    t.state === 'CAPTURED' || t.state === 'COMPLETED'
+                );
+            }
+            
+            if ((order.state === 'COMPLETED' || order.state === 'OPEN') && isPaid) {
+                if (order.line_items) {
+                    order.line_items.forEach(item => {
+                        // Ignorar remesas y recargas de tarjetas
+                        if (item.note && (item.note.includes('Remesa') || item.note.includes('Recarga Tarjeta'))) {
+                            return;
+                        }
+                        
+                        // Ignorar CUSTOM_AMOUNT items (remesas, etc.)
+                        if (item.item_type === 'CUSTOM_AMOUNT') {
+                            return;
+                        }
+                        
+                        // Obtener el catalog_object_id (variation ID)
+                        if (item.catalog_object_id) {
+                            purchasedProductIds.add(item.catalog_object_id);
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Buscar los productos correspondientes en squareProducts
+        purchasedProductIds.forEach(variationId => {
+            // Buscar el producto que contiene esta variación
+            const product = squareProducts.find(p => {
+                const itemData = p.item_data;
+                if (!itemData || !itemData.variations) return false;
+                return itemData.variations.some(v => v.id === variationId);
+            });
+            
+            if (product) {
+                // Verificar que no esté duplicado
+                if (!purchasedProducts.find(p => p.id === product.id)) {
+                    purchasedProducts.push(product);
+                }
+            }
+        });
+        
+        filteredProducts = purchasedProducts;
+        
+        if (filteredProducts.length === 0) {
+            document.getElementById('products-grid').innerHTML = `
+                <div class="no-products-message" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                    <div class="no-products-icon" style="font-size: 64px; color: var(--gray-text); margin-bottom: 20px;">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <h3 class="no-products-title" style="font-size: 24px; color: var(--black); margin-bottom: 10px;">
+                        No tienes compras anteriores
+                    </h3>
+                    <p class="no-products-text" style="font-size: 16px; color: var(--gray-text);">
+                        Cuando realices tu primera compra, los productos aparecerán aquí para que puedas comprarlos nuevamente.
+                    </p>
+                    <a href="products.html" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: var(--green-categories); color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">
+                        Ver todos los productos
+                    </a>
+                </div>
+            `;
+        } else {
+            renderProducts();
+        }
+    } catch (error) {
+        console.error('Error cargando compras anteriores:', error);
+        showModal('Error', 'No se pudieron cargar tus compras anteriores. Por favor, intenta de nuevo.', 'error');
+    }
 }
 
 async function renderProducts() {

@@ -1,3 +1,60 @@
+/* Promo ticker */
+.promo-ticker-bar {
+  width: 100%;
+  display: block !important;
+  background: linear-gradient(90deg, #1f318a 0%, #2a3ea5 50%, #1f318a 100%);
+  border-top: 2px solid #42b649;
+  border-bottom: 2px solid #42b649;
+  overflow: hidden;
+  position: relative;
+  z-index: 100;
+  min-height: 40px;
+  line-height: 40px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: 0;
+  padding: 0;
+}
+
+.promo-ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  min-width: 200%;
+  animation: promoTickerSlide var(--promo-duration, 14s) linear infinite;
+}
+
+.promo-ticker-item {
+  display: inline-block;
+  padding: 0 20px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  line-height: 40px;
+  vertical-align: middle;
+}
+
+.promo-ticker-link {
+  color: #ffeb3b;
+  text-decoration: none;
+}
+
+.promo-ticker-link:hover {
+  color: #fff176;
+  text-decoration: underline;
+}
+
+@keyframes promoTickerSlide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes promoPreviewMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ============================================
    TROPIPLUS SUPERMARKET - ESTRUCTURA EXACTA
    Basado en el sitio original
@@ -277,6 +334,8 @@ img {
     justify-content: space-between;
     align-items: center;
     gap: 20px;
+    flex-wrap: nowrap;
+    overflow: visible;
 }
 
 .menu-hamburger {
@@ -293,6 +352,9 @@ img {
     gap: 25px;
     align-items: center;
     flex: 1;
+    flex-wrap: nowrap;
+    overflow: visible;
+    min-width: 0;
 }
 
 .nav-link-item {
@@ -312,13 +374,19 @@ img {
 .remesa-btn,
 .giftcard-btn {
     color: var(--white) !important;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
     transition: opacity 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
 }
 
 .remesa-btn:hover,
@@ -1991,6 +2059,39 @@ img {
     display: flex;
     gap: 16px;
     padding: 16px 0;
+    align-items: center;
+}
+
+.cart-item-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.giftcard-icon-cart {
+    background: linear-gradient(135deg, var(--red-logo) 0%, #c62828 100%);
+    color: var(--white);
+    font-size: 24px;
+}
+
+.remesa-icon-cart {
+    background: linear-gradient(135deg, var(--green-categories) 0%, var(--green-categories-dark) 100%);
+    color: var(--white);
+    font-size: 24px;
+}
+
+.cart-item-image {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: var(--gray-light);
+    padding: 8px;
+    flex-shrink: 0;
     border-bottom: 1px solid var(--gray-border);
     position: relative;
     align-items: center;
@@ -2614,19 +2715,20 @@ img {
     width: 80px;
     height: 80px;
     object-fit: contain;
-    animation: spinLogo 1.5s linear infinite;
+    animation: spinLogo 2s linear infinite;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    transform-style: preserve-3d;
 }
 
 @keyframes spinLogo {
     0% {
-        transform: rotate(0deg) scale(1);
+        transform: rotateY(0deg) scale(1);
     }
     50% {
-        transform: rotate(180deg) scale(1.1);
+        transform: rotateY(180deg) scale(1.1);
     }
     100% {
-        transform: rotate(360deg) scale(1);
+        transform: rotateY(360deg) scale(1);
     }
 }
 
@@ -6804,4 +6906,316 @@ img {
         padding: 6px 14px;
         font-size: 12px;
     }
+}
+
+/* ============================================
+   MODAL PERSONALIZADO (reemplazo de alert)
+   ============================================ */
+.custom-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.custom-modal-content {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 0;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.custom-modal.active .custom-modal-content {
+    transform: scale(1);
+}
+
+.custom-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.custom-modal-header .modal-icon-success,
+.custom-modal-header .modal-icon-error,
+.custom-modal-header .modal-icon-warning,
+.custom-modal-header .modal-icon-info {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.modal-icon-success {
+    background-color: #4caf50;
+    color: var(--white);
+}
+
+.modal-icon-error {
+    background-color: var(--red-badge);
+    color: var(--white);
+}
+
+.modal-icon-warning {
+    background-color: var(--yellow-button);
+    color: var(--black);
+}
+
+.modal-icon-info {
+    background-color: var(--light-blue-header);
+    color: var(--white);
+}
+
+.custom-modal-title {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--black);
+    margin: 0;
+}
+
+.custom-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--gray-text);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.custom-modal-close:hover {
+    background-color: var(--gray-light);
+    color: var(--black);
+}
+
+.custom-modal-body {
+    padding: 20px 24px;
+}
+
+.custom-modal-body p {
+    margin: 0;
+    font-size: 16px;
+    color: var(--gray-text);
+    line-height: 1.6;
+}
+
+.custom-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.custom-modal-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.custom-modal-btn-primary {
+    background-color: var(--green-categories);
+    color: var(--white);
+}
+
+.custom-modal-btn-primary:hover {
+    background-color: var(--green-categories-dark);
+}
+
+/* ============================================
+   ICONOS DE RECARGA Y REMESA EN CARRITO
+   ============================================ */
+.cart-item-icon-wrapper,
+.checkout-item-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.giftcard-icon-cart {
+    background: linear-gradient(135deg, var(--red-logo) 0%, #c62828 100%);
+    color: var(--white);
+    font-size: 24px;
+    box-shadow: 0 2px 8px rgba(229, 57, 53, 0.3);
+}
+
+.remesa-icon-cart {
+    background: linear-gradient(135deg, var(--green-categories) 0%, var(--green-categories-dark) 100%);
+    color: var(--white);
+    font-size: 24px;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+/* ============================================
+   TARJETAS DE REMESA EN ÓRDENES
+   ============================================ */
+.order-card-remesa {
+    border-left: 4px solid var(--green-categories);
+    background: linear-gradient(to right, rgba(76, 175, 80, 0.05) 0%, transparent 100%);
+}
+
+.remesa-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, transparent 100%);
+    border-radius: 8px 8px 0 0;
+}
+
+.remesa-icon-large {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--green-categories) 0%, var(--green-categories-dark) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 32px;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    flex-shrink: 0;
+}
+
+.remesa-title {
+    color: var(--green-categories-dark);
+}
+
+.remesa-state {
+    font-weight: 700;
+}
+
+.remesa-processing {
+    background-color: var(--yellow-button);
+    color: var(--black);
+}
+
+.remesa-ready {
+    background-color: var(--green-categories);
+    color: var(--white);
+}
+
+.remesa-completed {
+    background-color: var(--green-categories-dark);
+    color: var(--white);
+}
+
+.remesa-details-section {
+    padding: 20px;
+    background: var(--gray-light);
+    border-radius: 8px;
+    margin: 16px 20px;
+}
+
+.remesa-info-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.remesa-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--white);
+    border-radius: 6px;
+    border-left: 3px solid var(--green-categories);
+}
+
+.remesa-label {
+    font-weight: 600;
+    color: var(--gray-text);
+    font-size: 14px;
+}
+
+.remesa-value {
+    font-weight: 700;
+    color: var(--black);
+    font-size: 16px;
+}
+
+.remesa-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(76, 175, 80, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid var(--green-categories);
+}
+
+.remesa-item-icon {
+    color: var(--green-categories);
+    font-size: 20px;
+}
+
+.remesa-progress {
+    margin: 20px;
+    padding: 20px;
+    background: var(--gray-light);
+    border-radius: 8px;
+}
+
+/* ============================================
+   MENSAJE INFORMATIVO DE PAGO
+   ============================================ */
+.payment-info-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+    border-left: 4px solid var(--green-categories);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: var(--black);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.payment-info-message i {
+    color: var(--green-categories);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.payment-info-message span {
+    flex: 1;
 }

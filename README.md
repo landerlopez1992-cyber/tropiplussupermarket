@@ -60,7 +60,7 @@ http://localhost:8080
 ## 📁 Estructura del Proyecto
 
 ```
-supermarket23/
+tropiplus-supermarket/
 ├── css/
 │   └── style.css          # Estilos principales
 ├── js/
