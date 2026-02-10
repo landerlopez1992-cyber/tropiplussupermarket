@@ -605,10 +605,24 @@ function initPromotionTab() {
         }
 
         savePromotionConfig(config);
+        
+        // Actualizar vista previa con los valores guardados
         updatePromotionPreview();
         
+        // Verificar que se guardó correctamente
+        const saved = getPromotionConfig();
         console.log('✅ [Admin] Promoción guardada:', config);
+        console.log('✅ [Admin] Verificación lectura después de guardar:', saved);
         console.log('✅ [Admin] localStorage actualizado:', localStorage.getItem(PROMO_STORAGE_KEY));
+        
+        // Comparar valores guardados vs leídos
+        if (saved.fontSize !== config.fontSize || saved.textColor !== config.textColor || saved.bgColor !== config.bgColor) {
+            console.error('❌ [Admin] INCONSISTENCIA: Los valores guardados no coinciden con los leídos!');
+            console.error('❌ [Admin] Guardado:', { fontSize: config.fontSize, textColor: config.textColor, bgColor: config.bgColor });
+            console.error('❌ [Admin] Leído:', { fontSize: saved.fontSize, textColor: saved.textColor, bgColor: saved.bgColor });
+        } else {
+            console.log('✅ [Admin] Valores guardados y leídos coinciden correctamente');
+        }
 
         if (typeof showModal === 'function') {
             showModal('Éxito', 'Promoción guardada correctamente. La barra promocional aparecerá en la página principal.', 'success');

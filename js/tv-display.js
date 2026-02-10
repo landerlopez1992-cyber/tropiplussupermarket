@@ -263,13 +263,17 @@ async function loadProductsForTv(tvConfig) {
       const lower = itemData.name.toLowerCase();
       if (lower.includes('remesa') || lower.includes('recarga tarjeta')) return false;
 
-      if (!tvConfig.categoryId) return true;
+      if (!tvConfig.categoryId || tvConfig.categoryId === '') return true;
       const categoryId = itemData.category_id || itemData.categories?.[0]?.id || '';
       return categoryId === tvConfig.categoryId;
     });
 
+    console.log('🔍 [TV] Productos filtrados:', filtered.length, 'de', items.length, 'total');
+    console.log('🔍 [TV] Configuración de categoría:', tvConfig.categoryId || 'Todas');
+
     const maxCount = Math.max(1, parseInt(tvConfig.productCount || 8, 10));
     allTvProducts = filtered.slice(0, maxCount);
+    console.log('✅ [TV] Productos finales para mostrar:', allTvProducts.length);
   } catch (error) {
     console.error('Error cargando productos para TV:', error);
     allTvProducts = [];
