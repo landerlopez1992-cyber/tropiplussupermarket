@@ -502,6 +502,44 @@ window.createSquareOrder = createSquareOrder;
 window.getCustomerOrders = getCustomerOrders;
 window.getOrderById = getOrderById;
 window.updateOrderState = updateOrderState;
+/**
+ * Recargar una tarjeta de regalo usando Square Gift Cards API
+ * @param {Object} giftCardData - Datos de la tarjeta y recarga
+ * @returns {Promise} Respuesta de Square
+ */
+async function reloadGiftCard(giftCardData) {
+    try {
+        const { giftCardId, reloadAmount } = giftCardData;
+        const amountInCents = Math.round(reloadAmount * 100);
+
+        // Usar Square Payments API para recargar la tarjeta
+        // Square permite recargar tarjetas usando Payments API con gift_card_id como source_id
+        const paymentData = {
+            idempotency_key: `giftcard_reload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            source_id: giftCardId,
+            amount_money: {
+                amount: amountInCents,
+                currency: 'USD'
+            },
+            location_id: SQUARE_CONFIG.locationId,
+            note: `Recarga de tarjeta de regalo Tropiplus - ${giftCardData.giftCardGan || 'N/A'}`
+        };
+
+        const response = await squareApiCall('/v2/payments', 'POST', paymentData);
+        
+        if (response && response.payment) {
+            console.log('✅ Tarjeta de regalo recargada exitosamente:', response.payment.id);
+            return response.payment;
+        } else {
+            throw new Error('No se pudo recargar la tarjeta de regalo');
+        }
+    } catch (error) {
+        console.error('❌ Error recargando tarjeta de regalo:', error);
+        throw error;
+    }
+}
+
 window.processCashPayment = processCashPayment;
 window.saveCardForFutureUse = saveCardForFutureUse;
 window.adjustInventoryForOrder = adjustInventoryForOrder;
+window.reloadGiftCard = reloadGiftCard;
