@@ -365,15 +365,19 @@ function getPromotionConfig() {
 
 function savePromotionConfig(config) {
     const normalizedText = String(config.text || '').trim();
-    localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify({
+    const savedConfig = {
         // Si hay texto, se considera activa para evitar que no aparezca por error de checkbox.
-        enabled: Boolean(normalizedText),
+        enabled: Boolean(normalizedText) || Boolean(config.enabled),
         text: normalizedText,
         speed: ['slow', 'normal', 'fast'].includes(config.speed) ? config.speed : 'normal',
         linkEnabled: Boolean(config.linkEnabled),
         url: String(config.url || '').trim(),
         updatedAt: Date.now()
-    }));
+    };
+    
+    localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify(savedConfig));
+    console.log('💾 [Admin] Promoción guardada en localStorage:', savedConfig);
+    console.log('💾 [Admin] Verificación:', localStorage.getItem(PROMO_STORAGE_KEY));
 }
 
 function initPromotionTab() {
