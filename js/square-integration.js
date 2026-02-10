@@ -143,7 +143,6 @@ async function loadSquareProducts() {
     }
     
     renderBestSellers(products);
-    renderYeyaCombos(products);
     renderRecommendations(products);
     
     console.log('✅ Productos cargados:', products.length);

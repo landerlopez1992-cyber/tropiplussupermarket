@@ -126,22 +126,40 @@ function initGiftCardSystem() {
                 }
             }
             
-            // Si aún no se encuentra, intentar buscar sin exact_query (búsqueda más amplia)
+            // Si aún no se encuentra, intentar buscar todas las tarjetas y filtrar por GAN
             if (!response || !response.gift_cards || response.gift_cards.length === 0) {
-                console.log('🔍 Intentando búsqueda más amplia...');
+                console.log('🔍 Intentando obtener todas las tarjetas y filtrar...');
                 try {
-                    // Intentar buscar todas las tarjetas y filtrar localmente
-                    response = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
-                        query: {
-                            exact_query: {
-                                gan: cardNumber
-                            }
-                        },
+                    // Obtener todas las tarjetas (sin filtro) y buscar manualmente
+                    const allCardsResponse = await squareApiCall(`/v2/gift-cards/search`, 'POST', {
+                        query: {},
                         limit: 100
                     });
-                    console.log('✅ Respuesta de Square (búsqueda amplia):', response);
+                    
+                    console.log('📋 Todas las tarjetas obtenidas:', allCardsResponse);
+                    
+                    if (allCardsResponse && allCardsResponse.gift_cards) {
+                        // Buscar manualmente por GAN completo o parcial
+                        const foundCard = allCardsResponse.gift_cards.find(card => {
+                            const gan = card.gan || '';
+                            // Buscar coincidencia exacta, final o inicio
+                            return gan === cardNumber || 
+                                   gan.endsWith(cardNumber) || 
+                                   cardNumber.endsWith(gan) ||
+                                   gan.includes(cardNumber) ||
+                                   cardNumber.includes(gan);
+                        });
+                        
+                        if (foundCard) {
+                            response = { gift_cards: [foundCard] };
+                            console.log('✅ Tarjeta encontrada mediante búsqueda manual:', foundCard);
+                        } else {
+                            console.log('⚠️ Tarjeta no encontrada en la lista de', allCardsResponse.gift_cards.length, 'tarjetas');
+                        }
+                    }
                 } catch (error3) {
-                    console.error('❌ Error en búsqueda amplia:', error3);
+                    console.error('❌ Error en búsqueda manual:', error3);
+                    console.log('📋 Detalles del error:', JSON.stringify(error3, null, 2));
                 }
             }
 
