@@ -1,7 +1,5 @@
-const TV_STORAGE_KEY = 'tropiplus_tv_configs';
-const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
+const TV_CACHE_KEY = 'tropiplus_tv_configs_cache_v2';
 const TV_SELECTED_KEY = 'tropiplus_tv_selected';
-const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 
 let currentTvConfig = null;
 let allTvProducts = [];
@@ -12,65 +10,9 @@ let tvMixedModeIndex = 0;
 let tvSlideTimer = null;
 const imageCache = {};
 
-// Verificar horarios de la tienda desde configuración manual
 function checkStoreHours() {
-  try {
-    const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
-    const raw = localStorage.getItem(HOURS_STORAGE_KEY);
-    
-    if (!raw) {
-      console.log('ℹ️ [TV] No hay horarios configurados, asumiendo tienda abierta');
-      return false; // Abierto si no hay configuración
-    }
-    
-    const hoursConfig = JSON.parse(raw);
-    const now = new Date();
-    const currentDay = now.getDay(); // 0 = Domingo, 6 = Sábado
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeMinutes = currentHour * 60 + currentMinute; // Minutos desde medianoche
-    
-    // Obtener configuración del día actual
-    const dayConfig = hoursConfig[currentDay];
-    
-    if (!dayConfig || !dayConfig.enabled) {
-      console.log(`ℹ️ [TV] Día ${currentDay} no está habilitado o no tiene configuración, asumiendo cerrado`);
-      return true; // Cerrado si el día no está habilitado
-    }
-    
-    // Parsear horarios (formato HH:MM)
-    const parseTime = (timeStr) => {
-      if (!timeStr) return 0;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes; // Minutos desde medianoche
-    };
-    
-    const startTimeMinutes = parseTime(dayConfig.start);
-    const endTimeMinutes = parseTime(dayConfig.end);
-    
-    let isOpen = false;
-    
-    // Si el horario cruza la medianoche (end < start), por ejemplo 9:00 AM a 4:00 AM
-    if (endTimeMinutes < startTimeMinutes) {
-      // Horario que cruza medianoche: abierto si currentTime >= startTime O currentTime <= endTime
-      isOpen = currentTimeMinutes >= startTimeMinutes || currentTimeMinutes <= endTimeMinutes;
-    } else {
-      // Horario normal: abierto si currentTime está entre startTime y endTime
-      isOpen = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
-    }
-    
-    const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    console.log(`🕐 [TV] Día: ${dayNames[currentDay]}`);
-    console.log(`🕐 [TV] Horario configurado: ${dayConfig.start} - ${dayConfig.end}`);
-    console.log(`🕐 [TV] Hora actual: ${timeStr} (${currentTimeMinutes} minutos)`);
-    console.log(`🕐 [TV] Estado: ${isOpen ? 'ABIERTO ✅' : 'CERRADO 🔴'}`);
-    
-    return !isOpen;
-  } catch (error) {
-    console.error('❌ [TV] Error verificando horarios:', error);
-    return false; // En caso de error, asumir abierto
-  }
+  // Modo live-only: no dependemos de configuraciones locales para evitar inconsistencias por navegador.
+  return false;
 }
 
 // Mostrar pantalla de cerrado
@@ -162,8 +104,8 @@ async function getTvConfigs() {
     if (response.ok) {
       const tvs = await response.json();
       if (Array.isArray(tvs) && tvs.length > 0) {
-        // Guardar en localStorage para uso offline/fallback.
-        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+        // Guardar cache offline para cuando no haya internet.
+        localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
         console.log('📺 [TV] Configuración cargada desde JSON público');
         return tvs;
       }
@@ -174,7 +116,7 @@ async function getTvConfigs() {
   
   // Fallback: localStorage sólo si falla el JSON público.
   try {
-    const raw = localStorage.getItem(TV_STORAGE_KEY);
+    const raw = localStorage.getItem(TV_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -190,26 +132,15 @@ async function getTvConfigs() {
 }
 
 function getPromoConfig() {
-  try {
-    const raw = localStorage.getItem(PROMO_STORAGE_KEY);
-    if (!raw) {
-      console.log('⚠️ [TV] No hay configuración de promoción global');
-      return { text: '', speed: 'normal' };
-    }
-    const parsed = JSON.parse(raw);
-    const config = {
-      text: String(parsed.text || '').trim(),
-      speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal',
-      fontSize: String(parsed.fontSize || '14px'),
-      textColor: String(parsed.textColor || '#ffffff'),
-      bgColor: String(parsed.bgColor || '#1f318a')
-    };
-    console.log('📋 [TV] Configuración de promoción global:', config);
-    return config;
-  } catch (error) {
-    console.error('❌ [TV] Error leyendo promoción global:', error);
-    return { text: '', speed: 'normal' };
-  }
+  const text = String(currentTvConfig?.promoText || '').trim();
+  return {
+    enabled: Boolean(text),
+    text,
+    speed: 'normal',
+    fontSize: String(currentTvConfig?.tickerFontSize || '28px'),
+    textColor: String(currentTvConfig?.tickerTextColor || '#ffec67'),
+    bgColor: String(currentTvConfig?.tickerBgColor || '#000000')
+  };
 }
 
 function getTvIdFromUrl() {
@@ -314,8 +245,8 @@ async function openTvSelector(configs) {
         const tvs = await response.json();
         if (Array.isArray(tvs)) {
           activeConfigs = tvs.filter(item => item && item.active !== false);
-          // Guardar en localStorage como cache
-          localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+          // Guardar cache offline
+          localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
         }
       }
     } catch (error) {
@@ -424,7 +355,7 @@ function configureTicker(tvConfig) {
 
 async function loadProductsForTv(tvConfig) {
   try {
-    // Intentar obtener productos desde square-integration.js si está disponible
+    // Modo live-only: consultar API en vivo en cada recarga.
     let items = [];
     
     // Esperar a que squareApiCall esté disponible
@@ -434,15 +365,7 @@ async function loadProductsForTv(tvConfig) {
       retries++;
     }
     
-    if (typeof window.squareProducts !== 'undefined' && Array.isArray(window.squareProducts) && window.squareProducts.length > 0) {
-      console.log('✅ [TV] Usando productos cargados desde square-integration.js:', window.squareProducts.length, 'productos');
-      items = window.squareProducts;
-    } else if (typeof loadSquareProducts === 'function') {
-      console.log('⏳ [TV] Cargando productos desde Square API usando loadSquareProducts...');
-      await loadSquareProducts();
-      items = window.squareProducts || [];
-      console.log('✅ [TV] Productos cargados:', items.length);
-    } else if (typeof window.squareApiCall === 'function') {
+    if (typeof window.squareApiCall === 'function') {
       // Fallback: cargar directamente desde Square API
       console.log('⏳ [TV] Cargando productos directamente desde Square API...');
       try {
@@ -457,8 +380,6 @@ async function loadProductsForTv(tvConfig) {
           limit: 1000
         });
         items = response?.objects || [];
-        // Guardar en window para uso futuro
-        window.squareProducts = items;
         console.log('✅ [TV] Productos cargados directamente:', items.length);
       } catch (error) {
         console.error('❌ [TV] Error cargando productos:', error);
@@ -515,15 +436,15 @@ async function getProductImage(product) {
 
 // Cargar QRs configurados
 function loadQrConfigs() {
-  try {
-    const raw = localStorage.getItem(QR_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(qr => qr.active !== false) : [];
-  } catch (error) {
-    console.error('Error cargando QRs:', error);
-    return [];
-  }
+  // Modo live-only: usar únicamente el QR definido en la configuración pública del TV actual.
+  if (!currentTvConfig?.qrUrl) return [];
+  return [{
+    id: currentTvConfig.qrId || `qr_${currentTvConfig.id || 'tv'}`,
+    name: currentTvConfig.name || 'QR',
+    url: currentTvConfig.qrUrl,
+    size: currentTvConfig.qrSize || 400,
+    active: true
+  }];
 }
 
 async function renderProductsGrid() {
@@ -1026,13 +947,15 @@ function startAutoRefresh(tvId) {
     currentTvConfig = config;
     configureTicker(config);
     
-    // Recargar contenido según el modo
+    // Recargar SIEMPRE en vivo para evitar datos viejos.
     if (config.mode === 'orders') {
       await loadOrdersForTv();
-      await renderProductsGrid();
+    } else if (config.mode === 'mixed') {
+      await loadProductsForTv(config);
+      await loadOrdersForTv();
     } else if (config.mode !== 'qr' && config.mode !== 'promo') {
       await loadProductsForTv(config);
-      await renderProductsGrid();
     }
-  }, 45000);
+    await renderProductsGrid();
+  }, 5000);
 }
