@@ -163,9 +163,9 @@
         
         async function renderTvList() {
             const container = document.getElementById('tv-list');
-            const configs = getTvConfigs();
+            const configs = await getTvConfigs();
             
-            if (configs.length === 0) {
+            if (!configs || configs.length === 0) {
                 container.innerHTML = `
                     <div class="no-tvs">
                         <i class="fas fa-tv"></i>
@@ -206,11 +206,11 @@
         // Escuchar sincronización desde el admin
         try {
             const channel = new BroadcastChannel('tropiplus_sync');
-            channel.addEventListener('message', function(event) {
+            channel.addEventListener('message', async function(event) {
                 if (event.data.type === 'tvs_data') {
                     try {
                         localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(event.data.tvs));
-                        renderTvList();
+                        await renderTvList();
                         console.log('✅ TVs sincronizados desde admin');
                     } catch(e) {
                         console.error('Error guardando TVs sincronizados:', e);
@@ -220,6 +220,25 @@
         } catch(e) {
             console.log('BroadcastChannel no disponible:', e);
         }
+        
+        // Renderizar inmediatamente
+        (async () => {
+            try {
+                await renderTvList();
+            } catch (error) {
+                console.error('Error renderizando lista de TVs:', error);
+                const container = document.getElementById('tv-list');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="no-tvs">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error cargando TVs</p>
+                            <p style="margin-top: 8px; font-size: 12px;">Recarga la página o verifica tu conexión</p>
+                        </div>
+                    `;
+                }
+            }
+        })();
         
         document.addEventListener('DOMContentLoaded', async () => {
             await renderTvList();
