@@ -3,7 +3,7 @@
 
 const SUPABASE_CONFIG = {
     url: 'https://fbbvfzeyhhopdwzsooew.supabase.co',
-    anonKey: null // Se obtendrá desde el dashboard o se usará fetch directo
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiYnZmemV5aGhvcGR3enNvb2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTIyMDAsImV4cCI6MjA3NjI4ODIwMH0.EWjNVwscWi3gbz01RYaUjlCsGJddgbjUoO_qaqGmffg'
 };
 
 // Función para obtener la anon key (si está disponible)
@@ -18,10 +18,9 @@ async function getSupabaseAnonKey() {
 // Función para leer TVs desde Supabase (público, sin autenticación)
 async function getTvConfigsFromSupabase() {
     try {
-        // Intentar obtener la anon key desde localStorage (si fue configurada manualmente)
-        let anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        // Usar la anon key configurada (prioridad: código > localStorage)
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
         
-        // Si no hay key, intentar sin ella (puede funcionar con RLS público)
         const headers = {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
@@ -29,6 +28,8 @@ async function getTvConfigsFromSupabase() {
         
         if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
             headers['apikey'] = anonKey;
+        } else {
+            console.warn('⚠️ [Supabase] Anon key no configurada. Algunas operaciones pueden fallar.');
         }
         
         const response = await fetch(
@@ -116,11 +117,10 @@ async function saveTvConfigsToSupabase(tvConfigs) {
                 qr_size: tv.qrSize || 400
             }));
 
-        // Obtener anon key
-        let anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        // Usar la anon key configurada (prioridad: código > localStorage)
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
         
-        // Upsert usando PATCH (más eficiente que DELETE + POST)
-        // Usar upsert con resolución de duplicados
+        // Upsert usando POST con resolución de duplicados
         const headers = {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation,resolution=merge-duplicates'
@@ -128,6 +128,9 @@ async function saveTvConfigsToSupabase(tvConfigs) {
         
         if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
             headers['apikey'] = anonKey;
+        } else {
+            console.warn('⚠️ [Supabase] Anon key no configurada. No se puede guardar en Supabase.');
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
         }
         
         // Insertar/actualizar todos los TVs
