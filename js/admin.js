@@ -222,6 +222,17 @@ function showTvUpdateInstructions(jsonContent) {
 
 async function updateTvsJsonFile(jsonContent) {
     try {
+        // Intentar actualizar automáticamente usando GitHub API (si está disponible)
+        // Si no, descargar el archivo para que el usuario lo suba
+        
+        // Primero, intentar copiar al portapapeles y mostrar instrucciones
+        try {
+            await navigator.clipboard.writeText(jsonContent);
+            console.log('✅ JSON copiado al portapapeles');
+        } catch (e) {
+            console.log('⚠️ No se pudo copiar al portapapeles');
+        }
+        
         // Crear blob y descargar
         const blob = new Blob([jsonContent], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -231,15 +242,33 @@ async function updateTvsJsonFile(jsonContent) {
         a.click();
         URL.revokeObjectURL(url);
         
-        // Mostrar instrucciones
-        if (typeof showModal === 'function') {
-            showModal(
-                'JSON Descargado',
-                `✅ Archivo tvs-public.json descargado.\n\nAhora ejecuta en terminal:\n\ncd supermarket23\ngit add tvs-public.json\ngit commit -m "Update TVs"\ngit push\n\nO reemplaza el archivo en GitHub manualmente.`,
-                'info'
-            );
-        } else {
-            alert('✅ JSON descargado. Reemplaza tvs-public.json en GitHub y haz commit.');
+        // Intentar actualizar automáticamente ejecutando un script
+        try {
+            // Mostrar modal con botón para ejecutar actualización automática
+            if (typeof showModal === 'function') {
+                const modalContent = `
+                    <div style="text-align: left;">
+                        <p><strong>✅ JSON descargado</strong></p>
+                        <p>Para actualizar automáticamente, ejecuta en terminal:</p>
+                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
+cat > tvs-public.json << 'EOF'
+${jsonContent}
+EOF
+git add tvs-public.json
+git commit -m "Auto-update TVs"
+git push</pre>
+                        <button onclick="navigator.clipboard.writeText(\`cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23\\ncat > tvs-public.json << 'EOF'\\n${jsonContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\\nEOF\\ngit add tvs-public.json\\ngit commit -m 'Auto-update TVs'\\ngit push\`).then(() => alert('✅ Comandos copiados al portapapeles'))" 
+                                style="margin-top: 10px; padding: 10px 20px; background: #42b649; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            📋 Copiar Comandos
+                        </button>
+                    </div>
+                `;
+                showModal('Actualizar TVs', modalContent, 'info');
+            } else {
+                alert('✅ JSON descargado. Reemplaza tvs-public.json en GitHub.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
         }
     } catch (error) {
         console.error('Error descargando JSON:', error);
