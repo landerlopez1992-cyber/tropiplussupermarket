@@ -36,10 +36,13 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
   let proxyUrls = [];
   
   if (isProduction) {
-    // En producción: intentar Vercel primero, luego alternativas
+    // En producción: intentar Supabase primero (más simple y confiable), luego Vercel, luego alternativas
+    // ⚠️ ACTUALIZA ESTA URL con tu URL de Supabase después del deploy
+    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co/functions/v1/square-proxy';
+    
     proxyUrls = [
-      'https://tropiplussupermarket.vercel.app',  // Vercel (si está desplegado)
-      'https://tropiplussupermarket-git-main-landerlopez1992-cyber.vercel.app',  // Vercel alternativa
+      SUPABASE_URL,  // Supabase (RECOMENDADO - más simple)
+      'https://tropiplussupermarket.vercel.app',  // Vercel (fallback)
       'https://corsproxy.io/?',  // Proxy público 1
       'https://api.allorigins.win/raw?url=',  // Proxy público 2
     ];
@@ -74,6 +77,9 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
         proxyUrl = `${baseUrl}${encodeURIComponent(squareUrl)}`;
         options.headers['Square-Version'] = '2024-01-18';
         options.headers['Authorization'] = `Bearer ${SQUARE_CONFIG.accessToken}`;
+      } else if (baseUrl.includes('supabase.co')) {
+        // Proxy de Supabase - la URL ya incluye el path
+        proxyUrl = `${baseUrl}${endpoint}`;
       } else {
         // Proxy normal (Vercel o local)
         proxyUrl = `${baseUrl}/api/square${endpoint}`;
