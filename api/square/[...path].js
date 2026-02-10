@@ -16,8 +16,26 @@ export default async function handler(req, res) {
 
   try {
     // Obtener el path completo desde los parámetros
-    const path = req.query.path || [];
-    const squareEndpoint = '/' + (Array.isArray(path) ? path.join('/') : path);
+    // Vercel pasa el path como array en req.query.path
+    let squareEndpoint = '';
+    
+    if (req.query.path) {
+      if (Array.isArray(req.query.path)) {
+        squareEndpoint = '/' + req.query.path.join('/');
+      } else {
+        squareEndpoint = '/' + req.query.path;
+      }
+    } else {
+      // Si no hay path en query, intentar desde la URL
+      const urlPath = req.url.replace('/api/square', '');
+      squareEndpoint = urlPath || '/';
+    }
+    
+    // Asegurar que el endpoint empiece con /
+    if (!squareEndpoint.startsWith('/')) {
+      squareEndpoint = '/' + squareEndpoint;
+    }
+    
     const squareUrl = `${SQUARE_API_BASE}${squareEndpoint}`;
 
     // Preparar headers para Square

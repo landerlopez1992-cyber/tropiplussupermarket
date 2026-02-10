@@ -9,7 +9,7 @@
   "routes": [
     {
       "src": "/api/square/(.*)",
-      "dest": "/api/square/[...path].js"
+      "dest": "/api/square/[...path].js?path=$1"
     },
     {
       "src": "/api/barcode-lookup",
