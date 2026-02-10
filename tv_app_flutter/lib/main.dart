@@ -57,6 +57,12 @@ class _TVBrowserState extends State<TVBrowser> {
               setState(() => _loading = false);
             }
           },
+          onWebResourceError: (error) {
+            print('❌ Error cargando página: ${error.description}');
+            if (mounted) {
+              setState(() => _loading = false);
+            }
+          },
         ),
       )
       ..loadRequest(Uri.parse(_mainUrl));
@@ -68,12 +74,10 @@ class _TVBrowserState extends State<TVBrowser> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          // Manejar botón back del control remoto
           _controller.canGoBack().then((canGoBack) {
             if (canGoBack) {
               _controller.goBack();
             } else {
-              // Si no hay historial, recargar selector
               _controller.loadRequest(Uri.parse(_mainUrl));
             }
           });
@@ -81,20 +85,7 @@ class _TVBrowserState extends State<TVBrowser> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            WebViewWidget(controller: _controller),
-            if (_loading)
-              Container(
-                color: Colors.black,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF42B649)),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        body: WebViewWidget(controller: _controller),
       ),
     );
   }

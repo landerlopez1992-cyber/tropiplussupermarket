@@ -153,21 +153,37 @@ function saveTvConfigs(tvConfigs) {
     }
     scriptTag.textContent = JSON.stringify(tvConfigs);
     
-    // Sincronizar con BroadcastChannel
-    try {
-        const channel = new BroadcastChannel('tropiplus_sync');
-        channel.postMessage({
-            type: 'tvs_data',
-            tvs: tvConfigs,
-            timestamp: Date.now()
-        });
-        console.log('📡 [Admin] TVs sincronizados vía BroadcastChannel');
-    } catch(e) {
-        console.error('Error sincronizando TVs:', e);
-    }
+    // ACTUALIZAR AUTOMÁTICAMENTE EL ARCHIVO PÚBLICO
+    updatePublicTvsFile(tvConfigs);
+}
+
+async function updatePublicTvsFile(tvConfigs) {
+    const jsonContent = JSON.stringify(tvConfigs, null, 2);
     
-    // Guardar en archivo JSON para que la app lo lea directamente
-    saveTvsToJsonFile(tvConfigs);
+    // Mostrar instrucciones claras para actualizar
+    const commands = `cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
+cat > tvs-public.json << 'EOF'
+${jsonContent}
+EOF
+git add tvs-public.json && git commit -m "Auto-update TVs" && git push`;
+    
+    // Copiar comandos al portapapeles automáticamente
+    try {
+        await navigator.clipboard.writeText(commands);
+        console.log('✅ Comandos copiados al portapapeles');
+        
+        // Mostrar alerta clara
+        alert(`✅ TVs guardados!\n\nLos comandos para actualizar el archivo público han sido copiados al portapapeles.\n\nPega en terminal y presiona Enter para actualizar automáticamente.\n\nO ejecuta manualmente los comandos que aparecen en la consola.`);
+        
+        console.log('📋 EJECUTA ESTOS COMANDOS EN TERMINAL:');
+        console.log(commands);
+        
+    } catch (e) {
+        console.error('Error copiando:', e);
+        console.log('📋 EJECUTA ESTOS COMANDOS EN TERMINAL:');
+        console.log(commands);
+        alert('📋 Ejecuta los comandos que aparecen en la consola (F12) para actualizar el archivo público.');
+    }
 }
 
 function saveTvsToJsonFile(tvConfigs) {
