@@ -182,10 +182,24 @@ function resetTvForm() {
     if (!form) return;
     form.reset();
     document.getElementById('tv-id').value = '';
+    document.getElementById('tv-name').value = '';
+    document.getElementById('tv-mode').value = 'mixed';
+    document.getElementById('tv-category').value = '';
     document.getElementById('tv-product-count').value = '8';
     document.getElementById('tv-slide-seconds').value = '10';
     document.getElementById('tv-show-price').checked = true;
     document.getElementById('tv-show-offer').checked = true;
+    document.getElementById('tv-promo-text').value = '';
+    const tickerEnabledInput = document.getElementById('tv-ticker-enabled');
+    if (tickerEnabledInput) tickerEnabledInput.checked = true;
+    const tickerSpeedInput = document.getElementById('tv-ticker-speed');
+    if (tickerSpeedInput) tickerSpeedInput.value = 'normal';
+    const tickerFontSizeInput = document.getElementById('tv-ticker-font-size');
+    if (tickerFontSizeInput) tickerFontSizeInput.value = '28px';
+    const tickerTextColorInput = document.getElementById('tv-ticker-text-color');
+    if (tickerTextColorInput) tickerTextColorInput.value = '#ffec67';
+    const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
+    if (tickerBgColorInput) tickerBgColorInput.value = '#000000';
     document.getElementById('tv-active').checked = true;
 }
 
