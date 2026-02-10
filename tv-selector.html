@@ -59,11 +59,12 @@
             align-items: center;
             justify-content: space-between;
         }
-        .tv-item:hover {
+        .tv-item:hover, .tv-item:focus {
             background: rgba(255, 255, 255, 0.25);
             border-color: #42b649;
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(66, 182, 73, 0.3);
+            outline: none;
         }
         .tv-item-info {
             flex: 1;
@@ -112,9 +113,10 @@
             transition: all 0.3s;
             width: 100%;
         }
-        .refresh-btn:hover {
+        .refresh-btn:hover, .refresh-btn:focus {
             background: #35a03a;
             transform: scale(1.05);
+            outline: none;
         }
         .error-message {
             background: rgba(255, 0, 0, 0.2);
@@ -140,7 +142,7 @@
             </div>
         </div>
         <div style="text-align: center; margin-top: 20px;">
-            <button class="refresh-btn" onclick="loadTVs()">
+            <button class="refresh-btn" onclick="loadTVs()" tabindex="0">
                 <i class="fas fa-sync-alt"></i> Actualizar
             </button>
         </div>
@@ -177,26 +179,40 @@
             `;
             
             try {
-                // Leer directamente desde el JSON público (sin cache)
-                const response = await fetch(TVS_JSON_URL + '?t=' + Date.now(), {
+                // Leer SOLO desde JSON público (sin cache, sin localStorage)
+                const timestamp = Date.now();
+                const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
                     method: 'GET',
-                    cache: 'no-cache',
+                    cache: 'no-store',
                     headers: {
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
                     }
                 });
+                
+                console.log('📡 Fetching TVs from:', TVS_JSON_URL);
+                console.log('📡 Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const tvs = await response.json();
+                const text = await response.text();
+                console.log('📡 Response text:', text);
                 
-                if (!Array.isArray(tvs)) {
-                    throw new Error('Formato de datos inválido');
+                if (!text || text.trim() === '') {
+                    throw new Error('Archivo JSON vacío');
                 }
                 
-                const activeTvs = tvs.filter(tv => tv.active !== false);
+                const tvs = JSON.parse(text);
+                console.log('📡 Parsed TVs:', tvs);
+                
+                if (!Array.isArray(tvs)) {
+                    throw new Error('Formato de datos inválido: no es un array');
+                }
+                
+                const activeTvs = tvs.filter(tv => tv && tv.active !== false);
+                console.log('📡 Active TVs:', activeTvs);
                 
                 if (activeTvs.length === 0) {
                     container.innerHTML = `
@@ -204,6 +220,9 @@
                             <i class="fas fa-tv"></i>
                             <p>No hay TVs configurados</p>
                             <p style="margin-top: 8px; font-size: 12px;">Ve a Admin > TV para configurar una pantalla</p>
+                            <p style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">
+                                Después de guardar, actualiza el archivo tvs-public.json en GitHub
+                            </p>
                         </div>
                     `;
                     return;
@@ -212,13 +231,16 @@
                 renderTvList(activeTvs);
                 
             } catch (error) {
-                console.error('Error cargando TVs:', error);
+                console.error('❌ Error cargando TVs:', error);
                 showError(`Error cargando TVs: ${error.message}. Verifica que el archivo tvs-public.json exista en GitHub.`);
                 container.innerHTML = `
                     <div class="no-tvs">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p>Error al cargar TVs</p>
                         <p style="margin-top: 8px; font-size: 12px;">${error.message}</p>
+                        <p style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">
+                            Verifica la consola (F12) para más detalles
+                        </p>
                     </div>
                 `;
             }
@@ -246,9 +268,14 @@
                 qr: 'Código QR'
             };
             
-            container.innerHTML = configs.map(tv => {
+            container.innerHTML = configs.map((tv, index) => {
                 return `
-                    <div class="tv-item" onclick="selectTv('${tv.id}')">
+                    <div class="tv-item" 
+                         onclick="selectTv('${tv.id}')" 
+                         onkeydown="if(event.key==='Enter') selectTv('${tv.id}')"
+                         tabindex="${index + 1}"
+                         role="button"
+                         aria-label="Seleccionar ${tv.name || 'TV'}">
                         <div class="tv-item-info">
                             <div class="tv-item-name">${tv.name || 'TV Sin Nombre'}</div>
                             <div class="tv-item-details">
