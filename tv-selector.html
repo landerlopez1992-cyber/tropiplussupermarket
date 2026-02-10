@@ -180,6 +180,24 @@
             }).join('');
         }
         
+        // Escuchar sincronización desde el admin
+        try {
+            const channel = new BroadcastChannel('tropiplus_sync');
+            channel.addEventListener('message', function(event) {
+                if (event.data.type === 'tvs_data') {
+                    try {
+                        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(event.data.tvs));
+                        renderTvList();
+                        console.log('✅ TVs sincronizados desde admin');
+                    } catch(e) {
+                        console.error('Error guardando TVs sincronizados:', e);
+                    }
+                }
+            });
+        } catch(e) {
+            console.log('BroadcastChannel no disponible:', e);
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             renderTvList();
         });

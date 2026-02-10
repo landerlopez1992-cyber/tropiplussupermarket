@@ -141,6 +141,19 @@ function saveTvConfigs(tvConfigs) {
     console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
     console.log('💾 [Admin] Verificación:', localStorage.getItem(TV_STORAGE_KEY));
     
+    // Sincronizar con otras pestañas/WebViews usando BroadcastChannel
+    try {
+        const channel = new BroadcastChannel('tropiplus_sync');
+        channel.postMessage({
+            type: 'tvs_data',
+            tvs: tvConfigs,
+            timestamp: Date.now()
+        });
+        console.log('📡 [Admin] TVs sincronizados vía BroadcastChannel');
+    } catch(e) {
+        console.error('Error sincronizando TVs:', e);
+    }
+    
     // También guardar en un archivo JSON para que la app Flutter lo lea
     // Usar GitHub API o simplemente crear un data URI que se pueda descargar
     try {
