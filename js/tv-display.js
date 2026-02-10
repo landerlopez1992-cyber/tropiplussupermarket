@@ -200,7 +200,85 @@ async function getProductImage(product) {
   }
 }
 
+async function renderProductsGrid() {
+  const gridEl = document.getElementById('tv-products-grid');
+  if (!gridEl || !currentTvConfig) return;
+  
+  if (currentTvConfig.mode === 'promo') {
+    gridEl.innerHTML = `
+      <div class="tv-product-card" style="grid-column: 1 / -1;">
+        <div class="tv-product-image-container">
+          <img src="images/Barnner1.png" alt="Promoción">
+        </div>
+        <div class="tv-product-info">
+          <h1 class="tv-product-name">${currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día'}</h1>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  if (!allTvProducts.length) {
+    gridEl.innerHTML = `
+      <div class="tv-product-card" style="grid-column: 1 / -1;">
+        <div class="tv-product-info">
+          <h1 class="tv-product-name">Sin productos para mostrar en esta configuración</h1>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Renderizar todos los productos en grid
+  const productsHtml = await Promise.all(
+    allTvProducts.map(async (product) => {
+      const itemData = product.item_data || {};
+      const variation = itemData.variations?.[0];
+      const currentPrice = formatMoneyFromVariation(variation);
+      const imageUrl = await getProductImage(product);
+      
+      const amount = variation?.item_variation_data?.price_money?.amount;
+      const showOffer = currentTvConfig.showOffer !== false && currentPrice !== '--';
+      const previousPrice = showOffer && typeof amount === 'number' 
+        ? `${((amount * 1.12) / 100).toFixed(2)} US$` 
+        : '';
+      
+      const priceHtml = currentTvConfig.showPrice !== false
+        ? `
+          <div class="tv-product-price-container">
+            <span class="tv-product-price">${currentPrice}</span>
+            ${previousPrice ? `<span class="tv-product-old-price">${previousPrice}</span>` : ''}
+          </div>
+        `
+        : '';
+      
+      const badgeHtml = showOffer
+        ? '<span class="tv-product-badge">OFERTA</span>'
+        : '';
+      
+      return `
+        <div class="tv-product-card">
+          <div class="tv-product-image-container">
+            <img src="${imageUrl}" alt="${itemData.name || 'Producto'}" loading="lazy">
+          </div>
+          <div class="tv-product-info">
+            ${badgeHtml}
+            <h2 class="tv-product-name">${itemData.name || 'Producto'}</h2>
+            ${priceHtml}
+          </div>
+        </div>
+      `;
+    })
+  );
+  
+  gridEl.innerHTML = productsHtml.join('');
+}
+
 async function renderCurrentSlide() {
+  // Usar el nuevo método de grid para múltiples productos
+  await renderProductsGrid();
+  
+  // Mantener el método legacy para compatibilidad
   const nameEl = document.getElementById('tv-product-name');
   const imageEl = document.getElementById('tv-product-image');
   const priceEl = document.getElementById('tv-price');
@@ -211,18 +289,18 @@ async function renderCurrentSlide() {
   if (!currentTvConfig) return;
 
   if (currentTvConfig.mode === 'promo') {
-    nameEl.textContent = (currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día');
-    imageEl.src = 'images/Barnner1.png';
-    priceRow.style.display = 'none';
-    badgeEl.style.display = 'none';
+    if (nameEl) nameEl.textContent = (currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día');
+    if (imageEl) imageEl.src = 'images/Barnner1.png';
+    if (priceRow) priceRow.style.display = 'none';
+    if (badgeEl) badgeEl.style.display = 'none';
     return;
   }
 
   if (!allTvProducts.length) {
-    nameEl.textContent = 'Sin productos para mostrar en esta configuración';
-    imageEl.src = 'images/placeholder.svg';
-    priceRow.style.display = 'none';
-    badgeEl.style.display = 'none';
+    if (nameEl) nameEl.textContent = 'Sin productos para mostrar en esta configuración';
+    if (imageEl) imageEl.src = 'images/placeholder.svg';
+    if (priceRow) priceRow.style.display = 'none';
+    if (badgeEl) badgeEl.style.display = 'none';
     return;
   }
 
@@ -231,23 +309,23 @@ async function renderCurrentSlide() {
   const variation = itemData.variations?.[0];
   const currentPrice = formatMoneyFromVariation(variation);
 
-  nameEl.textContent = itemData.name || 'Producto';
-  imageEl.src = await getProductImage(product);
+  if (nameEl) nameEl.textContent = itemData.name || 'Producto';
+  if (imageEl) imageEl.src = await getProductImage(product);
 
   if (currentTvConfig.showPrice === false) {
-    priceRow.style.display = 'none';
+    if (priceRow) priceRow.style.display = 'none';
   } else {
-    priceRow.style.display = 'flex';
-    priceEl.textContent = currentPrice;
+    if (priceRow) priceRow.style.display = 'flex';
+    if (priceEl) priceEl.textContent = currentPrice;
 
     if (currentTvConfig.showOffer === false || currentPrice === '--') {
-      oldPriceEl.textContent = '';
-      badgeEl.style.display = 'none';
+      if (oldPriceEl) oldPriceEl.textContent = '';
+      if (badgeEl) badgeEl.style.display = 'none';
     } else {
       const amount = variation?.item_variation_data?.price_money?.amount;
       const previous = typeof amount === 'number' ? ((amount * 1.12) / 100).toFixed(2) : '';
-      oldPriceEl.textContent = previous ? `${previous} US$` : '';
-      badgeEl.style.display = 'inline-flex';
+      if (oldPriceEl) oldPriceEl.textContent = previous ? `${previous} US$` : '';
+      if (badgeEl) badgeEl.style.display = 'inline-flex';
     }
   }
 }
