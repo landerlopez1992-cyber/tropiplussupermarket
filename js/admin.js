@@ -23,6 +23,7 @@ let suppliersData = {}; // Proveedores por producto
 let globalSuppliers = {}; // Proveedores globales (reutilizables)
 const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
+const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 
 // Cargar datos de proveedores desde localStorage
 function loadSuppliersData() {
