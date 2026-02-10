@@ -148,6 +148,7 @@
         </div>
     </div>
 
+    <script src="js/supabase-config.js"></script>
     <script>
         const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
         const TV_SELECTED_KEY = 'tropiplus_tv_selected';
@@ -179,33 +180,62 @@
             `;
             
             try {
-                // Leer SOLO desde JSON público (sin cache, sin localStorage)
-                const timestamp = Date.now();
-                const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
-                    method: 'GET',
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
+                let tvs = [];
+                
+                // PRIORIDAD 1: Intentar leer desde Supabase (BD principal)
+                if (typeof window.getTvConfigsFromSupabase === 'function') {
+                    try {
+                        tvs = await window.getTvConfigsFromSupabase();
+                        console.log('✅ [TV Selector] TVs cargados desde Supabase:', tvs.length);
+                    } catch (supabaseError) {
+                        console.warn('⚠️ [TV Selector] Error leyendo desde Supabase, intentando JSON público:', supabaseError);
+                        // Fallback: JSON público (legacy)
+                        const timestamp = Date.now();
+                        const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
+                            method: 'GET',
+                            cache: 'no-store',
+                            headers: {
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const text = await response.text();
+                        if (!text || text.trim() === '') {
+                            throw new Error('Archivo JSON vacío');
+                        }
+                        
+                        tvs = JSON.parse(text);
+                        console.log('✅ [TV Selector] TVs cargados desde JSON público (fallback):', tvs.length);
                     }
-                });
-                
-                console.log('📡 Fetching TVs from:', TVS_JSON_URL);
-                console.log('📡 Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                } else {
+                    // Fallback: JSON público (legacy)
+                    const timestamp = Date.now();
+                    const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
+                        method: 'GET',
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const text = await response.text();
+                    if (!text || text.trim() === '') {
+                        throw new Error('Archivo JSON vacío');
+                    }
+                    
+                    tvs = JSON.parse(text);
+                    console.log('✅ [TV Selector] TVs cargados desde JSON público (fallback):', tvs.length);
                 }
-                
-                const text = await response.text();
-                console.log('📡 Response text:', text);
-                
-                if (!text || text.trim() === '') {
-                    throw new Error('Archivo JSON vacío');
-                }
-                
-                const tvs = JSON.parse(text);
-                console.log('📡 Parsed TVs:', tvs);
                 
                 if (!Array.isArray(tvs)) {
                     throw new Error('Formato de datos inválido: no es un array');
@@ -220,9 +250,6 @@
                             <i class="fas fa-tv"></i>
                             <p>No hay TVs configurados</p>
                             <p style="margin-top: 8px; font-size: 12px;">Ve a Admin > TV para configurar una pantalla</p>
-                            <p style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">
-                                Después de guardar, actualiza el archivo tvs-public.json en GitHub
-                            </p>
                         </div>
                     `;
                     return;
@@ -232,7 +259,7 @@
                 
             } catch (error) {
                 console.error('❌ Error cargando TVs:', error);
-                showError(`Error cargando TVs: ${error.message}. Verifica que el archivo tvs-public.json exista en GitHub.`);
+                showError(`Error cargando TVs: ${error.message}`);
                 container.innerHTML = `
                     <div class="no-tvs">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -295,8 +322,8 @@
         // Cargar al iniciar
         loadTVs();
         
-        // Auto-recargar cada 30 segundos
-        setInterval(loadTVs, 30000);
+        // Auto-recargar cada 5 segundos (polling desde Supabase)
+        setInterval(loadTVs, 5000);
     </script>
 </body>
 </html>

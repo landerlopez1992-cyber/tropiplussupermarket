@@ -90,7 +90,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function getTvConfigs() {
-  // SIEMPRE intentar primero JSON público para evitar inconsistencias entre navegadores.
+  // PRIORIDAD 1: Intentar leer desde Supabase (BD principal)
+  if (typeof window.getTvConfigsFromSupabase === 'function') {
+    try {
+      const tvs = await window.getTvConfigsFromSupabase();
+      if (Array.isArray(tvs) && tvs.length > 0) {
+        // Guardar cache offline para cuando no haya internet
+        localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
+        console.log('✅ [TV] Configuración cargada desde Supabase:', tvs.length);
+        return tvs;
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ [TV] Error leyendo desde Supabase, intentando JSON público:', supabaseError);
+    }
+  }
+  
+  // PRIORIDAD 2: JSON público (legacy/fallback)
   try {
     const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
     const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
@@ -104,28 +119,28 @@ async function getTvConfigs() {
     if (response.ok) {
       const tvs = await response.json();
       if (Array.isArray(tvs) && tvs.length > 0) {
-        // Guardar cache offline para cuando no haya internet.
+        // Guardar cache offline para cuando no haya internet
         localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
-        console.log('📺 [TV] Configuración cargada desde JSON público');
+        console.log('✅ [TV] Configuración cargada desde JSON público (fallback):', tvs.length);
         return tvs;
       }
     }
   } catch (error) {
-    console.warn('Error leyendo JSON público, intentando localStorage:', error);
+    console.warn('⚠️ [TV] Error leyendo JSON público, intentando localStorage:', error);
   }
   
-  // Fallback: localStorage sólo si falla el JSON público.
+  // PRIORIDAD 3: localStorage (solo si falla todo - offline)
   try {
     const raw = localStorage.getItem(TV_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log('📺 [TV] Configuración cargada desde localStorage (fallback)');
+        console.log('📺 [TV] Configuración cargada desde localStorage (offline fallback)');
         return parsed;
       }
     }
   } catch (_error) {
-    console.warn('Error leyendo fallback localStorage:', _error);
+    console.warn('❌ [TV] Error leyendo fallback localStorage:', _error);
   }
 
   return [];

@@ -137,7 +137,8 @@ function getTvConfigs() {
     }
 }
 
-function saveTvConfigs(tvConfigs) {
+async function saveTvConfigs(tvConfigs) {
+    // Guardar en localStorage (backup)
     localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
     console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
     
@@ -154,7 +155,20 @@ function saveTvConfigs(tvConfigs) {
     }
     scriptTag.textContent = JSON.stringify(tvConfigs);
     
-    // ACTUALIZAR AUTOMÁTICAMENTE EL ARCHIVO PÚBLICO
+    // GUARDAR EN SUPABASE (principal)
+    try {
+        if (typeof window.saveTvConfigsToSupabase === 'function') {
+            await window.saveTvConfigsToSupabase(tvConfigs);
+            console.log('✅ [Admin] TVs guardados en Supabase');
+        } else {
+            console.warn('⚠️ [Admin] Función saveTvConfigsToSupabase no disponible. Asegúrate de cargar supabase-config.js');
+        }
+    } catch (error) {
+        console.error('❌ [Admin] Error guardando en Supabase:', error);
+        // Continuar aunque falle Supabase (localStorage como backup)
+    }
+    
+    // ACTUALIZAR AUTOMÁTICAMENTE EL ARCHIVO PÚBLICO (legacy, se puede remover después)
     updatePublicTvsFile(tvConfigs);
 }
 
