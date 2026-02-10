@@ -345,6 +345,28 @@ function initTvTab() {
         }
     });
 
+    // Mostrar/ocultar campos según el modo seleccionado
+    const modeSelect = document.getElementById('tv-mode');
+    const qrUrlGroup = document.getElementById('tv-qr-url-group');
+    const qrEnabledGroup = document.getElementById('tv-qr-enabled-group');
+    
+    if (modeSelect && qrUrlGroup && qrEnabledGroup) {
+        const toggleQrFields = () => {
+            const mode = modeSelect.value;
+            if (mode === 'qr') {
+                qrUrlGroup.style.display = 'block';
+                qrEnabledGroup.style.display = 'block';
+            } else {
+                qrUrlGroup.style.display = 'none';
+                qrEnabledGroup.style.display = 'none';
+            }
+        };
+        
+        modeSelect.addEventListener('change', toggleQrFields);
+        // Ejecutar al cargar para establecer estado inicial
+        toggleQrFields();
+    }
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
@@ -358,12 +380,21 @@ function initTvTab() {
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
         const promoText = document.getElementById('tv-promo-text').value.trim();
+        const qrUrl = document.getElementById('tv-qr-url')?.value.trim() || '';
+        const qrEnabled = document.getElementById('tv-qr-enabled')?.checked !== false;
         const tickerEnabled = document.getElementById('tv-ticker-enabled')?.checked !== false;
         const tickerSpeed = document.getElementById('tv-ticker-speed')?.value || 'normal';
         const tickerFontSize = document.getElementById('tv-ticker-font-size')?.value || '28px';
         const tickerTextColor = document.getElementById('tv-ticker-text-color')?.value || '#ffec67';
         const tickerBgColor = document.getElementById('tv-ticker-bg-color')?.value || '#000000';
         const active = document.getElementById('tv-active').checked;
+        
+        if (mode === 'qr' && !qrUrl) {
+            if (typeof showModal === 'function') {
+                showModal('Error', 'Debes proporcionar una URL para el código QR.', 'error');
+            }
+            return;
+        }
 
         if (!name) {
             if (typeof showModal === 'function') {
@@ -383,6 +414,8 @@ function initTvTab() {
             showPrice,
             showOffer,
             promoText,
+            qrUrl,
+            qrEnabled,
             tickerEnabled,
             tickerSpeed,
             tickerFontSize,

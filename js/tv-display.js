@@ -4,9 +4,132 @@ const TV_SELECTED_KEY = 'tropiplus_tv_selected';
 
 let currentTvConfig = null;
 let allTvProducts = [];
+let allTvOrders = [];
 let tvSlideIndex = 0;
 let tvSlideTimer = null;
 const imageCache = {};
+
+// Verificar horarios de la tienda desde Square API
+async function checkStoreHours() {
+  try {
+    if (typeof window.squareApiCall === 'undefined') {
+      console.warn('⚠️ [TV] squareApiCall no disponible, asumiendo tienda abierta');
+      return false;
+    }
+    
+    const locationId = window.SQUARE_CONFIG?.locationId || 'L94DY3ZD6WS85';
+    const response = await window.squareApiCall(`/v2/locations/${locationId}`, 'GET');
+    
+    if (!response || !response.location) {
+      console.warn('⚠️ [TV] No se pudo obtener información de la ubicación');
+      return false;
+    }
+    
+    const location = response.location;
+    const businessHours = location.business_hours;
+    
+    if (!businessHours || !businessHours.periods || businessHours.periods.length === 0) {
+      console.log('ℹ️ [TV] No hay horarios configurados, asumiendo tienda abierta');
+      return false;
+    }
+    
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Domingo, 6 = Sábado
+    const currentTime = now.getHours() * 100 + now.getMinutes(); // HHMM formato
+    
+    // Buscar horario para el día actual
+    const todayPeriod = businessHours.periods.find(period => {
+      const dayOfWeek = period.day_of_week;
+      // Convertir: Square usa 0=Lunes, 6=Domingo, JS usa 0=Domingo, 6=Sábado
+      const squareDay = currentDay === 0 ? 6 : currentDay - 1;
+      return dayOfWeek === squareDay;
+    });
+    
+    if (!todayPeriod) {
+      console.log('ℹ️ [TV] No hay horario para hoy, asumiendo cerrado');
+      return true; // Cerrado si no hay horario
+    }
+    
+    const startTime = parseInt(todayPeriod.start_local_time?.replace(':', '') || '0');
+    const endTime = parseInt(todayPeriod.end_local_time?.replace(':', '') || '2359');
+    
+    const isOpen = currentTime >= startTime && currentTime <= endTime;
+    console.log(`🕐 [TV] Horario: ${todayPeriod.start_local_time} - ${todayPeriod.end_local_time}, Hora actual: ${now.getHours()}:${now.getMinutes()}, Abierto: ${isOpen}`);
+    
+    return !isOpen;
+  } catch (error) {
+    console.error('❌ [TV] Error verificando horarios:', error);
+    return false; // En caso de error, asumir abierto
+  }
+}
+
+// Mostrar pantalla de cerrado
+function showClosedScreen() {
+  const gridEl = document.getElementById('tv-products-grid');
+  const tickerContainer = document.querySelector('.tv-footer-ticker');
+  
+  if (gridEl) {
+    gridEl.innerHTML = `
+      <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; height: 100%; background: #d32f2f; border-radius: 20px;">
+        <div style="text-align: center;">
+          <h1 style="font-size: clamp(48px, 8vw, 120px); font-weight: 900; color: #ffffff; margin: 0; text-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+            CERRADO
+          </h1>
+          <p style="font-size: clamp(24px, 3vw, 48px); color: rgba(255,255,255,0.9); margin-top: 20px;">
+            Volveremos pronto
+          </p>
+        </div>
+      </div>
+    `;
+  }
+  
+  if (tickerContainer) {
+    tickerContainer.style.display = 'none';
+  }
+  
+  console.log('🔴 [TV] Mostrando pantalla de cerrado');
+}
+
+// Cargar pedidos para mostrar en TV
+async function loadOrdersForTv() {
+  try {
+    if (typeof window.squareApiCall === 'undefined') {
+      console.error('❌ [TV] squareApiCall no disponible');
+      allTvOrders = [];
+      return;
+    }
+    
+    const locationId = window.SQUARE_CONFIG?.locationId || 'L94DY3ZD6WS85';
+    const response = await window.squareApiCall('/v2/orders/search', 'POST', {
+      location_ids: [locationId],
+      query: {
+        filter: {
+          state_filter: {
+            states: ['OPEN', 'DRAFT']
+          }
+        }
+      },
+      limit: 50
+    });
+    
+    if (response && response.orders) {
+      // Filtrar solo pedidos de pickup que no estén completados
+      allTvOrders = response.orders.filter(order => {
+        const fulfillments = order.fulfillments || [];
+        const hasPickup = fulfillments.some(f => f.type === 'PICKUP');
+        const isCompleted = order.state === 'COMPLETED';
+        return hasPickup && !isCompleted;
+      });
+      
+      console.log('✅ [TV] Pedidos cargados:', allTvOrders.length);
+    } else {
+      allTvOrders = [];
+    }
+  } catch (error) {
+    console.error('❌ [TV] Error cargando pedidos:', error);
+    allTvOrders = [];
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   initTvScreen().catch((error) => {
@@ -94,9 +217,25 @@ async function initTvScreen() {
     bgColor: selected.tickerBgColor
   });
 
+  // Verificar horario de la tienda
+  const isClosed = await checkStoreHours();
+  if (isClosed) {
+    showClosedScreen();
+    return;
+  }
+
   configureTicker(selected);
-  await loadProductsForTv(selected);
-  console.log('📦 [TV] Productos cargados:', allTvProducts.length);
+  
+  // Cargar contenido según el modo
+  if (selected.mode === 'orders') {
+    await loadOrdersForTv();
+  } else if (selected.mode === 'qr') {
+    // No necesita cargar productos
+  } else {
+    await loadProductsForTv(selected);
+    console.log('📦 [TV] Productos cargados:', allTvProducts.length);
+  }
+  
   // Renderizar grid inicial
   await renderProductsGrid();
   startTvRotation(selected);

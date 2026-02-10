@@ -775,7 +775,24 @@
                                     <option value="mixed">Mixto (Productos + Promo)</option>
                                     <option value="products">Solo Productos</option>
                                     <option value="promo">Solo Promoción</option>
+                                    <option value="orders">Listado de Pedidos</option>
+                                    <option value="qr">Código QR</option>
                                 </select>
+                            </div>
+                            
+                            <div class="supplier-form-group" id="tv-qr-url-group" style="display:none;">
+                                <label for="tv-qr-url">URL para el código QR *</label>
+                                <input type="url" id="tv-qr-url" placeholder="https://...">
+                                <small style="color: var(--gray-text); display:block; margin-top:6px; font-size:12px;">
+                                    URL que se codificará en el código QR.
+                                </small>
+                            </div>
+                            
+                            <div class="supplier-form-group" id="tv-qr-enabled-group" style="display:none;">
+                                <label style="display:flex; align-items:center; gap:10px;">
+                                    <input type="checkbox" id="tv-qr-enabled" checked style="width:auto;">
+                                    Mostrar código QR en TV
+                                </label>
                             </div>
 
                             <div class="supplier-form-group">
@@ -876,7 +893,7 @@
                     <div class="tv-panel-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <h3 style="margin: 0;">TVs Registrados</h3>
-                            <a href="tv.html" target="_blank" class="btn-primary" style="background: #1a73e8; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                            <a href="tv-selector.html" target="_blank" class="btn-primary" style="background: #1a73e8; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-tv"></i> Abrir Página de TV
                             </a>
                         </div>
