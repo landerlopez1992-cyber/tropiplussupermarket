@@ -16,10 +16,11 @@ export default async function handler(req, res) {
 
   try {
     // Obtener el path completo desde los parámetros
-    // Vercel pasa el path como array en req.query.path cuando se usa [...path]
+    // Vercel pasa el path como array en req.query cuando se usa [...path]
     let squareEndpoint = '';
     
-    // Intentar obtener el path de diferentes formas
+    // Vercel usa req.query para pasar los parámetros del catch-all route
+    // Si la ruta es /api/square/v2/catalog/search, req.query será { path: ['v2', 'catalog', 'search'] }
     if (req.query.path) {
       if (Array.isArray(req.query.path)) {
         squareEndpoint = '/' + req.query.path.join('/');
@@ -28,10 +29,17 @@ export default async function handler(req, res) {
       }
     }
     
-    // Si no hay path en query, intentar desde la URL
-    if (!squareEndpoint) {
-      const urlPath = req.url.split('?')[0]; // Remover query params
-      squareEndpoint = urlPath.replace('/api/square', '') || '/v2/catalog/search';
+    // Si no hay path en query, extraer desde la URL directamente
+    if (!squareEndpoint || squareEndpoint === '/') {
+      // Extraer el path desde req.url
+      const urlMatch = req.url.match(/\/api\/square(\/.*?)(?:\?|$)/);
+      if (urlMatch && urlMatch[1]) {
+        squareEndpoint = urlMatch[1];
+      } else {
+        // Fallback: usar la URL completa y remover /api/square
+        const urlPath = req.url.split('?')[0];
+        squareEndpoint = urlPath.replace(/^\/api\/square/, '') || '/v2/catalog/search';
+      }
     }
     
     // Asegurar que el endpoint empiece con /
