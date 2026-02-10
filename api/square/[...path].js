@@ -16,19 +16,22 @@ export default async function handler(req, res) {
 
   try {
     // Obtener el path completo desde los parámetros
-    // Vercel pasa el path como array en req.query.path
+    // Vercel pasa el path como array en req.query.path cuando se usa [...path]
     let squareEndpoint = '';
     
+    // Intentar obtener el path de diferentes formas
     if (req.query.path) {
       if (Array.isArray(req.query.path)) {
         squareEndpoint = '/' + req.query.path.join('/');
-      } else {
+      } else if (typeof req.query.path === 'string') {
         squareEndpoint = '/' + req.query.path;
       }
-    } else {
-      // Si no hay path en query, intentar desde la URL
-      const urlPath = req.url.replace('/api/square', '');
-      squareEndpoint = urlPath || '/';
+    }
+    
+    // Si no hay path en query, intentar desde la URL
+    if (!squareEndpoint) {
+      const urlPath = req.url.split('?')[0]; // Remover query params
+      squareEndpoint = urlPath.replace('/api/square', '') || '/v2/catalog/search';
     }
     
     // Asegurar que el endpoint empiece con /
@@ -36,7 +39,20 @@ export default async function handler(req, res) {
       squareEndpoint = '/' + squareEndpoint;
     }
     
+    // Si el endpoint está vacío o es solo '/', usar un endpoint por defecto
+    if (squareEndpoint === '/' || !squareEndpoint) {
+      squareEndpoint = '/v2/catalog/search';
+    }
+    
     const squareUrl = `${SQUARE_API_BASE}${squareEndpoint}`;
+    
+    console.log('[Square Proxy] Request details:', {
+      method: req.method,
+      url: req.url,
+      query: req.query,
+      squareEndpoint,
+      squareUrl
+    });
 
     // Preparar headers para Square
     const headers = {
