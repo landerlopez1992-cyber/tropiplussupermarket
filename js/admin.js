@@ -25,6 +25,7 @@ let globalSuppliers = {}; // Proveedores globales (reutilizables)
 const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
 const QR_STORAGE_KEY = 'tropiplus_qr_configs';
+const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
 
 // Cargar datos de proveedores desde localStorage
 function loadSuppliersData() {
@@ -114,6 +115,8 @@ function initAdminPage() {
     initPromotionTab();
     // Inicializar pestaña QR
     initQrTab();
+    // Inicializar pestaña Horario
+    initHoursTab();
     // Inicializar pestaña TV
     initTvTab();
 
@@ -206,6 +209,8 @@ function resetTvForm() {
     if (tickerTextColorInput) tickerTextColorInput.value = '#ffec67';
     const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
     if (tickerBgColorInput) tickerBgColorInput.value = '#000000';
+    const qrSelect = document.getElementById('tv-qr-select');
+    if (qrSelect) qrSelect.value = '';
     document.getElementById('tv-active').checked = true;
 }
 
@@ -301,6 +306,15 @@ function loadTvIntoForm(tvId) {
         console.log('✅ [Admin] Ticker bgColor cargado:', tickerBgColorInput.value);
     }
     document.getElementById('tv-active').checked = tv.active !== false;
+    
+    // Cargar QR seleccionado
+    const qrSelect = document.getElementById('tv-qr-select');
+    if (qrSelect) {
+        populateQrSelect();
+        if (tv.qrId) {
+            qrSelect.value = tv.qrId;
+        }
+    }
 
     document.getElementById('tv-id').value = tv.id || '';
     document.getElementById('tv-name').value = tv.name || '';
@@ -460,6 +474,120 @@ function initQrTab() {
     renderQrList();
 }
 
+function initHoursTab() {
+    const form = document.getElementById('hours-config-form');
+    const resetBtn = document.getElementById('hours-reset-btn');
+    const container = document.getElementById('hours-days-container');
+    if (!form || !container) return;
+    
+    const days = [
+        { id: 0, name: 'Domingo', short: 'Dom' },
+        { id: 1, name: 'Lunes', short: 'Lun' },
+        { id: 2, name: 'Martes', short: 'Mar' },
+        { id: 3, name: 'Miércoles', short: 'Mié' },
+        { id: 4, name: 'Jueves', short: 'Jue' },
+        { id: 5, name: 'Viernes', short: 'Vie' },
+        { id: 6, name: 'Sábado', short: 'Sáb' }
+    ];
+    
+    function getHoursConfig() {
+        try {
+            const raw = localStorage.getItem(HOURS_STORAGE_KEY);
+            if (!raw) return {};
+            return JSON.parse(raw);
+        } catch (error) {
+            console.warn('No se pudo leer configuración de horarios:', error);
+            return {};
+        }
+    }
+    
+    function saveHoursConfig(config) {
+        localStorage.setItem(HOURS_STORAGE_KEY, JSON.stringify(config));
+        console.log('💾 [Admin] Horarios guardados');
+    }
+    
+    function renderDays() {
+        const config = getHoursConfig();
+        container.innerHTML = days.map(day => {
+            const dayConfig = config[day.id] || { enabled: false, start: '09:00', end: '18:00' };
+            return `
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+                            <input type="checkbox" class="day-enabled" data-day="${day.id}" ${dayConfig.enabled ? 'checked' : ''} style="width: auto; transform: scale(1.2);">
+                            <span style="font-weight: 600; font-size: 16px;">${day.name}</span>
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;" class="day-times" data-day="${day.id}" ${!dayConfig.enabled ? 'style="opacity: 0.5; pointer-events: none;"' : ''}>
+                        <div style="flex: 1;">
+                            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--gray-text);">Apertura</label>
+                            <input type="time" class="day-start" data-day="${day.id}" value="${dayConfig.start}" style="width: 100%; padding: 8px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--gray-text);">Cierre</label>
+                            <input type="time" class="day-end" data-day="${day.id}" value="${dayConfig.end}" style="width: 100%; padding: 8px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Agregar event listeners para checkboxes
+        container.querySelectorAll('.day-enabled').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const dayId = parseInt(e.target.dataset.day);
+                const timesDiv = container.querySelector(`.day-times[data-day="${dayId}"]`);
+                if (timesDiv) {
+                    if (e.target.checked) {
+                        timesDiv.style.opacity = '1';
+                        timesDiv.style.pointerEvents = 'auto';
+                    } else {
+                        timesDiv.style.opacity = '0.5';
+                        timesDiv.style.pointerEvents = 'none';
+                    }
+                }
+            });
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas restablecer todos los horarios?')) {
+                localStorage.removeItem(HOURS_STORAGE_KEY);
+                renderDays();
+                if (typeof showModal === 'function') {
+                    showModal('Listo', 'Horarios restablecidos.', 'success');
+                }
+            }
+        });
+    }
+    
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const config = {};
+        days.forEach(day => {
+            const enabled = container.querySelector(`.day-enabled[data-day="${day.id}"]`)?.checked || false;
+            const start = container.querySelector(`.day-start[data-day="${day.id}"]`)?.value || '09:00';
+            const end = container.querySelector(`.day-end[data-day="${day.id}"]`)?.value || '18:00';
+            
+            config[day.id] = {
+                enabled,
+                start,
+                end
+            };
+        });
+        
+        saveHoursConfig(config);
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'Horarios guardados correctamente. Los TVs usarán esta configuración.', 'success');
+        }
+    });
+    
+    renderDays();
+}
+
 function initTvTab() {
     const form = document.getElementById('tv-config-form');
     const resetBtn = document.getElementById('tv-reset-btn');
@@ -495,26 +623,63 @@ function initTvTab() {
         }
     });
 
+    // Función para obtener QRs configurados
+    function getQrConfigs() {
+        try {
+            const raw = localStorage.getItem(QR_STORAGE_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.warn('No se pudo leer configuración de QRs:', error);
+            return [];
+        }
+    }
+    
+    // Función para poblar el selector de QRs
+    function populateQrSelect() {
+        const qrSelect = document.getElementById('tv-qr-select');
+        if (!qrSelect) return;
+        
+        const qrs = getQrConfigs().filter(qr => qr.active);
+        const currentValue = qrSelect.value;
+        
+        qrSelect.innerHTML = '<option value="">Seleccionar QR...</option>';
+        qrs.forEach(qr => {
+            const option = document.createElement('option');
+            option.value = qr.id;
+            option.textContent = `${qr.name} (${qr.url})`;
+            qrSelect.appendChild(option);
+        });
+        
+        if (currentValue) {
+            qrSelect.value = currentValue;
+        }
+    }
+    
     // Mostrar/ocultar campos según el modo seleccionado
     const modeSelect = document.getElementById('tv-mode');
-    const qrUrlGroup = document.getElementById('tv-qr-url-group');
-    const qrEnabledGroup = document.getElementById('tv-qr-enabled-group');
+    const qrSelectGroup = document.getElementById('tv-qr-select-group');
     
-    if (modeSelect && qrUrlGroup && qrEnabledGroup) {
+    if (modeSelect && qrSelectGroup) {
         const toggleQrFields = () => {
             const mode = modeSelect.value;
             if (mode === 'qr') {
-                qrUrlGroup.style.display = 'block';
-                qrEnabledGroup.style.display = 'block';
+                qrSelectGroup.style.display = 'block';
+                populateQrSelect();
             } else {
-                qrUrlGroup.style.display = 'none';
-                qrEnabledGroup.style.display = 'none';
+                qrSelectGroup.style.display = 'none';
             }
         };
         
         modeSelect.addEventListener('change', toggleQrFields);
         // Ejecutar al cargar para establecer estado inicial
         toggleQrFields();
+        
+        // Actualizar QRs cuando se cambia a la pestaña TV
+        document.querySelector('.admin-internal-btn[data-subtab="tv"]')?.addEventListener('click', () => {
+            setTimeout(populateQrSelect, 100);
+        });
     }
 
     form.addEventListener('submit', async (event) => {
@@ -530,8 +695,18 @@ function initTvTab() {
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
         const promoText = document.getElementById('tv-promo-text').value.trim();
-        const qrUrl = document.getElementById('tv-qr-url')?.value.trim() || '';
-        const qrEnabled = document.getElementById('tv-qr-enabled')?.checked !== false;
+        const qrId = document.getElementById('tv-qr-select')?.value || '';
+        let qrUrl = '';
+        let qrSize = 400;
+        
+        if (qrId) {
+            const qrs = getQrConfigs();
+            const selectedQr = qrs.find(qr => qr.id === qrId);
+            if (selectedQr) {
+                qrUrl = selectedQr.url;
+                qrSize = selectedQr.size || 400;
+            }
+        }
         const tickerEnabled = document.getElementById('tv-ticker-enabled')?.checked !== false;
         const tickerSpeed = document.getElementById('tv-ticker-speed')?.value || 'normal';
         const tickerFontSize = document.getElementById('tv-ticker-font-size')?.value || '28px';
@@ -539,9 +714,9 @@ function initTvTab() {
         const tickerBgColor = document.getElementById('tv-ticker-bg-color')?.value || '#000000';
         const active = document.getElementById('tv-active').checked;
         
-        if (mode === 'qr' && !qrUrl) {
+        if (mode === 'qr' && !qrId) {
             if (typeof showModal === 'function') {
-                showModal('Error', 'Debes proporcionar una URL para el código QR.', 'error');
+                showModal('Error', 'Debes seleccionar un QR configurado. Ve a la pestaña "QR" para crear uno.', 'error');
             }
             return;
         }
@@ -564,8 +739,9 @@ function initTvTab() {
             showPrice,
             showOffer,
             promoText,
+            qrId,
             qrUrl,
-            qrEnabled,
+            qrSize,
             tickerEnabled,
             tickerSpeed,
             tickerFontSize,
