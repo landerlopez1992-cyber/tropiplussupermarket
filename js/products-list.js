@@ -5,31 +5,87 @@ const productsPerPage = 20;
 let filteredProducts = [];
 
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('📄 [Products List] DOMContentLoaded - Iniciando...');
+    
+    // Mostrar indicador de carga
+    const loadingIndicator = document.getElementById('products-loading-indicator');
+    const countText = document.getElementById('products-count-text');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'inline-block';
+    }
+    if (countText) {
+        countText.style.display = 'none';
+    }
+    
     // Obtener parámetros de la URL
     const urlParams = new URLSearchParams(window.location.search);
     const categoryId = urlParams.get('category');
     const categoryName = urlParams.get('name');
     const showSale = urlParams.get('sale');
     const showFreeShipping = urlParams.get('free_shipping');
+    const buyAgain = urlParams.get('buy_again');
     
-    // Esperar a que se carguen los productos de Square
-    await waitForSquareProducts();
+    console.log('📄 [Products List] Parámetros URL:', { categoryId, categoryName, showSale, showFreeShipping, buyAgain });
     
-    // Filtrar productos según los parámetros
-    if (categoryId && categoryName) {
-        currentCategory = { id: categoryId, name: decodeURIComponent(categoryName) };
-        loadProductsByCategory(categoryId, currentCategory.name);
-    } else if (showSale) {
-        loadSaleProducts();
-    } else if (showFreeShipping) {
-        loadFreeShippingProducts();
-    } else {
-        loadAllProducts();
+    try {
+        // Esperar a que se carguen los productos de Square
+        console.log('⏳ [Products List] Esperando productos de Square...');
+        await waitForSquareProducts();
+        console.log('✅ [Products List] Productos recibidos, squareProducts.length:', squareProducts ? squareProducts.length : 'undefined');
+        
+        // Ocultar indicador de carga
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+        if (countText) {
+            countText.style.display = 'inline';
+        }
+        
+        // Filtrar productos según los parámetros
+        if (buyAgain === 'true') {
+            console.log('📄 [Products List] Cargando productos de "Comprar de nuevo"');
+            loadBuyAgainProducts();
+        } else if (categoryId && categoryName) {
+            console.log('📄 [Products List] Cargando productos por categoría:', categoryName);
+            currentCategory = { id: categoryId, name: decodeURIComponent(categoryName) };
+            loadProductsByCategory(categoryId, currentCategory.name);
+        } else if (showSale) {
+            console.log('📄 [Products List] Cargando productos en oferta');
+            loadSaleProducts();
+        } else if (showFreeShipping) {
+            console.log('📄 [Products List] Cargando productos con envío gratis');
+            loadFreeShippingProducts();
+        } else {
+            console.log('📄 [Products List] Cargando todos los productos');
+            loadAllProducts();
+        }
+        
+        // Event listeners
+        initFilters();
+        initSort();
+        
+    } catch (error) {
+        console.error('❌ [Products List] Error crítico:', error);
+        
+        // Ocultar indicador de carga
+        if (loadingIndicator) {
+            loadingIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error cargando productos';
+            loadingIndicator.style.color = 'red';
+        }
+        
+        // Mostrar error en la página
+        const productsGrid = document.getElementById('products-grid');
+        if (productsGrid) {
+            productsGrid.innerHTML = `<div class="no-products-message" style="grid-column: 1 / -1; color: red; padding: 40px; text-align: center;">
+                <h3>⚠️ Error crítico</h3>
+                <p>${error.message}</p>
+                <p><strong>Por favor, recargue la página o contacte al administrador.</strong></p>
+                <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Recargar Página
+                </button>
+            </div>`;
+        }
     }
-    
-    // Event listeners
-    initFilters();
-    initSort();
 });
 
 async function waitForSquareProducts() {
