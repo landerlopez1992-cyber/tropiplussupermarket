@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "tv_1770761234638_rz8ry1",
+    "name": "tv eerrs",
+    "mode": "mixed",
+    "categoryId": "",
+    "categoryName": "Todas",
+    "productCount": 8,
+    "slideSeconds": 10,
+    "showPrice": true,
+    "showOffer": true,
+    "promoText": "",
+    "active": true,
+    "tickerEnabled": true,
+    "tickerSpeed": "normal",
+    "tickerFontSize": "28px",
+    "tickerTextColor": "#ffec67",
+    "tickerBgColor": "#000000"
+  }
+]
