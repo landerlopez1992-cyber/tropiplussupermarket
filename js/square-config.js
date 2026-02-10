@@ -36,12 +36,11 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
   let proxyUrls = [];
   
   if (isProduction) {
-    // En producción: intentar Supabase primero (más simple y confiable), luego Vercel, luego alternativas
-    // ⚠️ ACTUALIZA ESTA URL con tu URL de Supabase después del deploy
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co/functions/v1/square-proxy';
+    // En producción: usar Supabase del proyecto LogiFlow Pro
+    const SUPABASE_URL = 'https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy';
     
     proxyUrls = [
-      SUPABASE_URL,  // Supabase (RECOMENDADO - más simple)
+      SUPABASE_URL,  // Supabase LogiFlow Pro (PRINCIPAL)
       'https://tropiplussupermarket.vercel.app',  // Vercel (fallback)
       'https://corsproxy.io/?',  // Proxy público 1
       'https://api.allorigins.win/raw?url=',  // Proxy público 2
