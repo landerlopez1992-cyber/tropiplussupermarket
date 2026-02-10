@@ -146,6 +146,69 @@ function createTvId() {
     return `tv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getActiveQrConfigs() {
+    try {
+        const raw = localStorage.getItem(QR_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(qr => qr && qr.active !== false) : [];
+    } catch (error) {
+        console.warn('No se pudo leer configuración de QRs:', error);
+        return [];
+    }
+}
+
+function populateTvQrSelect(selectedQrId = '') {
+    const qrSelect = document.getElementById('tv-qr-select');
+    if (!qrSelect) return;
+
+    const qrs = getActiveQrConfigs();
+    qrSelect.innerHTML = '<option value="">Seleccionar QR...</option>';
+
+    qrs.forEach(qr => {
+        const option = document.createElement('option');
+        option.value = qr.id;
+        option.textContent = `${qr.name} (${qr.url})`;
+        qrSelect.appendChild(option);
+    });
+
+    if (selectedQrId) {
+        qrSelect.value = selectedQrId;
+    }
+}
+
+function applyTvModeVisibility(mode) {
+    const group = (id) => document.getElementById(id);
+    const setVisible = (id, visible) => {
+        const el = group(id);
+        if (el) el.style.display = visible ? '' : 'none';
+    };
+
+    const isProductsMode = mode === 'products' || mode === 'mixed';
+    const isPromoMode = mode === 'promo' || mode === 'mixed';
+    const isQrMode = mode === 'qr';
+
+    // Opciones de productos
+    setVisible('tv-category-group', isProductsMode);
+    setVisible('tv-product-count-group', isProductsMode);
+    setVisible('tv-show-price-group', isProductsMode);
+    setVisible('tv-show-offer-group', isProductsMode);
+
+    // Segundos aplica para productos, orders y mixed (rotación/refresco)
+    setVisible('tv-slide-seconds-group', mode !== 'promo' && mode !== 'qr');
+
+    // Opciones de QR
+    setVisible('tv-qr-select-group', isQrMode);
+
+    // Texto/ticker solo cuando haya promoción en pantalla (promo o mixed)
+    setVisible('tv-promo-text-group', isPromoMode);
+    setVisible('tv-ticker-enabled-group', isPromoMode);
+    setVisible('tv-ticker-speed-group', isPromoMode);
+    setVisible('tv-ticker-font-size-group', isPromoMode);
+    setVisible('tv-ticker-text-color-group', isPromoMode);
+    setVisible('tv-ticker-bg-color-group', isPromoMode);
+}
+
 async function getAvailableCategoriesForTv() {
     try {
         if (Array.isArray(squareCategories) && squareCategories.length > 0) {
@@ -212,6 +275,8 @@ function resetTvForm() {
     const qrSelect = document.getElementById('tv-qr-select');
     if (qrSelect) qrSelect.value = '';
     document.getElementById('tv-active').checked = true;
+    populateTvQrSelect('');
+    applyTvModeVisibility('mixed');
 }
 
 function renderTvList() {
@@ -260,62 +325,8 @@ function renderTvList() {
 function loadTvIntoForm(tvId) {
     const tv = getTvConfigs().find(item => item.id === tvId);
     if (!tv) return;
-    
-    // Cargar todos los campos del formulario
-    document.getElementById('tv-id').value = tv.id || '';
-    document.getElementById('tv-name').value = tv.name || '';
-    document.getElementById('tv-mode').value = tv.mode || 'mixed';
-    document.getElementById('tv-category').value = tv.categoryId || '';
-    document.getElementById('tv-product-count').value = tv.productCount || 8;
-    document.getElementById('tv-slide-seconds').value = tv.slideSeconds || 10;
-    document.getElementById('tv-show-price').checked = tv.showPrice !== false;
-    document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
-    document.getElementById('tv-promo-text').value = tv.promoText || '';
-    console.log('📋 [Admin] Cargando TV en formulario:', tv);
-    console.log('📋 [Admin] Ticker config del TV:', {
-        enabled: tv.tickerEnabled,
-        speed: tv.tickerSpeed,
-        fontSize: tv.tickerFontSize,
-        textColor: tv.tickerTextColor,
-        bgColor: tv.tickerBgColor
-    });
-    
-    const tickerEnabledInput = document.getElementById('tv-ticker-enabled');
-    if (tickerEnabledInput) {
-        tickerEnabledInput.checked = tv.tickerEnabled !== false;
-        console.log('✅ [Admin] Ticker enabled cargado:', tickerEnabledInput.checked);
-    }
-    const tickerSpeedInput = document.getElementById('tv-ticker-speed');
-    if (tickerSpeedInput) {
-        tickerSpeedInput.value = tv.tickerSpeed || 'normal';
-        console.log('✅ [Admin] Ticker speed cargado:', tickerSpeedInput.value);
-    }
-    const tickerFontSizeInput = document.getElementById('tv-ticker-font-size');
-    if (tickerFontSizeInput) {
-        tickerFontSizeInput.value = tv.tickerFontSize || '28px';
-        console.log('✅ [Admin] Ticker fontSize cargado:', tickerFontSizeInput.value);
-    }
-    const tickerTextColorInput = document.getElementById('tv-ticker-text-color');
-    if (tickerTextColorInput) {
-        tickerTextColorInput.value = tv.tickerTextColor || '#ffec67';
-        console.log('✅ [Admin] Ticker textColor cargado:', tickerTextColorInput.value);
-    }
-    const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
-    if (tickerBgColorInput) {
-        tickerBgColorInput.value = tv.tickerBgColor || '#000000';
-        console.log('✅ [Admin] Ticker bgColor cargado:', tickerBgColorInput.value);
-    }
-    document.getElementById('tv-active').checked = tv.active !== false;
-    
-    // Cargar QR seleccionado
-    const qrSelect = document.getElementById('tv-qr-select');
-    if (qrSelect) {
-        populateQrSelect();
-        if (tv.qrId) {
-            qrSelect.value = tv.qrId;
-        }
-    }
 
+    console.log('📋 [Admin] Cargando TV en formulario:', tv);
     document.getElementById('tv-id').value = tv.id || '';
     document.getElementById('tv-name').value = tv.name || '';
     document.getElementById('tv-mode').value = tv.mode || 'mixed';
@@ -325,7 +336,19 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-show-price').checked = tv.showPrice !== false;
     document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
     document.getElementById('tv-promo-text').value = tv.promoText || '';
+    const tickerEnabledInput = document.getElementById('tv-ticker-enabled');
+    if (tickerEnabledInput) tickerEnabledInput.checked = tv.tickerEnabled !== false;
+    const tickerSpeedInput = document.getElementById('tv-ticker-speed');
+    if (tickerSpeedInput) tickerSpeedInput.value = tv.tickerSpeed || 'normal';
+    const tickerFontSizeInput = document.getElementById('tv-ticker-font-size');
+    if (tickerFontSizeInput) tickerFontSizeInput.value = tv.tickerFontSize || '28px';
+    const tickerTextColorInput = document.getElementById('tv-ticker-text-color');
+    if (tickerTextColorInput) tickerTextColorInput.value = tv.tickerTextColor || '#ffec67';
+    const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
+    if (tickerBgColorInput) tickerBgColorInput.value = tv.tickerBgColor || '#000000';
     document.getElementById('tv-active').checked = tv.active !== false;
+    populateTvQrSelect(tv.qrId || '');
+    applyTvModeVisibility(tv.mode || 'mixed');
 }
 
 function initQrTab() {
@@ -595,6 +618,7 @@ function initTvTab() {
     if (!form || !listContainer) return;
 
     populateTvCategorySelect();
+    populateTvQrSelect();
     renderTvList();
 
     resetBtn?.addEventListener('click', () => {
@@ -623,64 +647,26 @@ function initTvTab() {
         }
     });
 
-    // Función para obtener QRs configurados
-    function getQrConfigs() {
-        try {
-            const raw = localStorage.getItem(QR_STORAGE_KEY);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.warn('No se pudo leer configuración de QRs:', error);
-            return [];
-        }
-    }
-    
-    // Función para poblar el selector de QRs
-    function populateQrSelect() {
-        const qrSelect = document.getElementById('tv-qr-select');
-        if (!qrSelect) return;
-        
-        const qrs = getQrConfigs().filter(qr => qr.active);
-        const currentValue = qrSelect.value;
-        
-        qrSelect.innerHTML = '<option value="">Seleccionar QR...</option>';
-        qrs.forEach(qr => {
-            const option = document.createElement('option');
-            option.value = qr.id;
-            option.textContent = `${qr.name} (${qr.url})`;
-            qrSelect.appendChild(option);
-        });
-        
-        if (currentValue) {
-            qrSelect.value = currentValue;
-        }
-    }
-    
-    // Mostrar/ocultar campos según el modo seleccionado
     const modeSelect = document.getElementById('tv-mode');
-    const qrSelectGroup = document.getElementById('tv-qr-select-group');
-    
-    if (modeSelect && qrSelectGroup) {
-        const toggleQrFields = () => {
+    if (modeSelect) {
+        modeSelect.addEventListener('change', () => {
             const mode = modeSelect.value;
+            applyTvModeVisibility(mode);
             if (mode === 'qr') {
-                qrSelectGroup.style.display = 'block';
-                populateQrSelect();
-            } else {
-                qrSelectGroup.style.display = 'none';
+                populateTvQrSelect(document.getElementById('tv-qr-select')?.value || '');
             }
-        };
-        
-        modeSelect.addEventListener('change', toggleQrFields);
-        // Ejecutar al cargar para establecer estado inicial
-        toggleQrFields();
-        
-        // Actualizar QRs cuando se cambia a la pestaña TV
-        document.querySelector('.admin-internal-btn[data-subtab="tv"]')?.addEventListener('click', () => {
-            setTimeout(populateQrSelect, 100);
         });
+        applyTvModeVisibility(modeSelect.value || 'mixed');
     }
+
+    // Actualizar QRs al entrar a la pestaña TV
+    document.querySelector('.admin-internal-btn[data-subtab="tv"]')?.addEventListener('click', () => {
+        setTimeout(() => {
+            populateTvQrSelect(document.getElementById('tv-qr-select')?.value || '');
+            const currentMode = document.getElementById('tv-mode')?.value || 'mixed';
+            applyTvModeVisibility(currentMode);
+        }, 100);
+    });
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -695,12 +681,12 @@ function initTvTab() {
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
         const promoText = document.getElementById('tv-promo-text').value.trim();
-        const qrId = document.getElementById('tv-qr-select')?.value || '';
+        let qrId = document.getElementById('tv-qr-select')?.value || '';
         let qrUrl = '';
         let qrSize = 400;
         
         if (qrId) {
-            const qrs = getQrConfigs();
+            const qrs = getActiveQrConfigs();
             const selectedQr = qrs.find(qr => qr.id === qrId);
             if (selectedQr) {
                 qrUrl = selectedQr.url;
@@ -719,6 +705,13 @@ function initTvTab() {
                 showModal('Error', 'Debes seleccionar un QR configurado. Ve a la pestaña "QR" para crear uno.', 'error');
             }
             return;
+        }
+
+        // Limpiar valores que no aplican según modo para evitar confusiones
+        if (mode !== 'qr') {
+            qrId = '';
+            qrUrl = '';
+            qrSize = 400;
         }
 
         if (!name) {

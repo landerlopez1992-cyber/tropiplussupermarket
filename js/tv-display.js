@@ -613,10 +613,11 @@ async function renderProductsGrid() {
       gridEl.innerHTML = ordersHtml;
       return;
     } else if (currentMode === 'qr') {
-      // Mostrar QR (tomar el primero activo)
+      // Mostrar QR (rotar entre QRs activos)
       allQrConfigs = loadQrConfigs();
       if (allQrConfigs.length > 0) {
-        const qr = allQrConfigs[0];
+        const qrIndex = tvMixedModeIndex % allQrConfigs.length;
+        const qr = allQrConfigs[qrIndex];
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qr.size || 400}x${qr.size || 400}&data=${encodeURIComponent(qr.url)}`;
         gridEl.innerHTML = `
           <div class="tv-product-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 500px;">
@@ -933,7 +934,7 @@ function startTvRotation(tvConfig) {
 }
 
 function startAutoRefresh(tvId) {
-  setInterval(() => {
+  setInterval(async () => {
     // Verificar horario cada vez
     const isClosed = checkStoreHours();
     if (isClosed) {
