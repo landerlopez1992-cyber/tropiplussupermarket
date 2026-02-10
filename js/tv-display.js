@@ -144,15 +144,44 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function getTvConfigs() {
+async function getTvConfigs() {
+  // Primero intentar desde localStorage (para compatibilidad con admin)
   try {
     const raw = localStorage.getItem(TV_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
   } catch (_error) {
-    return [];
+    console.warn('Error leyendo desde localStorage:', _error);
   }
+  
+  // Si no hay en localStorage, leer desde JSON público
+  try {
+    const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
+    const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (response.ok) {
+      const tvs = await response.json();
+      if (Array.isArray(tvs) && tvs.length > 0) {
+        // Guardar en localStorage como cache
+        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+        return tvs;
+      }
+    }
+  } catch (error) {
+    console.warn('Error leyendo desde JSON público:', error);
+  }
+  
+  return [];
 }
 
 function getPromoConfig() {
