@@ -503,9 +503,28 @@ async function sendUrlToRegisteredTv(deviceId, tvUrl) {
     localStorage.setItem('tropiplus_pending_casts', JSON.stringify(recentCasts));
 }
 
+// Exponer TVs globalmente para que la app pueda leerlos
+function exposeTVsToApp() {
+    const tvs = getTvConfigs();
+    // Exponer en window para que la app pueda leerlos
+    window.tropiplusTVs = tvs;
+    // También guardar en un script tag con datos
+    let scriptTag = document.getElementById('tropiplus-tvs-data');
+    if (!scriptTag) {
+        scriptTag = document.createElement('script');
+        scriptTag.id = 'tropiplus-tvs-data';
+        scriptTag.type = 'application/json';
+        document.head.appendChild(scriptTag);
+    }
+    scriptTag.textContent = JSON.stringify(tvs);
+}
+
 function renderTvList() {
     const container = document.getElementById('tv-list-container');
     if (!container) return;
+    
+    // Exponer TVs para la app
+    exposeTVsToApp();
 
     const tvConfigs = getTvConfigs();
     if (tvConfigs.length === 0) {

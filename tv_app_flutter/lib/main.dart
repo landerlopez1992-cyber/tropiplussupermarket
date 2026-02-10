@@ -35,6 +35,7 @@ class _TVBrowserState extends State<TVBrowser> {
   late WebViewController _controller;
   bool _loading = true;
   Timer? _refreshTimer;
+  List<Map<String, dynamic>> _cachedTVs = [];
   
   static const String _mainUrl =
       'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tv-selector.html';
@@ -44,6 +45,7 @@ class _TVBrowserState extends State<TVBrowser> {
   @override
   void initState() {
     super.initState();
+    _loadTVsFromAdmin();
     _setupWebView();
     _startAutoRefresh();
   }
@@ -55,37 +57,91 @@ class _TVBrowserState extends State<TVBrowser> {
   }
 
   void _startAutoRefresh() {
-    // Recargar cada 5 segundos para obtener datos actualizados
+    // Recargar cada 5 segundos
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
-        _syncDataFromAdmin();
+        _loadTVsFromAdmin();
+        _controller.reload();
       }
     });
   }
 
-  Future<void> _syncDataFromAdmin() async {
-    // Intentar leer los TVs desde el admin web usando JavaScript
+  Future<void> _loadTVsFromAdmin() async {
+    // Intentar leer los TVs desde el admin usando un iframe
     try {
       await _controller.runJavaScript('''
         (function() {
-          // Intentar leer desde el admin abierto en otra pestaña
-          // O usar BroadcastChannel para comunicación
-          const channel = new BroadcastChannel('tropiplus_sync');
-          channel.postMessage({type: 'request_tvs'});
+          // Crear iframe oculto que carga el admin
+          let iframe = document.getElementById('admin-iframe-sync');
+          if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'admin-iframe-sync';
+            iframe.style.display = 'none';
+            iframe.style.width = '1px';
+            iframe.style.height = '1px';
+            iframe.style.position = 'absolute';
+            iframe.style.left = '-9999px';
+            iframe.src = '$_adminUrl';
+            document.body.appendChild(iframe);
+          }
           
-          // También intentar leer desde localStorage del admin
-          // (esto solo funciona si están en el mismo dominio)
-          try {
-            const adminTvs = localStorage.getItem('tropiplus_tv_configs');
-            if (adminTvs) {
-              // Ya tenemos los TVs, no hacer nada
-              return;
-            }
-          } catch(e) {}
+          // Esperar a que el iframe cargue y luego leer los TVs
+          iframe.onload = function() {
+            setTimeout(function() {
+              try {
+                const adminWindow = iframe.contentWindow;
+                if (adminWindow) {
+                  // Intentar leer desde window.tropiplusTVs
+                  if (adminWindow.tropiplusTVs) {
+                    const tvs = adminWindow.tropiplusTVs;
+                    localStorage.setItem('tropiplus_tv_configs', JSON.stringify(tvs));
+                    console.log('✅ TVs cargados desde admin:', tvs.length);
+                    if (typeof renderTvList === 'function') {
+                      setTimeout(function() { renderTvList(); }, 100);
+                    }
+                    return;
+                  }
+                  
+                  // Intentar leer desde el script tag
+                  const scriptTag = adminWindow.document.getElementById('tropiplus-tvs-data');
+                  if (scriptTag && scriptTag.textContent) {
+                    const tvs = JSON.parse(scriptTag.textContent);
+                    localStorage.setItem('tropiplus_tv_configs', JSON.stringify(tvs));
+                    console.log('✅ TVs cargados desde script tag:', tvs.length);
+                    if (typeof renderTvList === 'function') {
+                      setTimeout(function() { renderTvList(); }, 100);
+                    }
+                    return;
+                  }
+                  
+                  // Intentar leer desde localStorage del iframe
+                  try {
+                    const tvs = adminWindow.localStorage.getItem('tropiplus_tv_configs');
+                    if (tvs) {
+                      localStorage.setItem('tropiplus_tv_configs', tvs);
+                      console.log('✅ TVs cargados desde localStorage del iframe');
+                      if (typeof renderTvList === 'function') {
+                        setTimeout(function() { renderTvList(); }, 100);
+                      }
+                    }
+                  } catch(e) {
+                    console.log('No se puede acceder al localStorage del iframe (CORS):', e);
+                  }
+                }
+              } catch(e) {
+                console.error('Error leyendo TVs del iframe:', e);
+              }
+            }, 2000);
+          };
+          
+          // Si el iframe ya está cargado, intentar leer inmediatamente
+          if (iframe.contentWindow && iframe.contentWindow.document.readyState === 'complete') {
+            iframe.onload();
+          }
         })();
       ''');
     } catch (e) {
-      print('Error sincronizando: $e');
+      print('Error configurando carga de TVs: $e');
     }
   }
 
@@ -93,16 +149,6 @@ class _TVBrowserState extends State<TVBrowser> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          // Recibir mensajes del WebView
-          if (message.message.startsWith('TVS_DATA:')) {
-            final tvsJson = message.message.substring(9);
-            _injectTVs(tvsJson);
-          }
-        },
-      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
@@ -116,10 +162,11 @@ class _TVBrowserState extends State<TVBrowser> {
             }
             
             if (url.contains('tv-selector.html')) {
-              // Inyectar sesión y sincronizar TVs
+              // Inyectar sesión
               await _injectSession();
               await Future.delayed(const Duration(milliseconds: 500));
-              await _setupTVSync();
+              // Cargar TVs desde el admin
+              await _loadTVsFromAdmin();
             }
           },
         ),
@@ -128,7 +175,7 @@ class _TVBrowserState extends State<TVBrowser> {
   }
 
   Future<void> _injectSession() async {
-    // Inyectar sesión de usuario admin para que pueda ver los TVs
+    // Inyectar sesión de usuario admin
     final session = {
       'id': 'tv_admin_auto',
       'email': 'tallercell0133@gmail.com',
@@ -147,94 +194,8 @@ class _TVBrowserState extends State<TVBrowser> {
           localStorage.setItem('tropiplus_user', '$sessionJson');
           localStorage.setItem('tropiplus_user_id', 'tv_admin_auto');
           localStorage.setItem('tropiplus_user_password', '$passwordB64');
-          console.log('✅ Sesión inyectada');
         } catch(e) {
           console.error('Error inyectando sesión:', e);
-        }
-      })();
-    ''');
-  }
-
-  Future<void> _setupTVSync() async {
-    // Configurar sincronización de TVs desde el admin
-    await _controller.runJavaScript('''
-      (function() {
-        // Escuchar mensajes de sincronización
-        const channel = new BroadcastChannel('tropiplus_sync');
-        channel.addEventListener('message', function(event) {
-          if (event.data.type === 'tvs_data') {
-            try {
-              localStorage.setItem('tropiplus_tv_configs', JSON.stringify(event.data.tvs));
-              if (typeof renderTvList === 'function') {
-                renderTvList();
-              }
-              // Notificar a Flutter
-              if (window.FlutterChannel) {
-                window.FlutterChannel.postMessage('TVS_DATA:' + JSON.stringify(event.data.tvs));
-              }
-            } catch(e) {
-              console.error('Error guardando TVs:', e);
-            }
-          }
-        });
-        
-        // Intentar leer TVs desde el admin (si está en la misma sesión)
-        try {
-          // Esto solo funciona si el admin está en otra pestaña del mismo navegador
-          // Para WebView, necesitamos otra solución
-          
-          // Intentar cargar el admin en un iframe oculto para leer localStorage
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = '$_adminUrl';
-          iframe.onload = function() {
-            try {
-              const adminWindow = iframe.contentWindow;
-              if (adminWindow && adminWindow.localStorage) {
-                const tvs = adminWindow.localStorage.getItem('tropiplus_tv_configs');
-                if (tvs) {
-                  localStorage.setItem('tropiplus_tv_configs', tvs);
-                  if (typeof renderTvList === 'function') {
-                    setTimeout(renderTvList, 100);
-                  }
-                }
-              }
-            } catch(e) {
-              console.log('No se puede acceder al localStorage del iframe (CORS):', e);
-              // Usar método alternativo: fetch del admin y parsear
-              _loadTVsFromAdminPage();
-            }
-          };
-          document.body.appendChild(iframe);
-        } catch(e) {
-          console.error('Error cargando admin:', e);
-        }
-        
-        function _loadTVsFromAdminPage() {
-          // Método alternativo: hacer que el admin exponga los TVs
-          fetch('$_adminUrl')
-            .then(response => response.text())
-            .then(html => {
-              // El admin tiene los TVs en localStorage, pero no podemos acceder directamente
-              // Necesitamos que el admin los exponga de otra forma
-              console.log('Admin cargado, pero localStorage no accesible');
-            })
-            .catch(e => console.error('Error:', e));
-        }
-      })();
-    ''');
-  }
-
-  Future<void> _injectTVs(String tvsJson) async {
-    await _controller.runJavaScript('''
-      (function() {
-        try {
-          localStorage.setItem('tropiplus_tv_configs', '$tvsJson');
-          if (typeof renderTvList === 'function') {
-            setTimeout(function() { renderTvList(); }, 100);
-          }
-        } catch(e) {
-          console.error('Error inyectando TVs:', e);
         }
       })();
     ''');
