@@ -1043,7 +1043,15 @@ async function updateCartContent() {
   let html = '<h4 class="cart-store-title">Tienda</h4>';
   
   for (const item of shoppingCart) {
-    const imageUrl = item.image ? (await getCachedProductImageUrl(item.image) || 'images/placeholder.svg') : 'images/placeholder.svg';
+    // Obtener imagen de forma síncrona usando placeholder si no está disponible
+    let imageUrl = 'images/placeholder.svg';
+    if (item.image && typeof getCachedProductImageUrl === 'function') {
+      try {
+        imageUrl = await getCachedProductImageUrl(item.image) || 'images/placeholder.svg';
+      } catch (e) {
+        console.warn('Error obteniendo imagen del producto:', e);
+      }
+    }
     // Si es una recarga de tarjeta, mostrar icono especial
     if (item.type === 'giftcard_reload') {
         html += `
