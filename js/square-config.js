@@ -77,7 +77,10 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
         options.headers['Square-Version'] = '2024-01-18';
         options.headers['Authorization'] = `Bearer ${SQUARE_CONFIG.accessToken}`;
       } else if (baseUrl.includes('supabase.co')) {
-        // Proxy de Supabase - la URL ya incluye el path
+        // Proxy de Supabase - construir la URL correctamente
+        // baseUrl es: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy
+        // endpoint es: /v2/catalog/search
+        // Resultado: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy/v2/catalog/search
         proxyUrl = `${baseUrl}${endpoint}`;
       } else {
         // Proxy normal (Vercel o local)

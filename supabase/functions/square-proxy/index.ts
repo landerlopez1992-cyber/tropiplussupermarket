@@ -20,19 +20,38 @@ Deno.serve(async (req) => {
 
   try {
     // Obtener el path desde la URL
-    // La URL será: https://tu-proyecto.supabase.co/functions/v1/square-proxy/v2/catalog/search
+    // La URL será: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy/v2/catalog/search
     const url = new URL(req.url);
+    
+    // Extraer el path después de /square-proxy/
+    // El pathname será: /functions/v1/square-proxy/v2/catalog/search
+    let squareEndpoint = '';
+    
+    // Buscar el path después de /square-proxy/
     const pathMatch = url.pathname.match(/\/square-proxy\/(.+)$/);
     
-    let squareEndpoint = '';
     if (pathMatch && pathMatch[1]) {
-      squareEndpoint = '/' + pathMatch[1];
+      // Asegurar que empiece con /
+      squareEndpoint = pathMatch[1].startsWith('/') ? pathMatch[1] : '/' + pathMatch[1];
     } else {
-      // Si no hay path, usar endpoint por defecto
-      squareEndpoint = '/v2/catalog/search';
+      // Si no hay path, intentar extraer desde query params o usar default
+      const queryPath = url.searchParams.get('path');
+      if (queryPath) {
+        squareEndpoint = queryPath.startsWith('/') ? queryPath : '/' + queryPath;
+      } else {
+        // Endpoint por defecto
+        squareEndpoint = '/v2/catalog/search';
+      }
     }
 
     const squareUrl = `${SQUARE_API_BASE}${squareEndpoint}`;
+    
+    console.log('[Square Proxy] URL details:', {
+      originalUrl: req.url,
+      pathname: url.pathname,
+      squareEndpoint,
+      squareUrl
+    });
 
     // Preparar headers para Square
     const headers = {
