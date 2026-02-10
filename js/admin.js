@@ -26,6 +26,7 @@ const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
 const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
+const PUBLIC_TVS_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
 
 // Cargar datos de proveedores desde localStorage
 function loadSuppliersData() {
@@ -155,6 +156,106 @@ function saveTvConfigs(tvConfigs) {
     
     // ACTUALIZAR AUTOMÁTICAMENTE EL ARCHIVO PÚBLICO
     updatePublicTvsFile(tvConfigs);
+}
+
+function normalizeTvForSync(tv) {
+    return {
+        id: String(tv?.id || ''),
+        name: String(tv?.name || ''),
+        mode: String(tv?.mode || 'mixed'),
+        categoryId: String(tv?.categoryId || ''),
+        categoryName: String(tv?.categoryName || 'Todas'),
+        productCount: Number(tv?.productCount || 8),
+        slideSeconds: Number(tv?.slideSeconds || 10),
+        showPrice: tv?.showPrice !== false,
+        showOffer: tv?.showOffer !== false,
+        promoText: String(tv?.promoText || ''),
+        active: tv?.active !== false,
+        tickerEnabled: tv?.tickerEnabled !== false,
+        tickerSpeed: String(tv?.tickerSpeed || 'normal'),
+        tickerFontSize: String(tv?.tickerFontSize || '28px'),
+        tickerTextColor: String(tv?.tickerTextColor || '#ffec67'),
+        tickerBgColor: String(tv?.tickerBgColor || '#000000')
+    };
+}
+
+function buildSyncSignature(tvConfigs) {
+    const normalized = (Array.isArray(tvConfigs) ? tvConfigs : [])
+        .map(normalizeTvForSync)
+        .sort((a, b) => a.id.localeCompare(b.id));
+    return JSON.stringify(normalized);
+}
+
+function ensureTvSyncStatusElement(container) {
+    if (!container) return null;
+    const parent = container.parentElement;
+    if (!parent) return null;
+
+    let el = document.getElementById('tv-sync-status');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'tv-sync-status';
+        el.style.cssText = `
+            margin: 10px 0 16px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+            border: 1px solid #d7d7d7;
+            background: #f8f9fa;
+            color: #333;
+        `;
+        parent.insertBefore(el, container);
+    }
+    return el;
+}
+
+async function refreshPublicTvSyncStatus() {
+    const listContainer = document.getElementById('tv-list-container');
+    const statusEl = ensureTvSyncStatusElement(listContainer);
+    if (!statusEl) return;
+
+    statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> Verificando sincronización con archivo público...';
+
+    const localTvs = getTvConfigs();
+    try {
+        const response = await fetch(`${PUBLIC_TVS_URL}?t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const publicTvs = await response.json();
+        const localSig = buildSyncSignature(localTvs);
+        const publicSig = buildSyncSignature(publicTvs);
+
+        if (localSig === publicSig) {
+            statusEl.style.background = '#e9f8ee';
+            statusEl.style.borderColor = '#42b649';
+            statusEl.style.color = '#1f6f2a';
+            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Público sincronizado: admin y TVs están mostrando la misma configuración.';
+            return;
+        }
+
+        statusEl.style.background = '#fff3cd';
+        statusEl.style.borderColor = '#ffcc00';
+        statusEl.style.color = '#7a5a00';
+        statusEl.innerHTML = `
+            <div><i class="fas fa-exclamation-triangle"></i> Público desincronizado: Admin y TV público no tienen los mismos datos.</div>
+            <div style="margin-top:8px;">Haz clic en <b>Guardar TV</b> y luego ejecuta los comandos copiados en terminal para actualizar <code>tvs-public.json</code>.</div>
+        `;
+    } catch (error) {
+        statusEl.style.background = '#fdecea';
+        statusEl.style.borderColor = '#e57373';
+        statusEl.style.color = '#b71c1c';
+        statusEl.innerHTML = `<i class="fas fa-times-circle"></i> No se pudo verificar el archivo público (${error.message}).`;
+    }
 }
 
 async function updatePublicTvsFile(tvConfigs) {
@@ -1025,6 +1126,9 @@ function renderTvList() {
         </div>
     `;
     }).join('');
+
+    // Mostrar estado real de sincronización contra tvs-public.json
+    refreshPublicTvSyncStatus();
 }
 
 function loadTvIntoForm(tvId) {
