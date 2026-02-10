@@ -365,7 +365,8 @@ async function handleRegister(e) {
                 noteData.created_at = new Date().toISOString();
                 
                 // Actualizar customer con password en note
-                await squareApiCall(
+                const apiCall = window.squareApiCall || squareApiCall;
+                await apiCall(
                     `/v2/customers/${newCustomer.customer.id}`,
                     'PUT',
                     {
@@ -447,7 +448,8 @@ async function findCustomerByEmail(email) {
 // Función para crear cliente en Square
 async function createSquareCustomer(customerData) {
     try {
-        const response = await squareApiCall(
+        const apiCall = window.squareApiCall || squareApiCall;
+        const response = await apiCall(
             '/v2/customers',
             'POST',
             customerData
