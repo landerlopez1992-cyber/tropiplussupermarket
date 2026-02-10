@@ -284,14 +284,40 @@ async function initTvScreen() {
   startAutoRefresh(selected.id);
 }
 
-function openTvSelector(configs) {
+async function openTvSelector(configs) {
   const overlay = document.getElementById('tv-select-overlay');
   const selector = document.getElementById('tv-selector');
   const openBtn = document.getElementById('tv-selector-open');
   const fullscreenBtn = document.getElementById('tv-fullscreen-btn');
   overlay.classList.add('active');
 
-  const activeConfigs = configs.filter(item => item.active !== false);
+  // Si no hay configs, intentar cargar desde JSON público
+  let activeConfigs = configs ? configs.filter(item => item.active !== false) : [];
+  
+  if (activeConfigs.length === 0) {
+    try {
+      const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
+      const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const tvs = await response.json();
+        if (Array.isArray(tvs)) {
+          activeConfigs = tvs.filter(item => item && item.active !== false);
+          // Guardar en localStorage como cache
+          localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando TVs desde JSON público:', error);
+    }
+  }
+  
   selector.innerHTML = activeConfigs.length
     ? activeConfigs.map(tv => `<option value="${tv.id}">${tv.name}</option>`).join('')
     : '<option value="">No hay TVs activos</option>';
