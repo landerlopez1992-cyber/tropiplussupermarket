@@ -665,8 +665,24 @@ function startTvRotation(tvConfig) {
   const seconds = Math.max(3, parseInt(tvConfig.slideSeconds || 10, 10));
   if (tvSlideTimer) clearInterval(tvSlideTimer);
 
-  // Si hay múltiples productos, renderizar grid y rotar productos
-  if (allTvProducts.length > 1 && tvConfig.mode !== 'promo') {
+  // Modos que no necesitan rotación
+  if (tvConfig.mode === 'qr' || tvConfig.mode === 'promo') {
+    renderProductsGrid();
+    return;
+  }
+  
+  // Modo orders: recargar pedidos periódicamente
+  if (tvConfig.mode === 'orders') {
+    renderProductsGrid();
+    tvSlideTimer = setInterval(async () => {
+      await loadOrdersForTv();
+      await renderProductsGrid();
+    }, seconds * 1000);
+    return;
+  }
+
+  // Modo productos: rotar productos
+  if (allTvProducts.length > 1) {
     renderProductsGrid();
     tvSlideTimer = setInterval(async () => {
       // Rotar el array de productos para mostrar diferentes combinaciones
