@@ -126,19 +126,42 @@
             window.location.href = 'tv.html?tv=' + encodeURIComponent(tvId);
         }
         
-        function getTvConfigs() {
+        async function getTvConfigs() {
+            // Primero intentar leer desde localStorage
             try {
                 const raw = localStorage.getItem(TV_STORAGE_KEY);
-                if (!raw) return [];
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed.filter(tv => tv.active !== false) : [];
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed.filter(tv => tv.active !== false);
+                    }
+                }
             } catch (error) {
-                console.error('Error cargando TVs:', error);
-                return [];
+                console.error('Error cargando TVs desde localStorage:', error);
             }
+            
+            // Si no hay en localStorage, intentar leer desde el admin
+            try {
+                const adminUrl = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/admin.html';
+                const response = await fetch(adminUrl);
+                const html = await response.text();
+                
+                // Buscar el script tag con los TVs
+                const scriptMatch = html.match(/<script[^>]*id="tropiplus-tvs-data"[^>]*>([\s\S]*?)<\/script>/);
+                if (scriptMatch && scriptMatch[1]) {
+                    const tvs = JSON.parse(scriptMatch[1].trim());
+                    // Guardar en localStorage para futuras cargas
+                    localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+                    return Array.isArray(tvs) ? tvs.filter(tv => tv.active !== false) : [];
+                }
+            } catch (error) {
+                console.error('Error cargando TVs desde admin:', error);
+            }
+            
+            return [];
         }
         
-        function renderTvList() {
+        async function renderTvList() {
             const container = document.getElementById('tv-list');
             const configs = getTvConfigs();
             
@@ -198,8 +221,8 @@
             console.log('BroadcastChannel no disponible:', e);
         }
         
-        document.addEventListener('DOMContentLoaded', () => {
-            renderTvList();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await renderTvList();
         });
     </script>
 </body>
