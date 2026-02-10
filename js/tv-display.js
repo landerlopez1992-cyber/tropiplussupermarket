@@ -113,49 +113,81 @@ function openTvSelector(configs) {
 }
 
 function configureTicker(tvConfig) {
-  const promo = getPromoConfig();
+  const tickerContainer = document.querySelector('.tv-footer-ticker');
   const ticker = document.getElementById('tv-ticker-track');
   const textA = document.getElementById('tv-ticker-text');
   const textB = document.getElementById('tv-ticker-text-2');
 
+  // Verificar si el ticker está habilitado
+  const tickerEnabled = tvConfig.tickerEnabled !== false;
+  
+  if (!tickerEnabled || !tickerContainer) {
+    if (tickerContainer) {
+      tickerContainer.style.display = 'none';
+    }
+    console.log('⚠️ [TV] Ticker deshabilitado o contenedor no encontrado');
+    return;
+  }
+
+  // Mostrar el contenedor del ticker
+  tickerContainer.style.display = 'flex';
+
+  const promo = getPromoConfig();
   const mode = tvConfig.mode || 'mixed';
   const customText = (tvConfig.promoText || '').trim();
   const text = customText || promo.text || 'Ofertas en Tropiplus Supermarket';
+  
+  if (!text || text.trim() === '') {
+    tickerContainer.style.display = 'none';
+    console.log('⚠️ [TV] No hay texto promocional para mostrar');
+    return;
+  }
   
   // Solo DOS copias del texto para que pase completo y luego se repita suavemente
   const separator = '   •   ';
   const finalTicker = `${text}${separator}${text}${separator}`;
 
-  textA.textContent = finalTicker;
-  textB.textContent = finalTicker;
+  if (textA) textA.textContent = finalTicker;
+  if (textB) textB.textContent = finalTicker;
 
   // Usar la velocidad del TV si está configurada, sino usar la promoción global
   const speed = tvConfig.tickerSpeed || promo.speed || 'normal';
   
-  // Calcular duración basada en la velocidad y longitud del texto
-  const baseDuration = {
-    slow: 30,    // 30 segundos por 100 caracteres
-    normal: 20,  // 20 segundos por 100 caracteres
-    fast: 12     // 12 segundos por 100 caracteres
+  // Usar los mismos valores de duración que en la web principal
+  const durationBySpeed = {
+    slow: '30s',    // Lento: 30 segundos
+    normal: '20s',  // Normal: 20 segundos
+    fast: '12s'     // Rápido: 12 segundos
   };
   
-  const textLength = text.length;
-  const baseSpeed = baseDuration[speed] || baseDuration.normal;
-  const calculatedDuration = Math.max(8, Math.round((textLength / 100) * baseSpeed));
-  const duration = `${calculatedDuration}s`;
+  const duration = durationBySpeed[speed] || durationBySpeed.normal;
   
   console.log('⚡ [TV] Velocidad configurada:', speed, '(TV:', tvConfig.tickerSpeed, '| Global:', promo.speed, ')');
-  console.log('⚡ [TV] Longitud del texto:', textLength, 'caracteres');
-  console.log('⚡ [TV] Duración calculada:', duration);
+  console.log('⚡ [TV] Duración aplicada:', duration);
   
-  ticker.style.setProperty('--tv-ticker-duration', duration);
+  if (ticker) {
+    ticker.style.setProperty('--tv-ticker-duration', duration);
+    
+    // Aplicar estilos personalizados
+    const fontSize = tvConfig.tickerFontSize || '28px';
+    const textColor = tvConfig.tickerTextColor || '#ffec67';
+    const bgColor = tvConfig.tickerBgColor || '#000000';
+    
+    ticker.style.fontSize = fontSize;
+    ticker.style.color = textColor;
+    if (tickerContainer) {
+      tickerContainer.style.backgroundColor = bgColor;
+    }
+    
+    console.log('🎨 [TV] Estilos aplicados - Tamaño:', fontSize, 'Color texto:', textColor, 'Color fondo:', bgColor);
+  }
 
   if (mode === 'products') {
     // En modo solo productos, mantenemos el ticker pero con texto corto.
     const productsText = customText || 'Productos y ofertas del día en Tropiplus';
     const productsTicker = `${productsText}${separator}${productsText}${separator}`;
-    textA.textContent = productsTicker;
-    textB.textContent = productsTicker;
+    if (textA) textA.textContent = productsTicker;
+    if (textB) textB.textContent = productsTicker;
   }
 }
 

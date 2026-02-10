@@ -17,6 +17,9 @@ function getPromotionConfig() {
         enabled: false,
         text: '',
         speed: 'normal',
+        fontSize: '14px',
+        textColor: '#ffffff',
+        bgColor: '#1f318a',
         linkEnabled: false,
         url: ''
     };
@@ -35,6 +38,9 @@ function getPromotionConfig() {
             enabled: Boolean(parsed.enabled) || Boolean(parsedText),
             text: parsedText,
             speed: ['slow', 'normal', 'fast'].includes(parsed.speed) ? parsed.speed : 'normal',
+            fontSize: String(parsed.fontSize || '14px'),
+            textColor: String(parsed.textColor || '#ffffff'),
+            bgColor: String(parsed.bgColor || '#1f318a'),
             linkEnabled: Boolean(parsed.linkEnabled),
             url: String(parsed.url || '')
         };
@@ -79,27 +85,23 @@ function createPromotionBar() {
     console.log('✅ [Tropiplus] Creando barra promocional con texto:', config.text.substring(0, 50) + '...');
 
     // Calcular duración basada en la velocidad configurada
-    // La duración debe ser proporcional a la longitud del texto
-    const baseDuration = {
-        slow: 30,    // 30 segundos por 100 caracteres
-        normal: 20,  // 20 segundos por 100 caracteres
-        fast: 12     // 12 segundos por 100 caracteres
+    // Usar los mismos valores que en admin.js para consistencia
+    const durationBySpeed = {
+        slow: '30s',    // Lento: 30 segundos
+        normal: '20s',  // Normal: 20 segundos
+        fast: '12s'     // Rápido: 12 segundos
     };
     
-    const textLength = config.text.length;
-    const baseSpeed = baseDuration[config.speed] || baseDuration.normal;
-    // Calcular duración: baseSpeed segundos por cada 100 caracteres, mínimo 8 segundos
-    const calculatedDuration = Math.max(8, Math.round((textLength / 100) * baseSpeed));
-    const duration = `${calculatedDuration}s`;
+    const duration = durationBySpeed[config.speed] || durationBySpeed.normal;
     
     console.log('⚡ [Tropiplus] Velocidad configurada:', config.speed);
-    console.log('⚡ [Tropiplus] Longitud del texto:', textLength, 'caracteres');
-    console.log('⚡ [Tropiplus] Duración calculada:', duration);
+    console.log('⚡ [Tropiplus] Duración aplicada:', duration);
 
     const bar = document.createElement('div');
     bar.id = 'promo-ticker-bar';
     bar.className = 'promo-ticker-bar';
     bar.style.setProperty('--promo-duration', duration);
+    bar.style.backgroundColor = config.bgColor || '#1f318a';
     bar.style.display = 'block';
     bar.style.visibility = 'visible';
     bar.style.opacity = '1';
@@ -126,6 +128,8 @@ function createPromotionBar() {
         const span = document.createElement('span');
         span.className = 'promo-ticker-item';
         span.textContent = textContent;
+        span.style.color = config.textColor || '#ffffff';
+        span.style.fontSize = config.fontSize || '14px';
         return span;
     };
 

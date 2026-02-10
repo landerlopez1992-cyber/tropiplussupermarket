@@ -246,9 +246,25 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-show-price').checked = tv.showPrice !== false;
     document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
     document.getElementById('tv-promo-text').value = tv.promoText || '';
+    const tickerEnabledInput = document.getElementById('tv-ticker-enabled');
+    if (tickerEnabledInput) {
+        tickerEnabledInput.checked = tv.tickerEnabled !== false;
+    }
     const tickerSpeedInput = document.getElementById('tv-ticker-speed');
     if (tickerSpeedInput) {
         tickerSpeedInput.value = tv.tickerSpeed || 'normal';
+    }
+    const tickerFontSizeInput = document.getElementById('tv-ticker-font-size');
+    if (tickerFontSizeInput) {
+        tickerFontSizeInput.value = tv.tickerFontSize || '28px';
+    }
+    const tickerTextColorInput = document.getElementById('tv-ticker-text-color');
+    if (tickerTextColorInput) {
+        tickerTextColorInput.value = tv.tickerTextColor || '#ffec67';
+    }
+    const tickerBgColorInput = document.getElementById('tv-ticker-bg-color');
+    if (tickerBgColorInput) {
+        tickerBgColorInput.value = tv.tickerBgColor || '#000000';
     }
     document.getElementById('tv-active').checked = tv.active !== false;
 
@@ -312,7 +328,11 @@ function initTvTab() {
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
         const promoText = document.getElementById('tv-promo-text').value.trim();
+        const tickerEnabled = document.getElementById('tv-ticker-enabled')?.checked !== false;
         const tickerSpeed = document.getElementById('tv-ticker-speed')?.value || 'normal';
+        const tickerFontSize = document.getElementById('tv-ticker-font-size')?.value || '28px';
+        const tickerTextColor = document.getElementById('tv-ticker-text-color')?.value || '#ffec67';
+        const tickerBgColor = document.getElementById('tv-ticker-bg-color')?.value || '#000000';
         const active = document.getElementById('tv-active').checked;
 
         if (!name) {
@@ -333,7 +353,11 @@ function initTvTab() {
             showPrice,
             showOffer,
             promoText,
+            tickerEnabled,
             tickerSpeed,
+            tickerFontSize,
+            tickerTextColor,
+            tickerBgColor,
             active,
             updatedAt: Date.now()
         };
@@ -388,6 +412,9 @@ function savePromotionConfig(config) {
         enabled: Boolean(normalizedText) || Boolean(config.enabled),
         text: normalizedText,
         speed: ['slow', 'normal', 'fast'].includes(config.speed) ? config.speed : 'normal',
+        fontSize: String(config.fontSize || '14px'),
+        textColor: String(config.textColor || '#ffffff'),
+        bgColor: String(config.bgColor || '#1f318a'),
         linkEnabled: Boolean(config.linkEnabled),
         url: String(config.url || '').trim(),
         updatedAt: Date.now()
@@ -405,18 +432,25 @@ function initPromotionTab() {
     const enabledInput = document.getElementById('promo-enabled');
     const textInput = document.getElementById('promo-text');
     const speedInput = document.getElementById('promo-speed');
+    const fontSizeInput = document.getElementById('promo-font-size');
+    const textColorInput = document.getElementById('promo-text-color');
+    const bgColorInput = document.getElementById('promo-bg-color');
     const linkEnabledInput = document.getElementById('promo-link-enabled');
     const urlGroup = document.getElementById('promo-url-group');
     const urlInput = document.getElementById('promo-url');
     const resetBtn = document.getElementById('promo-reset-btn');
     const previewText = document.getElementById('promo-preview-text');
+    const previewBox = document.getElementById('promo-preview-box');
 
     const applyFormFromConfig = (config) => {
-        if (enabledInput) enabledInput.checked = config.enabled;
-        textInput.value = config.text;
-        speedInput.value = config.speed;
-        linkEnabledInput.checked = config.linkEnabled;
-        urlInput.value = config.url;
+        if (enabledInput) enabledInput.checked = config.enabled !== false;
+        textInput.value = config.text || '';
+        speedInput.value = config.speed || 'normal';
+        if (fontSizeInput) fontSizeInput.value = config.fontSize || '14px';
+        if (textColorInput) textColorInput.value = config.textColor || '#ffffff';
+        if (bgColorInput) bgColorInput.value = config.bgColor || '#1f318a';
+        linkEnabledInput.checked = config.linkEnabled || false;
+        urlInput.value = config.url || '';
         urlGroup.style.display = config.linkEnabled ? 'block' : 'none';
         updatePromotionPreview();
     };
@@ -424,15 +458,25 @@ function initPromotionTab() {
     const updatePromotionPreview = () => {
         const text = textInput.value.trim() || 'Sin texto de promoción...';
         const speed = speedInput.value;
+        const fontSize = fontSizeInput ? fontSizeInput.value : '14px';
+        const textColor = textColorInput ? textColorInput.value : '#ffffff';
+        const bgColor = bgColorInput ? bgColorInput.value : '#1f318a';
+        
         const durationBySpeed = {
-            slow: '22s',
-            normal: '14s',
-            fast: '8s'
+            slow: '30s',    // Lento: 30 segundos
+            normal: '20s',  // Normal: 20 segundos
+            fast: '12s'     // Rápido: 12 segundos
         };
+        
         previewText.textContent = `  ${text}   •   ${text}   •   ${text}  `;
+        previewText.style.fontSize = fontSize;
+        previewText.style.color = textColor;
+        if (previewBox) {
+            previewBox.style.backgroundColor = bgColor;
+        }
         previewText.style.animation = 'none';
         previewText.offsetHeight; // force reflow
-        previewText.style.animation = `promoPreviewMarquee ${durationBySpeed[speed] || '14s'} linear infinite`;
+        previewText.style.animation = `promoPreviewMarquee ${durationBySpeed[speed] || '20s'} linear infinite`;
     };
 
     applyFormFromConfig(getPromotionConfig());
@@ -447,12 +491,18 @@ function initPromotionTab() {
         updatePromotionPreview();
     });
     speedInput.addEventListener('change', updatePromotionPreview);
+    if (fontSizeInput) fontSizeInput.addEventListener('change', updatePromotionPreview);
+    if (textColorInput) textColorInput.addEventListener('input', updatePromotionPreview);
+    if (bgColorInput) bgColorInput.addEventListener('input', updatePromotionPreview);
 
     resetBtn.addEventListener('click', () => {
         const defaults = {
             enabled: false,
             text: '',
             speed: 'normal',
+            fontSize: '14px',
+            textColor: '#ffffff',
+            bgColor: '#1f318a',
             linkEnabled: false,
             url: ''
         };
@@ -467,11 +517,19 @@ function initPromotionTab() {
         e.preventDefault();
 
         const promoText = textInput.value.trim();
+        const fontSizeInput = document.getElementById('promo-font-size');
+        const textColorInput = document.getElementById('promo-text-color');
+        const bgColorInput = document.getElementById('promo-bg-color');
+        const enabledToggle = document.getElementById('promo-enabled');
+        
         const config = {
             // Publicar siempre que exista texto.
-            enabled: promoText.length > 0,
+            enabled: enabledToggle ? enabledToggle.checked && promoText.length > 0 : promoText.length > 0,
             text: promoText,
             speed: speedInput.value,
+            fontSize: fontSizeInput ? fontSizeInput.value : '14px',
+            textColor: textColorInput ? textColorInput.value : '#ffffff',
+            bgColor: bgColorInput ? bgColorInput.value : '#1f318a',
             linkEnabled: linkEnabledInput.checked,
             url: urlInput.value.trim()
         };

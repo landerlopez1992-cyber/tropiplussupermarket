@@ -692,6 +692,27 @@
                     </div>
 
                     <div class="supplier-form-group">
+                        <label for="promo-font-size">Tamaño del texto</label>
+                        <select id="promo-font-size">
+                            <option value="12px">Pequeño (12px)</option>
+                            <option value="14px" selected>Mediano (14px)</option>
+                            <option value="16px">Grande (16px)</option>
+                            <option value="18px">Muy Grande (18px)</option>
+                            <option value="20px">Extra Grande (20px)</option>
+                        </select>
+                    </div>
+
+                    <div class="supplier-form-group">
+                        <label for="promo-text-color">Color del texto</label>
+                        <input type="color" id="promo-text-color" value="#ffffff" style="width: 100%; height: 40px; border-radius: 4px; border: 1px solid #dfe4f4;">
+                    </div>
+
+                    <div class="supplier-form-group">
+                        <label for="promo-bg-color">Color de fondo</label>
+                        <input type="color" id="promo-bg-color" value="#1f318a" style="width: 100%; height: 40px; border-radius: 4px; border: 1px solid #dfe4f4;">
+                    </div>
+
+                    <div class="supplier-form-group">
                         <label for="promo-link-enabled">Habilitar enlace al tocar el texto</label>
                         <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                             <input type="checkbox" id="promo-link-enabled" style="width:auto; transform:scale(1.1);">
@@ -794,6 +815,16 @@
                             </div>
 
                             <div class="supplier-form-group">
+                                <label style="display:flex; align-items:center; gap:10px;">
+                                    <input type="checkbox" id="tv-ticker-enabled" checked style="width:auto;">
+                                    Activar texto promocional en TV
+                                </label>
+                                <small style="color: var(--gray-text); display:block; margin-top:6px; font-size:12px;">
+                                    Muestra el texto promocional en la parte inferior del TV.
+                                </small>
+                            </div>
+
+                            <div class="supplier-form-group">
                                 <label for="tv-ticker-speed">Velocidad del texto promocional</label>
                                 <select id="tv-ticker-speed">
                                     <option value="slow">Lenta</option>
@@ -803,6 +834,27 @@
                                 <small style="color: var(--gray-text); display:block; margin-top:6px; font-size:12px;">
                                     Velocidad del texto que se desplaza en la parte inferior del TV.
                                 </small>
+                            </div>
+
+                            <div class="supplier-form-group">
+                                <label for="tv-ticker-font-size">Tamaño del texto promocional</label>
+                                <select id="tv-ticker-font-size">
+                                    <option value="20px">Pequeño (20px)</option>
+                                    <option value="24px">Mediano (24px)</option>
+                                    <option value="28px" selected>Grande (28px)</option>
+                                    <option value="32px">Muy Grande (32px)</option>
+                                    <option value="36px">Extra Grande (36px)</option>
+                                </select>
+                            </div>
+
+                            <div class="supplier-form-group">
+                                <label for="tv-ticker-text-color">Color del texto promocional</label>
+                                <input type="color" id="tv-ticker-text-color" value="#ffec67" style="width: 100%; height: 40px; border-radius: 4px; border: 1px solid #dfe4f4;">
+                            </div>
+
+                            <div class="supplier-form-group">
+                                <label for="tv-ticker-bg-color">Color de fondo del texto promocional</label>
+                                <input type="color" id="tv-ticker-bg-color" value="#000000" style="width: 100%; height: 40px; border-radius: 4px; border: 1px solid #dfe4f4;">
                             </div>
 
                             <div class="supplier-form-group">
