@@ -94,14 +94,23 @@ function updateRemesaCalculation() {
 function addRemesaToCart() {
     const amountInput = document.getElementById('remesa-amount');
     const currencySelect = document.getElementById('remesa-currency');
+    const recipientName = document.getElementById('remesa-recipient-name');
+    const recipientId = document.getElementById('remesa-recipient-id');
 
-    if (!amountInput || !currencySelect) return;
+    if (!amountInput || !currencySelect || !recipientName) return;
 
     const amount = parseFloat(amountInput.value);
     const currency = currencySelect.value;
+    const name = recipientName.value.trim();
+    const idNumber = recipientId ? recipientId.value.trim() : '';
 
     if (!amount || amount <= 0) {
         alert('Por favor, ingrese una cantidad válida');
+        return;
+    }
+
+    if (!name) {
+        alert('Por favor, ingrese el nombre de quien recogerá la remesa');
         return;
     }
 
@@ -117,26 +126,30 @@ function addRemesaToCart() {
         fee: fee,
         total: total,
         type: 'remesa',
-        description: `Envío de remesa: ${currency === 'USD' ? '$' : '₱'}${amount.toFixed(2)} + comisión ${currency === 'USD' ? '$' : '₱'}${fee.toFixed(2)}`
+        recipientName: name,
+        recipientId: idNumber,
+        description: `Envío de remesa: ${currency === 'USD' ? '$' : '₱'}${amount.toFixed(2)} + comisión ${currency === 'USD' ? '$' : '₱'}${fee.toFixed(2)}. Recogerá: ${name}${idNumber ? ` (CI: ${idNumber})` : ''}`
     };
 
-    // Agregar al carrito global
-    if (typeof addToCart === 'function') {
-        // Convertir a formato de carrito
-        const cartItem = {
-            id: remesaItem.id,
-            name: remesaItem.name,
-            price: total,
-            quantity: 1,
-            image: null,
-            type: 'remesa',
-            remesaData: {
-                amount: amount,
-                currency: currency,
-                fee: fee,
-                total: total
-            }
-        };
+        // Agregar al carrito global
+        if (typeof addToCart === 'function') {
+            // Convertir a formato de carrito
+            const cartItem = {
+                id: remesaItem.id,
+                name: remesaItem.name,
+                price: total,
+                quantity: 1,
+                image: null,
+                type: 'remesa',
+                remesaData: {
+                    amount: amount,
+                    currency: currency,
+                    fee: fee,
+                    total: total,
+                    recipientName: name,
+                    recipientId: idNumber
+                }
+            };
         
         addToCart(cartItem);
         

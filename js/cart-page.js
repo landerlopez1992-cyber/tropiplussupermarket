@@ -97,6 +97,35 @@ async function renderCartItems() {
     let html = '';
     
     for (const item of cart) {
+        // Si es una recarga de tarjeta de regalo, renderizar de forma especial
+        if (item.type === 'giftcard_reload' && item.giftCardData) {
+            const giftCardData = item.giftCardData;
+            html += `
+                <div class="cart-item-card cart-item-giftcard" data-item-id="${item.id}">
+                    <div class="cart-item-image-wrapper giftcard-icon-wrapper">
+                        <i class="fas fa-gift giftcard-icon"></i>
+                    </div>
+                    <div class="cart-item-details">
+                        <h3 class="cart-item-name-large">${item.name}</h3>
+                        <div class="giftcard-details">
+                            <p><strong>Tarjeta:</strong> ${giftCardData.giftCardGan || 'N/A'}</p>
+                            <p><strong>Saldo actual:</strong> $${giftCardData.currentBalance.toFixed(2)}</p>
+                            <p><strong>Recarga:</strong> $${giftCardData.reloadAmount.toFixed(2)}</p>
+                            <p><strong>Nuevo saldo:</strong> $${giftCardData.newBalance.toFixed(2)}</p>
+                        </div>
+                        <div class="cart-item-price-large">$${item.price.toFixed(2)}</div>
+                    </div>
+                    <div class="cart-item-total-section">
+                        <div class="cart-item-total-large">$${(item.price * item.quantity).toFixed(2)}</div>
+                        <button class="cart-item-remove" data-item-id="${item.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            continue;
+        }
+        
         // Si es una remesa, renderizar de forma especial
         if (item.type === 'remesa' && item.remesaData) {
             const remesaData = item.remesaData;
@@ -112,6 +141,8 @@ async function renderCartItems() {
                             <p><strong>Cantidad a enviar:</strong> ${symbol}${remesaData.amount.toFixed(2)}</p>
                             <p><strong>Comisión (10%):</strong> ${symbol}${remesaData.fee.toFixed(2)}</p>
                             <p><strong>Moneda:</strong> ${remesaData.currency}</p>
+                            ${remesaData.recipientName ? `<p><strong>Recogerá:</strong> ${remesaData.recipientName}</p>` : ''}
+                            ${remesaData.recipientId ? `<p><strong>Carnet de Identidad:</strong> ${remesaData.recipientId}</p>` : ''}
                         </div>
                         <div class="cart-item-price-large">$${item.price.toFixed(2)}</div>
                     </div>

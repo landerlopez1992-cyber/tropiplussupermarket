@@ -67,7 +67,10 @@
                     <a href="products.html" class="nav-link-item">Todos los productos</a>
                     <a href="#" class="nav-link-item">Comprar de nuevo</a>
                     <button class="nav-link-item remesa-btn" id="remesa-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
-                        <i class="fas fa-money-bill-wave"></i> Remesa
+                        <i class="fas fa-coins"></i> Remesa
+                    </button>
+                    <button class="nav-link-item giftcard-btn" id="giftcard-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-gift"></i> Recargar Tarjeta
                     </button>
                     <a href="ayuda.html" class="nav-link-item">Ayuda</a>
                     <a href="sobre-nosotros.html" class="nav-link-item">Sobre nosotros</a>
@@ -315,6 +318,73 @@
         </div>
     </div>
 
+    <!-- Modal de Recarga de Tarjeta de Regalo -->
+    <div class="giftcard-modal" id="giftcard-modal">
+        <div class="giftcard-modal-content">
+            <div class="giftcard-modal-header">
+                <h2 class="giftcard-modal-title">
+                    <i class="fas fa-gift"></i> Recargar Tarjeta Tropiplus Supermarket
+                </h2>
+                <button class="giftcard-modal-close" id="giftcard-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="giftcard-modal-body">
+                <p class="giftcard-description">Recargue su tarjeta de regalo de Tropiplus Supermarket o verifique el saldo disponible.</p>
+                
+                <div class="giftcard-form-group">
+                    <label for="giftcard-number" class="giftcard-label">Número de Tarjeta:</label>
+                    <input type="text" id="giftcard-number" class="giftcard-input" placeholder="Ingrese el número de la tarjeta" maxlength="20">
+                </div>
+                
+                <div class="giftcard-actions">
+                    <button class="giftcard-btn-check" id="giftcard-btn-check">
+                        <i class="fas fa-search-dollar"></i> Verificar Saldo
+                    </button>
+                </div>
+                
+                <div class="giftcard-balance-info" id="giftcard-balance-info" style="display: none;">
+                    <div class="giftcard-balance-card">
+                        <h3>Información de la Tarjeta</h3>
+                        <div class="giftcard-balance-details">
+                            <p><strong>Saldo actual:</strong> <span id="giftcard-current-balance">$0.00</span></p>
+                            <p><strong>Estado:</strong> <span id="giftcard-status">-</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="giftcard-reload-section" id="giftcard-reload-section" style="display: none;">
+                    <div class="giftcard-form-group">
+                        <label for="giftcard-reload-amount" class="giftcard-label">Cantidad a recargar:</label>
+                        <div class="giftcard-amount-input-wrapper">
+                            <span class="giftcard-currency-symbol">$</span>
+                            <input type="number" id="giftcard-reload-amount" class="giftcard-amount-input" placeholder="0.00" min="1" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div class="giftcard-calculation">
+                        <div class="giftcard-calculation-row">
+                            <span>Saldo actual:</span>
+                            <span id="giftcard-balance-display">$0.00</span>
+                        </div>
+                        <div class="giftcard-calculation-row">
+                            <span>Recarga:</span>
+                            <span id="giftcard-reload-display">$0.00</span>
+                        </div>
+                        <div class="giftcard-calculation-row giftcard-total">
+                            <span><strong>Nuevo saldo:</strong></span>
+                            <span id="giftcard-new-balance"><strong>$0.00</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="giftcard-modal-footer">
+                <button class="giftcard-btn-cancel" id="giftcard-btn-cancel">Cancelar</button>
+                <button class="giftcard-btn-reload" id="giftcard-btn-reload" style="display: none;">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar del Menú Hamburguesa -->
     <div class="main-menu-overlay" id="main-menu-overlay"></div>
     <aside class="main-menu-sidebar" id="main-menu-sidebar">
@@ -483,5 +553,6 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/remesa.js"></script>
+    <script src="js/giftcard.js"></script>
 </body>
 </html>

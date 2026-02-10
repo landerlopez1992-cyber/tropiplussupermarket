@@ -32,8 +32,18 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
                 if (item.type === 'remesa' && item.remesaData) {
                     const remesaData = item.remesaData;
                     const symbol = remesaData.currency === 'USD' ? '$' : '₱';
+                    let noteText = `Remesa ${remesaData.currency}: ${symbol}${remesaData.amount.toFixed(2)} + Comisión ${symbol}${remesaData.fee.toFixed(2)} = Total ${symbol}${remesaData.total.toFixed(2)}`;
+                    
+                    // Agregar información del destinatario
+                    if (remesaData.recipientName) {
+                        noteText += ` | Recogerá: ${remesaData.recipientName}`;
+                    }
+                    if (remesaData.recipientId) {
+                        noteText += ` | CI: ${remesaData.recipientId}`;
+                    }
+                    
                     lineItem.item_type = 'CUSTOM_AMOUNT';
-                    lineItem.note = `Remesa ${remesaData.currency}: ${symbol}${remesaData.amount.toFixed(2)} + Comisión ${symbol}${remesaData.fee.toFixed(2)} = Total ${symbol}${remesaData.total.toFixed(2)}`;
+                    lineItem.note = noteText;
                 } else {
                     const variationId = item.variationId || item.catalogObjectId || null;
                     if (useCatalogObjectIds && variationId) {
@@ -164,6 +174,18 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
             // Si falla, NO confirmamos éxito en la web para evitar estados inconsistentes.
             await processCashPayment(order.id, totalAmount);
             console.log('💰 Pago en efectivo registrado correctamente en Square.');
+        }
+
+        // Procesar recargas de tarjetas de regalo
+        const giftCardReloads = cartItems.filter(item => item.type === 'giftcard_reload' && item.giftCardData);
+        for (const reloadItem of giftCardReloads) {
+            try {
+                await reloadGiftCard(reloadItem.giftCardData);
+                console.log('✅ Tarjeta de regalo recargada:', reloadItem.giftCardData.giftCardGan);
+            } catch (error) {
+                console.error('❌ Error recargando tarjeta de regalo:', error);
+                // No lanzar error - la orden ya se creó, solo loguear
+            }
         }
 
         return order;

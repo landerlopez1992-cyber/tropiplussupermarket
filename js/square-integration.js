@@ -732,6 +732,31 @@ function addToCart(product, quantity = 1) {
     return;
   }
   
+  // Si es una recarga de tarjeta de regalo, usar los datos directamente
+  if (product.type === 'giftcard_reload') {
+    const cartItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      type: 'giftcard_reload',
+      giftCardData: {
+        giftCardId: product.giftCardId,
+        giftCardGan: product.giftCardGan,
+        currentBalance: product.currentBalance,
+        reloadAmount: product.reloadAmount,
+        newBalance: product.newBalance
+      }
+    };
+    
+    shoppingCart.push(cartItem);
+    localStorage.setItem('tropiplus_cart', JSON.stringify(shoppingCart));
+    updateCartCount();
+    updateCartContent();
+    showCartNotification();
+    return;
+  }
+  
   const itemData = product.item_data;
   const variation = itemData?.variations?.[0];
   const price = variation?.item_variation_data?.price_money;
