@@ -114,13 +114,36 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
       const responseText = await response.text();
       
       if (!response.ok) {
-        // Si es 404 o 502, probar siguiente proxy
-        if (response.status === 404 || response.status === 502) {
+        // Si es 404, 502, 503, o 401 del proxy local, probar siguiente proxy
+        if (response.status === 404 || response.status === 502 || response.status === 503) {
           console.warn(`⚠️ Proxy ${baseUrl} no disponible (${response.status}), intentando siguiente...`);
           lastError = new Error(`Proxy no disponible: ${response.status}`);
           continue;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        // Si es 401 del proxy local, intentar Supabase
+        if (response.status === 401 && baseUrl.includes('localhost')) {
+          console.warn(`⚠️ Proxy local devolvió 401 (no autenticado), intentando Supabase...`);
+          lastError = new Error(`Proxy local no autenticado: ${response.status}`);
+          continue;
+        }
+        
+        // Para otros errores, leer el mensaje de error
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { message: responseText || `HTTP error! status: ${response.status}` };
+        }
+        
+        // Si es un error de Square API (no del proxy), lanzar el error
+        if (response.status !== 404 && response.status !== 502 && response.status !== 503) {
+          throw new Error(errorData.message || errorData.errors?.[0]?.detail || `HTTP error! status: ${response.status}`);
+        }
+        
+        // Si es error del proxy, continuar con el siguiente
+        lastError = new Error(`Proxy error: ${response.status}`);
+        continue;
       }
       
       let data;
