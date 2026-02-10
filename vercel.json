@@ -12,8 +12,12 @@
       "dest": "/api/square/[...path].js"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.js"
+      "src": "/api/barcode-lookup",
+      "dest": "/api/barcode-lookup.js"
+    },
+    {
+      "src": "/api/proxy",
+      "dest": "/api/proxy.js"
     },
     {
       "src": "/(.*)",
