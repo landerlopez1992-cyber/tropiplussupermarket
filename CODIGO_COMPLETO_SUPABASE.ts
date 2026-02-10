@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase Edge Function para proxy de Square API
 // Esta función actúa como proxy entre el frontend y Square API
 
@@ -73,9 +74,16 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
+    // Square Catalog Search requires POST. If request comes as GET from browser
+    // URL tests, convert it automatically to POST with a safe default payload.
+    const normalizedMethod =
+      req.method === 'GET' && squareEndpoint === '/v2/catalog/search'
+        ? 'POST'
+        : req.method;
+
     // Preparar opciones para la petición
     const options: RequestInit = {
-      method: req.method,
+      method: normalizedMethod,
       headers: headers,
     };
 
@@ -87,7 +95,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[Square Proxy] ${req.method} ${squareUrl}`);
+    // Fallback body para pruebas manuales GET en navegador a /v2/catalog/search
+    if (
+      normalizedMethod === 'POST' &&
+      squareEndpoint === '/v2/catalog/search' &&
+      !options.body
+    ) {
+      options.body = JSON.stringify({
+        object_types: ['CATEGORY', 'ITEM'],
+        include_related_objects: true,
+      });
+    }
+
+    console.log(`[Square Proxy] ${normalizedMethod} ${squareUrl}`);
 
     // Hacer la petición a Square
     const response = await fetch(squareUrl, options);
