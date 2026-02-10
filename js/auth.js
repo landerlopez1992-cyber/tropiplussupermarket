@@ -146,9 +146,6 @@ async function handleLogin(e) {
                         // TODO: En producción, esto debería requerir autenticación real
                         console.warn('⚠️ No hay password en note, permitiendo login (modo demo)');
                         passwordValid = true; // Permitir login para usuarios existentes en Square
-                        // Si no hay contraseña en note, permitir login (para usuarios existentes)
-                        console.warn('⚠️ No hay contraseña en note, permitiendo login');
-                        passwordValid = true;
                     }
                 } catch (e) {
                     // Si note no es JSON, permitir login
