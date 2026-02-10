@@ -519,11 +519,12 @@ async function renderBestSellers(products) {
   
   const validProducts = products.filter(item => {
     const itemData = item.item_data;
-    if (!itemData) return false;
+    if (!itemData || !itemData.name) return false;
     const name = itemData.name?.toLowerCase() || '';
     // Filtrar productos que no deben mostrarse en el catálogo
-    if (name.includes('renta') || name.includes('car rental')) return false;
     if (name.includes('remesa')) return false; // Ocultar Remesa del catálogo
+    // NO filtrar "Renta Car" - puede ser un producto válido
+    // if (name.includes('renta') || name.includes('car rental')) return false;
     return true;
   });
   
@@ -583,7 +584,10 @@ async function renderRecommendations(products) {
 
 async function createProductCard(item) {
   const itemData = item.item_data;
-  if (!itemData) return document.createElement('div');
+  if (!itemData) {
+    console.warn('⚠️ Producto sin item_data:', item);
+    return document.createElement('div');
+  }
   
   const productCard = document.createElement('div');
   productCard.className = 'product-card-item';
@@ -592,24 +596,41 @@ async function createProductCard(item) {
   const variation = itemData.variations && itemData.variations[0];
   const price = variation?.item_variation_data?.price_money;
   
-  // Verificar disponibilidad del producto y obtener cantidad
+  // Verificar disponibilidad del producto y obtener cantidad (con timeout para no bloquear)
   let availability = { available: true, quantity: null };
-  if (typeof isProductAvailable === 'function') {
-    availability = await isProductAvailable(item);
+  try {
+    if (typeof isProductAvailable === 'function') {
+      // Usar Promise.race para evitar que se quede colgado
+      const availabilityPromise = isProductAvailable(item);
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ available: true, quantity: null }), 2000));
+      availability = await Promise.race([availabilityPromise, timeoutPromise]);
+    }
+  } catch (error) {
+    console.warn('⚠️ Error verificando disponibilidad, asumiendo disponible:', error);
+    availability = { available: true, quantity: null };
   }
   const isAvailable = availability.available;
   const stockQuantity = availability.quantity;
   
-  // Obtener imagen del producto correctamente desde Square API
+  // Obtener imagen del producto correctamente desde Square API (con timeout)
   let imageUrl = 'images/placeholder.svg';
   
-  if (itemData.image_ids && itemData.image_ids.length > 0) {
-    const imageId = itemData.image_ids[0];
-    // Obtener la URL real de la imagen desde la API de Square
-    const squareImageUrl = await getCachedProductImageUrl(imageId);
-    if (squareImageUrl) {
-      imageUrl = squareImageUrl;
+  try {
+    if (itemData.image_ids && itemData.image_ids.length > 0) {
+      const imageId = itemData.image_ids[0];
+      // Obtener la URL real de la imagen desde la API de Square
+      if (typeof getCachedProductImageUrl === 'function') {
+        const imagePromise = getCachedProductImageUrl(imageId);
+        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+        const squareImageUrl = await Promise.race([imagePromise, timeoutPromise]);
+        if (squareImageUrl) {
+          imageUrl = squareImageUrl;
+        }
+      }
     }
+  } catch (error) {
+    console.warn('⚠️ Error obteniendo imagen, usando placeholder:', error);
+    imageUrl = 'images/placeholder.svg';
   }
   
   const priceFormatted = price ? formatSquarePrice(price) : 'Precio no disponible';
