@@ -28,26 +28,27 @@ const SQUARE_CONFIG = {
 // Usa el proxy local o externo según el entorno
 async function squareApiCall(endpoint, method = 'GET', body = null) {
   // Detectar si estamos en producción (GitHub Pages) o desarrollo local
-  const isProduction = window.location.hostname.includes('github.io') || 
-                       window.location.hostname.includes('vercel.app') ||
-                       window.location.hostname !== 'localhost';
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1';
   
   // URLs de proxy a intentar (en orden de prioridad)
   let proxyUrls = [];
   
-  if (isProduction) {
-    // En producción: usar Supabase del proyecto LogiFlow Pro
-    const SUPABASE_URL = 'https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy';
-    
+  // Supabase siempre disponible (funciona en local y producción)
+  const SUPABASE_URL = 'https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy';
+  
+  if (isLocalhost) {
+    // En desarrollo local: intentar proxy local primero, luego Supabase
+    proxyUrls = [
+      'http://localhost:8080',  // Proxy local (si está corriendo)
+      SUPABASE_URL,  // Supabase como fallback (siempre funciona)
+    ];
+  } else {
+    // En producción: usar Supabase principalmente
     proxyUrls = [
       SUPABASE_URL,  // Supabase LogiFlow Pro (PRINCIPAL)
       'https://tropiplussupermarket.vercel.app',  // Vercel (fallback)
-      'https://corsproxy.io/?',  // Proxy público 1
-      'https://api.allorigins.win/raw?url=',  // Proxy público 2
     ];
-  } else {
-    // En desarrollo: usar proxy local
-    proxyUrls = ['http://localhost:8080'];
   }
   
   // Intentar cada proxy hasta que uno funcione
@@ -82,8 +83,11 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
         // endpoint es: /v2/catalog/search
         // Resultado: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy/v2/catalog/search
         proxyUrl = `${baseUrl}${endpoint}`;
+      } else if (baseUrl.includes('localhost:8080')) {
+        // Proxy local - usar /api/square como endpoint
+        proxyUrl = `${baseUrl}/api/square${endpoint}`;
       } else {
-        // Proxy normal (Vercel o local)
+        // Proxy normal (Vercel)
         proxyUrl = `${baseUrl}/api/square${endpoint}`;
       }
       
