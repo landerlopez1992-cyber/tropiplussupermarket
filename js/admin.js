@@ -259,25 +259,48 @@ async function refreshPublicTvSyncStatus() {
 }
 
 async function updatePublicTvsFile(tvConfigs) {
-    const jsonContent = JSON.stringify(tvConfigs, null, 2);
+    // Normalizar y filtrar solo TVs activos
+    const activeTvs = (Array.isArray(tvConfigs) ? tvConfigs : [])
+        .filter(tv => tv && tv.active !== false)
+        .map(tv => normalizeTvForSync(tv));
+    
+    const jsonContent = JSON.stringify(activeTvs, null, 2);
     
     // Mostrar instrucciones claras para actualizar
     const commands = `cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
 cat > tvs-public.json << 'EOF'
 ${jsonContent}
 EOF
-git add tvs-public.json && git commit -m "Auto-update TVs" && git push`;
+git add tvs-public.json && git commit -m "Auto-update TVs: ${activeTvs.map(t => t.name).join(', ')}" && git push`;
     
     // Copiar comandos al portapapeles automáticamente
     try {
         await navigator.clipboard.writeText(commands);
         console.log('✅ Comandos copiados al portapapeles');
         
-        // Mostrar alerta clara
-        alert(`✅ TVs guardados!\n\nLos comandos para actualizar el archivo público han sido copiados al portapapeles.\n\nPega en terminal y presiona Enter para actualizar automáticamente.\n\nO ejecuta manualmente los comandos que aparecen en la consola.`);
+        // Mostrar modal más claro y visible
+        if (typeof showModal === 'function') {
+            showModal(
+                '✅ TVs Guardados - Actualizar Archivo Público',
+                `<div style="text-align: left;">
+                    <p><strong>Los comandos para actualizar el archivo público han sido copiados al portapapeles.</strong></p>
+                    <p style="margin: 12px 0;">📋 <strong>Pega en terminal y presiona Enter:</strong></p>
+                    <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 11px; max-height: 200px; margin: 8px 0;">${commands.replace(/\$/g, '\\$').replace(/`/g, '\\`')}</pre>
+                    <p style="margin-top: 12px; color: #d93025; font-weight: bold;">⚠️ IMPORTANTE: Sin ejecutar estos comandos, los TVs públicos seguirán mostrando datos antiguos.</p>
+                </div>`,
+                'info'
+            );
+        } else {
+            alert(`✅ TVs guardados!\n\n⚠️ IMPORTANTE: Los comandos para actualizar el archivo público han sido copiados al portapapeles.\n\nPega en terminal y presiona Enter para actualizar automáticamente.\n\nSin esto, los TVs públicos seguirán mostrando datos antiguos.`);
+        }
         
         console.log('📋 EJECUTA ESTOS COMANDOS EN TERMINAL:');
         console.log(commands);
+        
+        // Actualizar estado de sincronización después de un momento
+        setTimeout(() => {
+            refreshPublicTvSyncStatus();
+        }, 2000);
         
     } catch (e) {
         console.error('Error copiando:', e);
