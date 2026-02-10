@@ -66,6 +66,9 @@
                 <div class="nav-links-main">
                     <a href="products.html" class="nav-link-item">Todos los productos</a>
                     <a href="#" class="nav-link-item">Comprar de nuevo</a>
+                    <button class="nav-link-item remesa-btn" id="remesa-btn" style="background: none; border: none; color: inherit; cursor: pointer; font-size: inherit; font-family: inherit;">
+                        <i class="fas fa-money-bill-wave"></i> Remesa
+                    </button>
                     <a href="ayuda.html" class="nav-link-item">Ayuda</a>
                     <a href="sobre-nosotros.html" class="nav-link-item">Sobre nosotros</a>
                     <a href="que-debe-saber.html" class="nav-link-item">Qué debe saber!</a>
@@ -184,17 +187,6 @@
             </div>
         </section>
 
-        <!-- Categorías de Interés -->
-        <section class="interest-categories-section">
-            <div class="container">
-                <div class="section-title-bar">
-                    <h2 class="section-main-title">Categorías que te pueden interesar</h2>
-                </div>
-                <div class="categories-grid-layout" id="interest-categories-grid">
-                    <!-- Categorías se cargan dinámicamente -->
-                </div>
-            </div>
-        </section>
 
         <!-- Recomendaciones -->
         <section class="recommendations-section">
@@ -270,6 +262,58 @@
             </div>
         </div>
     </footer>
+
+    <!-- Modal de Remesa -->
+    <div class="remesa-modal" id="remesa-modal">
+        <div class="remesa-modal-content">
+            <div class="remesa-modal-header">
+                <h2 class="remesa-modal-title">
+                    <i class="fas fa-money-bill-wave"></i> Enviar Remesa
+                </h2>
+                <button class="remesa-modal-close" id="remesa-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="remesa-modal-body">
+                <p class="remesa-description">Envíe una remesa a su ser querido. Se aplica un 10% de comisión por el servicio.</p>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-currency" class="remesa-label">Moneda a entregar:</label>
+                    <select id="remesa-currency" class="remesa-select">
+                        <option value="USD">USD (Dólares)</option>
+                        <option value="CUP">CUP (Pesos Cubanos)</option>
+                    </select>
+                </div>
+                
+                <div class="remesa-form-group">
+                    <label for="remesa-amount" class="remesa-label">Cantidad a enviar:</label>
+                    <div class="remesa-amount-input-wrapper">
+                        <span class="remesa-currency-symbol" id="remesa-currency-symbol">$</span>
+                        <input type="number" id="remesa-amount" class="remesa-amount-input" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="remesa-calculation">
+                    <div class="remesa-calculation-row">
+                        <span>Cantidad:</span>
+                        <span id="remesa-base-amount">$0.00</span>
+                    </div>
+                    <div class="remesa-calculation-row">
+                        <span>Comisión (10%):</span>
+                        <span id="remesa-fee-amount">$0.00</span>
+                    </div>
+                    <div class="remesa-calculation-row remesa-total">
+                        <span><strong>Total a pagar:</strong></span>
+                        <span id="remesa-total-amount"><strong>$0.00</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div class="remesa-modal-footer">
+                <button class="remesa-btn-cancel" id="remesa-btn-cancel">Cancelar</button>
+                <button class="remesa-btn-add" id="remesa-btn-add">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Sidebar del Menú Hamburguesa -->
     <div class="main-menu-overlay" id="main-menu-overlay"></div>
@@ -438,5 +482,6 @@
     <script src="js/square-integration.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/remesa.js"></script>
 </body>
 </html>

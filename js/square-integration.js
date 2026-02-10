@@ -32,10 +32,6 @@ async function loadSquareCategories() {
     buildCategoryHierarchy(categories);
     
     renderCategoriesBar(categories);
-    // Renderizar categorías de interés después de que los productos estén cargados
-    if (squareProducts.length > 0) {
-      renderInterestCategories(categories);
-    }
     
     console.log('✅ Categorías cargadas:', categories.length);
     console.log('📊 Jerarquía de categorías:', categoryHierarchy);
@@ -144,8 +140,6 @@ async function loadSquareProducts() {
       buildCategoryHierarchy(squareCategories);
       // Re-renderizar sidebar con la jerarquía actualizada
       renderCategoriesSidebar(squareCategories);
-      // Renderizar categorías de interés ahora que tenemos productos
-      renderInterestCategories(squareCategories);
     }
     
     renderBestSellers(products);
@@ -717,6 +711,25 @@ function addToCart(product, quantity = 1) {
   if (!shoppingCart || !Array.isArray(shoppingCart)) {
     shoppingCart = JSON.parse(localStorage.getItem('tropiplus_cart')) || [];
     console.log('🔄 Carrito reinicializado:', shoppingCart.length, 'items');
+  }
+  
+  // Si es una remesa, usar los datos directamente
+  if (product.type === 'remesa' && product.remesaData) {
+    const cartItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      type: 'remesa',
+      remesaData: product.remesaData
+    };
+    
+    shoppingCart.push(cartItem);
+    localStorage.setItem('tropiplus_cart', JSON.stringify(shoppingCart));
+    updateCartCount();
+    updateCartContent();
+    showCartNotification();
+    return;
   }
   
   const itemData = product.item_data;

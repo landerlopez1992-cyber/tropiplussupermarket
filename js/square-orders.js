@@ -28,15 +28,23 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
                     }
                 };
 
-                const variationId = item.variationId || item.catalogObjectId || null;
-                if (useCatalogObjectIds && variationId) {
-                    lineItem.catalog_object_id = variationId;
-                    lineItem.item_type = 'ITEM';
-                    lineItem.name = item.name || 'Producto';
-                } else {
-                    // Para CUSTOM_AMOUNT no se permite "name". Usamos note para identificar.
+                // Si es una remesa, usar CUSTOM_AMOUNT con detalles en note
+                if (item.type === 'remesa' && item.remesaData) {
+                    const remesaData = item.remesaData;
+                    const symbol = remesaData.currency === 'USD' ? '$' : '₱';
                     lineItem.item_type = 'CUSTOM_AMOUNT';
-                    lineItem.note = item.name || 'Producto';
+                    lineItem.note = `Remesa ${remesaData.currency}: ${symbol}${remesaData.amount.toFixed(2)} + Comisión ${symbol}${remesaData.fee.toFixed(2)} = Total ${symbol}${remesaData.total.toFixed(2)}`;
+                } else {
+                    const variationId = item.variationId || item.catalogObjectId || null;
+                    if (useCatalogObjectIds && variationId) {
+                        lineItem.catalog_object_id = variationId;
+                        lineItem.item_type = 'ITEM';
+                        lineItem.name = item.name || 'Producto';
+                    } else {
+                        // Para CUSTOM_AMOUNT no se permite "name". Usamos note para identificar.
+                        lineItem.item_type = 'CUSTOM_AMOUNT';
+                        lineItem.note = item.name || 'Producto';
+                    }
                 }
 
                 return lineItem;

@@ -109,18 +109,24 @@ function loadFreeShippingProducts() {
 
 async function renderProducts() {
     const container = document.getElementById('products-grid');
+    if (!container) {
+        console.error('❌ Contenedor products-grid no encontrado');
+        return;
+    }
+    
     container.innerHTML = '';
     
     if (filteredProducts.length === 0) {
-        container.innerHTML = `
-            <div class="no-products-message">
-                <div class="no-products-icon">
-                    <i class="fas fa-box-open"></i>
-                </div>
-                <h3 class="no-products-title">Categoría en abastecimiento</h3>
-                <p class="no-products-text">Todavía no está disponible para comprar. Espere unos días.</p>
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'no-products-message';
+        emptyMessage.innerHTML = `
+            <div class="no-products-icon">
+                <i class="fas fa-box-open"></i>
             </div>
+            <h3 class="no-products-title">Categoría en abastecimiento</h3>
+            <p class="no-products-text">Todavía no está disponible para comprar. Espere unos días.</p>
         `;
+        container.appendChild(emptyMessage);
         updateProductsCount(0, 0, 0);
         return;
     }

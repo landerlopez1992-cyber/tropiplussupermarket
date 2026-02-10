@@ -4981,6 +4981,247 @@ img {
     }
 }
 
+/* ============================================
+   MODAL DE REMESA
+   ============================================ */
+.remesa-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.remesa-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.remesa-modal-content {
+    background: var(--white);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.remesa-modal.active .remesa-modal-content {
+    transform: scale(1);
+}
+
+.remesa-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.remesa-modal-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dark-blue-nav);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.remesa-modal-title i {
+    color: var(--green-categories);
+}
+
+.remesa-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--gray-text);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.remesa-modal-close:hover {
+    background: var(--gray-light);
+    color: var(--black);
+}
+
+.remesa-modal-body {
+    padding: 24px;
+}
+
+.remesa-description {
+    font-size: 15px;
+    color: var(--gray-text);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.remesa-form-group {
+    margin-bottom: 24px;
+}
+
+.remesa-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+    margin-bottom: 8px;
+}
+
+.remesa-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--gray-border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--white);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.remesa-select:focus {
+    outline: none;
+    border-color: var(--green-categories);
+}
+
+.remesa-amount-input-wrapper {
+    display: flex;
+    align-items: center;
+    border: 2px solid var(--gray-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.remesa-amount-input-wrapper:focus-within {
+    border-color: var(--green-categories);
+}
+
+.remesa-currency-symbol {
+    padding: 12px 16px;
+    background: var(--gray-light);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--black);
+    border-right: 1px solid var(--gray-border);
+}
+
+.remesa-amount-input {
+    flex: 1;
+    border: none;
+    padding: 12px 16px;
+    font-size: 18px;
+    font-weight: 600;
+    outline: none;
+}
+
+.remesa-calculation {
+    background: var(--gray-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 24px;
+}
+
+.remesa-calculation-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 15px;
+    color: var(--black);
+}
+
+.remesa-calculation-row:last-child {
+    margin-bottom: 0;
+}
+
+.remesa-calculation-row.remesa-total {
+    padding-top: 12px;
+    border-top: 2px solid var(--gray-border);
+    margin-top: 12px;
+    font-size: 18px;
+}
+
+.remesa-modal-footer {
+    display: flex;
+    gap: 12px;
+    padding: 24px;
+    border-top: 1px solid var(--gray-border);
+}
+
+.remesa-btn-cancel,
+.remesa-btn-add {
+    flex: 1;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remesa-btn-cancel {
+    background: var(--gray-light);
+    color: var(--black);
+}
+
+.remesa-btn-cancel:hover {
+    background: var(--gray-border);
+}
+
+.remesa-btn-add {
+    background: var(--green-categories);
+    color: var(--white);
+}
+
+.remesa-btn-add:hover {
+    background: var(--green-categories-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.remesa-btn-add:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+@media (max-width: 768px) {
+    .remesa-modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .remesa-modal-header,
+    .remesa-modal-body,
+    .remesa-modal-footer {
+        padding: 20px;
+    }
+    
+    .remesa-modal-title {
+        font-size: 20px;
+    }
+}
+
 @media (max-width: 1024px) {
     .account-page-layout {
         grid-template-columns: 1fr;
