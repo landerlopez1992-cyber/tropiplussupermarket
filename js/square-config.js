@@ -389,10 +389,16 @@ async function isProductAvailableBoolean(product) {
 }
 
 // Hacer funciones disponibles globalmente
+// Exponer funciones globalmente para uso en otros scripts
+window.squareApiCall = squareApiCall;
+window.getSquareProducts = getSquareProducts;
+window.getSquareCategories = getSquareCategories;
+window.getSquareProductsByCategory = getSquareProductsByCategory;
 window.getProductInventory = getProductInventory;
 window.isProductAvailable = isProductAvailable;
 window.isProductAvailableBoolean = isProductAvailableBoolean;
 window.getProductStock = getProductStock;
+window.getCachedProductImageUrl = getCachedProductImageUrl;
 
 // Función para obtener productos por categoría
 async function getSquareProductsByCategory(categoryId) {

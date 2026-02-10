@@ -1155,13 +1155,30 @@ document.addEventListener('DOMContentLoaded', function() {
   // Inicializar carrito
   initShoppingCart();
   
-  if (typeof SQUARE_CONFIG === 'undefined' || 
-      SQUARE_CONFIG.applicationId === 'YOUR_APPLICATION_ID' || 
-      SQUARE_CONFIG.accessToken === 'YOUR_ACCESS_TOKEN' ||
-      SQUARE_CONFIG.locationId === 'YOUR_LOCATION_ID') {
-    console.warn('⚠️ Configuración de Square incompleta.');
+  if (typeof SQUARE_CONFIG === 'undefined') {
+    console.error('❌ SQUARE_CONFIG no está definido. Verifica que square-config.js se cargue antes de square-integration.js');
     return;
   }
+  
+  if (!SQUARE_CONFIG.accessToken || 
+      SQUARE_CONFIG.accessToken === 'YOUR_ACCESS_TOKEN' ||
+      SQUARE_CONFIG.accessToken.trim() === '') {
+    console.error('❌ Access Token de Square no configurado correctamente');
+    return;
+  }
+  
+  if (!SQUARE_CONFIG.locationId || 
+      SQUARE_CONFIG.locationId === 'YOUR_LOCATION_ID' ||
+      SQUARE_CONFIG.locationId.trim() === '') {
+    console.error('❌ Location ID de Square no configurado correctamente');
+    return;
+  }
+  
+  console.log('✅ Configuración de Square verificada:', {
+    hasAccessToken: !!SQUARE_CONFIG.accessToken,
+    hasLocationId: !!SQUARE_CONFIG.locationId,
+    environment: SQUARE_CONFIG.environment
+  });
   
   console.log('✅ Configuración de Square verificada');
   
