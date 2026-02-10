@@ -313,6 +313,152 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-active').checked = tv.active !== false;
 }
 
+function initQrTab() {
+    const form = document.getElementById('qr-config-form');
+    if (!form) return;
+    
+    const resetBtn = document.getElementById('qr-reset-btn');
+    const listContainer = document.getElementById('qr-list');
+    
+    function getQrConfigs() {
+        try {
+            const raw = localStorage.getItem(QR_STORAGE_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.warn('No se pudo leer configuración de QRs:', error);
+            return [];
+        }
+    }
+    
+    function saveQrConfigs(configs) {
+        localStorage.setItem(QR_STORAGE_KEY, JSON.stringify(configs));
+        console.log('💾 [Admin] QRs guardados:', configs.length);
+    }
+    
+    function createQrId() {
+        return `qr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+    
+    function renderQrList() {
+        const configs = getQrConfigs();
+        if (configs.length === 0) {
+            listContainer.innerHTML = '<p style="color: var(--gray-text); text-align: center; padding: 20px;">No hay QRs configurados aún.</p>';
+            return;
+        }
+        
+        listContainer.innerHTML = configs.map(qr => `
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px;">${qr.name || 'QR Sin Nombre'}</h4>
+                    <p style="margin: 0; color: var(--gray-text); font-size: 14px; word-break: break-all;">
+                        ${qr.url || 'Sin URL'}
+                    </p>
+                    <p style="margin: 4px 0 0 0; color: var(--gray-text); font-size: 12px;">
+                        Tamaño: ${qr.size || 300}px | ${qr.active ? '✅ Activo' : '❌ Inactivo'}
+                    </p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-secondary" onclick="editQr('${qr.id}')" style="padding: 6px 12px; font-size: 12px;">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn-danger" onclick="deleteQr('${qr.id}')" style="padding: 6px 12px; font-size: 12px;">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function resetQrForm() {
+        form.reset();
+        document.getElementById('qr-name').value = '';
+        document.getElementById('qr-url').value = '';
+        document.getElementById('qr-size').value = '300';
+        document.getElementById('qr-active').checked = true;
+    }
+    
+    function loadQrIntoForm(qrId) {
+        const qr = getQrConfigs().find(item => item.id === qrId);
+        if (!qr) return;
+        
+        document.getElementById('qr-name').value = qr.name || '';
+        document.getElementById('qr-url').value = qr.url || '';
+        document.getElementById('qr-size').value = qr.size || '300';
+        document.getElementById('qr-active').checked = qr.active !== false;
+    }
+    
+    window.editQr = function(qrId) {
+        loadQrIntoForm(qrId);
+        document.getElementById('qr-content').scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    window.deleteQr = function(qrId) {
+        if (confirm('¿Estás seguro de que deseas eliminar este QR?')) {
+            const configs = getQrConfigs().filter(item => item.id !== qrId);
+            saveQrConfigs(configs);
+            renderQrList();
+            if (typeof showModal === 'function') {
+                showModal('Listo', 'QR eliminado correctamente.', 'success');
+            }
+        }
+    };
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetQrForm();
+        });
+    }
+    
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('qr-name').value.trim();
+        const url = document.getElementById('qr-url').value.trim();
+        const size = parseInt(document.getElementById('qr-size').value || '300', 10);
+        const active = document.getElementById('qr-active').checked;
+        
+        if (!name || !url) {
+            if (typeof showModal === 'function') {
+                showModal('Error', 'Debes completar todos los campos requeridos.', 'error');
+            }
+            return;
+        }
+        
+        try {
+            new URL(url);
+        } catch {
+            if (typeof showModal === 'function') {
+                showModal('Error', 'La URL no es válida.', 'error');
+            }
+            return;
+        }
+        
+        const qrId = createQrId();
+        const qrPayload = {
+            id: qrId,
+            name,
+            url,
+            size,
+            active,
+            updatedAt: Date.now()
+        };
+        
+        const configs = getQrConfigs();
+        configs.push(qrPayload);
+        saveQrConfigs(configs);
+        renderQrList();
+        resetQrForm();
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'QR guardado correctamente.', 'success');
+        }
+    });
+    
+    renderQrList();
+}
+
 function initTvTab() {
     const form = document.getElementById('tv-config-form');
     const resetBtn = document.getElementById('tv-reset-btn');
