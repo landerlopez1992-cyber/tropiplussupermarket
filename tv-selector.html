@@ -99,6 +99,22 @@
             margin-bottom: 16px;
             display: block;
         }
+        .refresh-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #42b649;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .refresh-btn:hover {
+            background: #35a03a;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -113,57 +129,74 @@
                 <p>Cargando TVs configurados...</p>
             </div>
         </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="refresh-btn" onclick="loadTVs()">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
     </div>
 
     <script>
         const TV_STORAGE_KEY = 'tropiplus_tv_configs';
         const TV_SELECTED_KEY = 'tropiplus_tv_selected';
+        const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
         
         function selectTv(tvId) {
-            // Guardar la selección para futuras sesiones
             localStorage.setItem(TV_SELECTED_KEY, tvId);
-            // Redirigir a la pantalla del TV
             window.location.href = 'tv.html?tv=' + encodeURIComponent(tvId);
         }
         
-        async function getTvConfigs() {
-            // Primero intentar leer desde localStorage
+        async function loadTVs() {
+            const container = document.getElementById('tv-list');
+            container.innerHTML = `
+                <div class="no-tvs">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando TVs configurados...</p>
+                </div>
+            `;
+            
             try {
-                const raw = localStorage.getItem(TV_STORAGE_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        return parsed.filter(tv => tv.active !== false);
+                // Intentar cargar desde JSON público
+                const response = await fetch(TVS_JSON_URL + '?t=' + Date.now());
+                if (response.ok) {
+                    const tvs = await response.json();
+                    if (Array.isArray(tvs) && tvs.length > 0) {
+                        // Guardar en localStorage como backup
+                        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+                        renderTvList(tvs.filter(tv => tv.active !== false));
+                        return;
                     }
                 }
             } catch (error) {
-                console.error('Error cargando TVs desde localStorage:', error);
+                console.log('Error cargando desde JSON:', error);
             }
             
-            // Si no hay en localStorage, intentar leer desde el admin
+            // Fallback: intentar desde localStorage
             try {
-                const adminUrl = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/admin.html';
-                const response = await fetch(adminUrl);
-                const html = await response.text();
-                
-                // Buscar el script tag con los TVs
-                const scriptMatch = html.match(/<script[^>]*id="tropiplus-tvs-data"[^>]*>([\s\S]*?)<\/script>/);
-                if (scriptMatch && scriptMatch[1]) {
-                    const tvs = JSON.parse(scriptMatch[1].trim());
-                    // Guardar en localStorage para futuras cargas
-                    localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
-                    return Array.isArray(tvs) ? tvs.filter(tv => tv.active !== false) : [];
+                const raw = localStorage.getItem(TV_STORAGE_KEY);
+                if (raw) {
+                    const tvs = JSON.parse(raw);
+                    if (Array.isArray(tvs) && tvs.length > 0) {
+                        renderTvList(tvs.filter(tv => tv.active !== false));
+                        return;
+                    }
                 }
             } catch (error) {
-                console.error('Error cargando TVs desde admin:', error);
+                console.error('Error cargando desde localStorage:', error);
             }
             
-            return [];
+            // Si no hay nada, mostrar mensaje
+            container.innerHTML = `
+                <div class="no-tvs">
+                    <i class="fas fa-tv"></i>
+                    <p>No hay TVs configurados</p>
+                    <p style="margin-top: 8px; font-size: 12px;">Ve a Admin > TV para configurar una pantalla</p>
+                </div>
+            `;
         }
         
-        async function renderTvList() {
+        function renderTvList(configs) {
             const container = document.getElementById('tv-list');
-            const configs = await getTvConfigs();
             
             if (!configs || configs.length === 0) {
                 container.innerHTML = `
@@ -176,15 +209,15 @@
                 return;
             }
             
+            const modeLabels = {
+                mixed: 'Mixto',
+                products: 'Solo Productos',
+                promo: 'Solo Promoción',
+                orders: 'Listado de Pedidos',
+                qr: 'Código QR'
+            };
+            
             container.innerHTML = configs.map(tv => {
-                const modeLabels = {
-                    mixed: 'Mixto',
-                    products: 'Solo Productos',
-                    promo: 'Solo Promoción',
-                    orders: 'Listado de Pedidos',
-                    qr: 'Código QR'
-                };
-                
                 return `
                     <div class="tv-item" onclick="selectTv('${tv.id}')">
                         <div class="tv-item-info">
@@ -203,46 +236,11 @@
             }).join('');
         }
         
-        // Escuchar sincronización desde el admin
-        try {
-            const channel = new BroadcastChannel('tropiplus_sync');
-            channel.addEventListener('message', async function(event) {
-                if (event.data.type === 'tvs_data') {
-                    try {
-                        localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(event.data.tvs));
-                        await renderTvList();
-                        console.log('✅ TVs sincronizados desde admin');
-                    } catch(e) {
-                        console.error('Error guardando TVs sincronizados:', e);
-                    }
-                }
-            });
-        } catch(e) {
-            console.log('BroadcastChannel no disponible:', e);
-        }
+        // Cargar al iniciar
+        loadTVs();
         
-        // Renderizar inmediatamente
-        (async () => {
-            try {
-                await renderTvList();
-            } catch (error) {
-                console.error('Error renderizando lista de TVs:', error);
-                const container = document.getElementById('tv-list');
-                if (container) {
-                    container.innerHTML = `
-                        <div class="no-tvs">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>Error cargando TVs</p>
-                            <p style="margin-top: 8px; font-size: 12px;">Recarga la página o verifica tu conexión</p>
-                        </div>
-                    `;
-                }
-            }
-        })();
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            await renderTvList();
-        });
+        // Auto-recargar cada 30 segundos
+        setInterval(loadTVs, 30000);
     </script>
 </body>
 </html>

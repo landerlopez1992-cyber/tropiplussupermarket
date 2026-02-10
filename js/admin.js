@@ -139,12 +139,11 @@ function getTvConfigs() {
 function saveTvConfigs(tvConfigs) {
     localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
     console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
-    console.log('💾 [Admin] Verificación:', localStorage.getItem(TV_STORAGE_KEY));
     
-    // Exponer TVs globalmente para que la app pueda leerlos
+    // Exponer TVs globalmente
     window.tropiplusTVs = tvConfigs;
     
-    // Guardar en un script tag con datos para que la app pueda leerlos
+    // Guardar en script tag
     let scriptTag = document.getElementById('tropiplus-tvs-data');
     if (!scriptTag) {
         scriptTag = document.createElement('script');
@@ -154,7 +153,7 @@ function saveTvConfigs(tvConfigs) {
     }
     scriptTag.textContent = JSON.stringify(tvConfigs);
     
-    // Sincronizar con otras pestañas/WebViews usando BroadcastChannel
+    // Sincronizar con BroadcastChannel
     try {
         const channel = new BroadcastChannel('tropiplus_sync');
         channel.postMessage({
@@ -167,8 +166,30 @@ function saveTvConfigs(tvConfigs) {
         console.error('Error sincronizando TVs:', e);
     }
     
-    // También guardar en un archivo JSON para que la app Flutter lo lea
-    // Usar GitHub API o simplemente crear un data URI que se pueda descargar
+    // Guardar en archivo JSON para que la app lo lea directamente
+    saveTvsToJsonFile(tvConfigs);
+}
+
+function saveTvsToJsonFile(tvConfigs) {
+    // Guardar el JSON en el archivo local (se subirá a GitHub manualmente o automáticamente)
+    const jsonContent = JSON.stringify(tvConfigs, null, 2);
+    
+    // Crear un link de descarga para que el usuario pueda descargar y subir el archivo
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tvs-public.json';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    
+    // No descargar automáticamente, solo guardar en localStorage para referencia
+    localStorage.setItem('tvs_json_content', jsonContent);
+    localStorage.setItem('tvs_json_last_update', Date.now().toString());
+    
+    console.log('💾 [Admin] JSON generado. Contenido:', jsonContent);
+    console.log('💡 Para actualizar: descarga tvs-public.json y súbelo a GitHub, o usa el script de actualización automática.');
+}
     try {
         const jsonStr = JSON.stringify(tvConfigs, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
