@@ -227,16 +227,16 @@ async function initTvScreen() {
   setInterval(updateClock, 15000);
 
   const tvId = getTvIdFromUrl();
-  const configs = getTvConfigs();
+  const configs = await getTvConfigs(); // Ahora es async
 
   if (!tvId) {
-    openTvSelector(configs);
+    await openTvSelector(configs);
     return;
   }
 
   const selected = configs.find(item => item.id === tvId);
   if (!selected) {
-    openTvSelector(configs);
+    await openTvSelector(configs);
     return;
   }
 
