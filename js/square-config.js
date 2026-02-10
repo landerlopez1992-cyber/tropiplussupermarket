@@ -310,10 +310,21 @@ async function isProductAvailableBoolean(product) {
 
 // Hacer funciones disponibles globalmente
 // Exponer funciones globalmente para uso en otros scripts
-window.squareApiCall = squareApiCall;
-window.getSquareProducts = getSquareProducts;
-window.getSquareCategories = getSquareCategories;
-window.getSquareProductsByCategory = getSquareProductsByCategory;
+// Exponer funciones globalmente para uso en otros scripts
+if (typeof window !== 'undefined') {
+  window.squareApiCall = squareApiCall;
+  window.getSquareProducts = getSquareProducts;
+  window.getSquareCategories = getSquareCategories;
+  window.getSquareProductsByCategory = getSquareProductsByCategory;
+  window.getProductInventory = getProductInventory;
+  window.isProductAvailable = isProductAvailable;
+  window.isProductAvailableBoolean = isProductAvailableBoolean;
+  window.getProductStock = getProductStock;
+  window.getCachedProductImageUrl = getCachedProductImageUrl;
+  window.SQUARE_CONFIG = SQUARE_CONFIG;
+  
+  console.log('✅ [Tropiplus] Funciones de Square API expuestas globalmente');
+}
 window.getProductInventory = getProductInventory;
 window.isProductAvailable = isProductAvailable;
 window.isProductAvailableBoolean = isProductAvailableBoolean;
