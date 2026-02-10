@@ -119,20 +119,39 @@ function configureTicker(tvConfig) {
   const mode = tvConfig.mode || 'mixed';
   const customText = (tvConfig.promoText || '').trim();
   const text = customText || promo.text || 'Ofertas en Tropiplus Supermarket';
-  const finalTicker = `${text} • ${text} • ${text}`;
+  
+  // Solo DOS copias del texto para que pase completo y luego se repita suavemente
+  const separator = '   •   ';
+  const finalTicker = `${text}${separator}${text}${separator}`;
 
   textA.textContent = finalTicker;
   textB.textContent = finalTicker;
 
+  // Calcular duración basada en la velocidad y longitud del texto
+  const baseDuration = {
+    slow: 30,    // 30 segundos por 100 caracteres
+    normal: 20,  // 20 segundos por 100 caracteres
+    fast: 12     // 12 segundos por 100 caracteres
+  };
+  
+  const textLength = text.length;
   const speed = promo.speed || 'normal';
-  const durationBySpeed = { slow: '20s', normal: '14s', fast: '8s' };
-  ticker.style.setProperty('--tv-ticker-duration', durationBySpeed[speed] || '14s');
+  const baseSpeed = baseDuration[speed] || baseDuration.normal;
+  const calculatedDuration = Math.max(8, Math.round((textLength / 100) * baseSpeed));
+  const duration = `${calculatedDuration}s`;
+  
+  console.log('⚡ [TV] Velocidad configurada:', speed);
+  console.log('⚡ [TV] Longitud del texto:', textLength, 'caracteres');
+  console.log('⚡ [TV] Duración calculada:', duration);
+  
+  ticker.style.setProperty('--tv-ticker-duration', duration);
 
   if (mode === 'products') {
     // En modo solo productos, mantenemos el ticker pero con texto corto.
     const productsText = customText || 'Productos y ofertas del día en Tropiplus';
-    textA.textContent = `${productsText} • ${productsText}`;
-    textB.textContent = `${productsText} • ${productsText}`;
+    const productsTicker = `${productsText}${separator}${productsText}${separator}`;
+    textA.textContent = productsTicker;
+    textB.textContent = productsTicker;
   }
 }
 
@@ -237,11 +256,23 @@ function startTvRotation(tvConfig) {
   const seconds = Math.max(3, parseInt(tvConfig.slideSeconds || 10, 10));
   if (tvSlideTimer) clearInterval(tvSlideTimer);
 
-  renderCurrentSlide();
-  tvSlideTimer = setInterval(async () => {
-    tvSlideIndex += 1;
-    await renderCurrentSlide();
-  }, seconds * 1000);
+  // Si hay múltiples productos, renderizar grid y rotar productos
+  if (allTvProducts.length > 1 && tvConfig.mode !== 'promo') {
+    renderProductsGrid();
+    tvSlideTimer = setInterval(async () => {
+      // Rotar el array de productos para mostrar diferentes combinaciones
+      const first = allTvProducts.shift();
+      allTvProducts.push(first);
+      await renderProductsGrid();
+    }, seconds * 1000);
+  } else {
+    // Modo legacy: un producto a la vez
+    renderCurrentSlide();
+    tvSlideTimer = setInterval(async () => {
+      tvSlideIndex += 1;
+      await renderCurrentSlide();
+    }, seconds * 1000);
+  }
 }
 
 function startAutoRefresh(tvId) {

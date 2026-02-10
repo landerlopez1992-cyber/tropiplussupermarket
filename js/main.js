@@ -78,13 +78,23 @@ function createPromotionBar() {
     
     console.log('✅ [Tropiplus] Creando barra promocional con texto:', config.text.substring(0, 50) + '...');
 
-    const durationBySpeed = {
-        slow: '22s',
-        normal: '14s',
-        fast: '8s'
+    // Calcular duración basada en la velocidad configurada
+    // La duración debe ser proporcional a la longitud del texto
+    const baseDuration = {
+        slow: 30,    // 30 segundos por 100 caracteres
+        normal: 20,  // 20 segundos por 100 caracteres
+        fast: 12     // 12 segundos por 100 caracteres
     };
-    const duration = durationBySpeed[config.speed] || '14s';
-    console.log('⚡ Velocidad:', config.speed, 'Duración:', duration);
+    
+    const textLength = config.text.length;
+    const baseSpeed = baseDuration[config.speed] || baseDuration.normal;
+    // Calcular duración: baseSpeed segundos por cada 100 caracteres, mínimo 8 segundos
+    const calculatedDuration = Math.max(8, Math.round((textLength / 100) * baseSpeed));
+    const duration = `${calculatedDuration}s`;
+    
+    console.log('⚡ [Tropiplus] Velocidad configurada:', config.speed);
+    console.log('⚡ [Tropiplus] Longitud del texto:', textLength, 'caracteres');
+    console.log('⚡ [Tropiplus] Duración calculada:', duration);
 
     const bar = document.createElement('div');
     bar.id = 'promo-ticker-bar';
@@ -97,7 +107,10 @@ function createPromotionBar() {
     const track = document.createElement('div');
     track.className = 'promo-ticker-track';
 
-    const textContent = `${config.text}   •   ${config.text}   •   ${config.text}`;
+    // Crear solo DOS copias del texto para que se repita suavemente
+    // Separador entre repeticiones
+    const separator = '   •   ';
+    const textContent = `${config.text}${separator}${config.text}${separator}`;
 
     const createItem = () => {
         if (config.linkEnabled && config.url) {
@@ -107,7 +120,7 @@ function createPromotionBar() {
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
             link.textContent = textContent;
-            console.log('🔗 Creando enlace promocional:', config.url);
+            console.log('🔗 [Tropiplus] Creando enlace promocional:', config.url);
             return link;
         }
         const span = document.createElement('span');
@@ -116,7 +129,7 @@ function createPromotionBar() {
         return span;
     };
 
-    track.appendChild(createItem());
+    // Solo crear UNA copia del item para que pase completo y luego se repita
     track.appendChild(createItem());
     bar.appendChild(track);
 
