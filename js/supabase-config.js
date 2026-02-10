@@ -28,6 +28,7 @@ async function getTvConfigsFromSupabase() {
         
         if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
             headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
         } else {
             console.warn('⚠️ [Supabase] Anon key no configurada. Algunas operaciones pueden fallar.');
         }
@@ -128,6 +129,7 @@ async function saveTvConfigsToSupabase(tvConfigs) {
         
         if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
             headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
         } else {
             console.warn('⚠️ [Supabase] Anon key no configurada. No se puede guardar en Supabase.');
             throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');

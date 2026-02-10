@@ -160,16 +160,22 @@ async function saveTvConfigs(tvConfigs) {
         if (typeof window.saveTvConfigsToSupabase === 'function') {
             await window.saveTvConfigsToSupabase(tvConfigs);
             console.log('✅ [Admin] TVs guardados en Supabase');
+            if (typeof showModal === 'function') {
+                showModal('Guardado OK', 'TVs sincronizados correctamente con Supabase.', 'success');
+            }
         } else {
             console.warn('⚠️ [Admin] Función saveTvConfigsToSupabase no disponible. Asegúrate de cargar supabase-config.js');
+            if (typeof showModal === 'function') {
+                showModal('Error de configuración', 'No se cargó la conexión con Supabase (supabase-config.js).', 'error');
+            }
         }
     } catch (error) {
         console.error('❌ [Admin] Error guardando en Supabase:', error);
-        // Continuar aunque falle Supabase (localStorage como backup)
+        if (typeof showModal === 'function') {
+            showModal('Error al guardar', `No se pudo guardar en Supabase: ${error.message}`, 'error');
+        }
+        throw error;
     }
-    
-    // ACTUALIZAR AUTOMÁTICAMENTE EL ARCHIVO PÚBLICO (legacy, se puede remover después)
-    updatePublicTvsFile(tvConfigs);
 }
 
 function normalizeTvForSync(tv) {
@@ -229,23 +235,14 @@ async function refreshPublicTvSyncStatus() {
     const statusEl = ensureTvSyncStatusElement(listContainer);
     if (!statusEl) return;
 
-    statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> Verificando sincronización con archivo público...';
+    statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> Verificando sincronización con Supabase...';
 
     const localTvs = getTvConfigs();
     try {
-        const response = await fetch(`${PUBLIC_TVS_URL}?t=${Date.now()}`, {
-            cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        if (typeof window.getTvConfigsFromSupabase !== 'function') {
+            throw new Error('Función de Supabase no disponible');
         }
-
-        const publicTvs = await response.json();
+        const publicTvs = await window.getTvConfigsFromSupabase();
         const localSig = buildSyncSignature(localTvs);
         const publicSig = buildSyncSignature(publicTvs);
 
@@ -253,7 +250,7 @@ async function refreshPublicTvSyncStatus() {
             statusEl.style.background = '#e9f8ee';
             statusEl.style.borderColor = '#42b649';
             statusEl.style.color = '#1f6f2a';
-            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Público sincronizado: admin y TVs están mostrando la misma configuración.';
+            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Supabase sincronizado: admin y TVs están mostrando la misma configuración.';
             return;
         }
 
@@ -261,14 +258,14 @@ async function refreshPublicTvSyncStatus() {
         statusEl.style.borderColor = '#ffcc00';
         statusEl.style.color = '#7a5a00';
         statusEl.innerHTML = `
-            <div><i class="fas fa-exclamation-triangle"></i> Público desincronizado: Admin y TV público no tienen los mismos datos.</div>
-            <div style="margin-top:8px;">Haz clic en <b>Guardar TV</b> y luego ejecuta los comandos copiados en terminal para actualizar <code>tvs-public.json</code>.</div>
+            <div><i class="fas fa-exclamation-triangle"></i> Supabase desincronizado: Admin y TV no tienen los mismos datos.</div>
+            <div style="margin-top:8px;">Haz clic en <b>Guardar TV</b> para volver a sincronizar.</div>
         `;
     } catch (error) {
         statusEl.style.background = '#fdecea';
         statusEl.style.borderColor = '#e57373';
         statusEl.style.color = '#b71c1c';
-        statusEl.innerHTML = `<i class="fas fa-times-circle"></i> No se pudo verificar el archivo público (${error.message}).`;
+        statusEl.innerHTML = `<i class="fas fa-times-circle"></i> No se pudo verificar Supabase (${error.message}).`;
     }
 }
 
