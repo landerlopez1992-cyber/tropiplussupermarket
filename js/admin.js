@@ -629,8 +629,30 @@ async function castToTv(ip, port, url) {
             alert('❌ Error: ' + (result.error || 'No se pudo transmitir'));
         }
     } catch (e) {
-        alert('❌ Error de conexión: ' + e.message);
+        alert('❌ Error de conexión: ' + e.message + '\n\nAsegúrate de que:\n- El TV esté en la misma red WiFi\n- La app esté abierta en el TV\n- El firewall no bloquee la conexión');
     }
+}
+
+async function castToManualTv(tvUrl) {
+    const ipInput = document.getElementById('manual-tv-ip');
+    const portInput = document.getElementById('manual-tv-port');
+    
+    if (!ipInput || !ipInput.value.trim()) {
+        alert('⚠️ Por favor ingresa la IP del TV');
+        return;
+    }
+    
+    const ip = ipInput.value.trim();
+    const port = parseInt(portInput?.value || '8081', 10) || 8081;
+    
+    // Validar IP
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(ip)) {
+        alert('⚠️ IP inválida. Formato: 192.168.1.112');
+        return;
+    }
+    
+    await castToTv(ip, port, tvUrl);
 }
 
 async function detectAndShowTvs_OLD(tvUrl, modal) {
