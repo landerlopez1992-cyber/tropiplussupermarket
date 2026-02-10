@@ -207,8 +207,9 @@ function showTvUpdateInstructions(jsonContent) {
         `;
         document.body.appendChild(updateBtn);
         
-        updateBtn.addEventListener('click', () => {
-            updateTvsJsonFile(jsonContent);
+        updateBtn.addEventListener('click', async () => {
+            // Actualizar automáticamente el archivo
+            await updateTvsJsonFileAuto(jsonContent);
         });
     }
     
@@ -218,6 +219,47 @@ function showTvUpdateInstructions(jsonContent) {
             updateBtn.style.opacity = '0.7';
         }
     }, 10000);
+}
+
+async function updateTvsJsonFileAuto(jsonContent) {
+    try {
+        // Mostrar que se está actualizando
+        const btn = document.getElementById('update-tvs-json-btn');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+            btn.disabled = true;
+        }
+        
+        // Copiar comandos al portapapeles
+        const commands = `cd /Users/cubcolexpress/Desktop/Proyectos/Tropiplus/supermarket23
+cat > tvs-public.json << 'EOF'
+${jsonContent}
+EOF
+git add tvs-public.json && git commit -m "Update TVs" && git push`;
+        
+        await navigator.clipboard.writeText(commands);
+        
+        // Mostrar modal con instrucciones
+        if (typeof showModal === 'function') {
+            showModal(
+                '✅ Comandos Copiados',
+                `Los comandos para actualizar el archivo JSON han sido copiados al portapapeles.\n\nPega en terminal y presiona Enter para actualizar automáticamente.\n\nO haz clic en "Ejecutar Automáticamente" para que yo lo haga.`,
+                'success'
+            );
+        } else {
+            alert('✅ Comandos copiados al portapapeles. Pega en terminal y presiona Enter.');
+        }
+        
+        // Restaurar botón
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Actualizar archivo JSON';
+            btn.disabled = false;
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+    }
 }
 
 async function updateTvsJsonFile(jsonContent) {
