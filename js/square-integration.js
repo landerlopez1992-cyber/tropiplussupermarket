@@ -810,6 +810,11 @@ function addToCart(product, quantity = 1) {
   // Mostrar notificación
   showCartNotification(cartItem.name, quantity);
   
+  // Crear celebración (fuegos artificiales, confetti)
+  if (typeof createCelebration === 'function') {
+    createCelebration();
+  }
+  
   // Mostrar carrito
   const cartSidebar = document.getElementById('cart-sidebar');
   const cartOverlay = document.getElementById('cart-overlay');
