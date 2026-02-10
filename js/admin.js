@@ -131,6 +131,8 @@ function getTvConfigs() {
 
 function saveTvConfigs(tvConfigs) {
     localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
+    console.log('💾 [Admin] TVs guardados en localStorage:', tvConfigs.length, 'TVs');
+    console.log('💾 [Admin] Verificación:', localStorage.getItem(TV_STORAGE_KEY));
 }
 
 function createTvId() {
@@ -385,6 +387,14 @@ function initTvTab() {
         }
 
         saveTvConfigs(tvConfigs);
+        console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
+        console.log('💾 [Admin] Ticker config:', {
+            enabled: tvPayload.tickerEnabled,
+            speed: tvPayload.tickerSpeed,
+            fontSize: tvPayload.tickerFontSize,
+            textColor: tvPayload.tickerTextColor,
+            bgColor: tvPayload.tickerBgColor
+        });
         renderTvList();
         resetTvForm();
 
