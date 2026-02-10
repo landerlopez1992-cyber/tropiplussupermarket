@@ -148,20 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function getTvConfigs() {
-  // Primero intentar desde localStorage (para compatibilidad con admin)
-  try {
-    const raw = localStorage.getItem(TV_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (_error) {
-    console.warn('Error leyendo desde localStorage:', _error);
-  }
-  
-  // Si no hay en localStorage, leer desde JSON público
+  // SIEMPRE intentar primero JSON público para evitar inconsistencias entre navegadores.
   try {
     const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
     const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
@@ -175,15 +162,30 @@ async function getTvConfigs() {
     if (response.ok) {
       const tvs = await response.json();
       if (Array.isArray(tvs) && tvs.length > 0) {
-        // Guardar en localStorage como cache
+        // Guardar en localStorage para uso offline/fallback.
         localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvs));
+        console.log('📺 [TV] Configuración cargada desde JSON público');
         return tvs;
       }
     }
   } catch (error) {
-    console.warn('Error leyendo desde JSON público:', error);
+    console.warn('Error leyendo JSON público, intentando localStorage:', error);
   }
   
+  // Fallback: localStorage sólo si falla el JSON público.
+  try {
+    const raw = localStorage.getItem(TV_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log('📺 [TV] Configuración cargada desde localStorage (fallback)');
+        return parsed;
+      }
+    }
+  } catch (_error) {
+    console.warn('Error leyendo fallback localStorage:', _error);
+  }
+
   return [];
 }
 
