@@ -233,17 +233,7 @@ function configureTicker(tvConfig) {
   const textA = document.getElementById('tv-ticker-text');
   const textB = document.getElementById('tv-ticker-text-2');
 
-  // REGLA 1: Si el modo es QR, NO mostrar ticker (QR es solo QR, sin texto promocional)
-  const mode = tvConfig.mode || 'mixed';
-  if (mode === 'qr') {
-    if (tickerContainer) {
-      tickerContainer.style.display = 'none';
-    }
-    console.log('⚠️ [TV] Modo QR: ticker deshabilitado automáticamente');
-    return;
-  }
-
-  // REGLA 2: Verificar si el ticker está habilitado explícitamente
+  // Verificar si el ticker está habilitado explícitamente
   const tickerEnabled = tvConfig.tickerEnabled !== false;
   
   if (!tickerEnabled || !tickerContainer) {
@@ -254,7 +244,7 @@ function configureTicker(tvConfig) {
     return;
   }
 
-  // REGLA 3: Verificar si hay texto promocional (SOLO desde BD, sin fallbacks demo)
+  // Verificar si hay texto promocional (SOLO desde BD, sin fallbacks demo)
   const customText = (tvConfig.promoText || '').trim();
   
   // NO usar fallbacks demo - solo mostrar si hay texto real en BD
@@ -608,12 +598,6 @@ async function renderProductsGrid(advanceMode = true) {
       return;
     } else if (currentMode === 'qr') {
       // Mostrar QR - ROTAR TODOS los QRs
-      // En modo QR, ocultar ticker temporalmente
-      const tickerContainer = document.querySelector('.tv-footer-ticker');
-      if (tickerContainer) {
-        tickerContainer.style.display = 'none';
-      }
-      
       allQrConfigs = loadQrConfigs();
       if (allQrConfigs.length > 0) {
         const qrIndex = tvQrRotationIndex % allQrConfigs.length;
@@ -624,8 +608,8 @@ async function renderProductsGrid(advanceMode = true) {
             <div style="text-align: center;">
               <div style="position: relative; display: inline-block;">
                 <img src="${qrApiUrl}" alt="QR Code" style="width: ${qr.size || 400}px; height: ${qr.size || 400}px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffffff; border-radius: 50%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
-                  <img src="images/logo.png" alt="Tropiplus" style="width: 80px; height: 80px; object-fit: contain;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); border-radius: 50%; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);">
+                  <img src="images/logo.png" alt="Tropiplus" style="width: 52px; height: 52px; object-fit: contain;">
                 </div>
               </div>
               <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">${qr.name || 'Escanea para más información'}</p>
@@ -638,13 +622,7 @@ async function renderProductsGrid(advanceMode = true) {
           if (tvQrRotationIndex >= allQrConfigs.length) {
             tvQrRotationIndex = 0;
             tvMixedModeIndex++;
-            // Restaurar ticker cuando salga de modo QR
-            if (currentTvConfig.tickerEnabled !== false && currentTvConfig.promoText && currentTvConfig.promoText.trim()) {
-              if (tickerContainer) {
-                tickerContainer.style.display = 'flex';
-                configureTicker(currentTvConfig);
-              }
-            }
+            configureTicker(currentTvConfig);
           }
         }
         return;
@@ -684,8 +662,8 @@ async function renderProductsGrid(advanceMode = true) {
           <div style="text-align: center;">
             <div style="position: relative; display: inline-block;">
               <img src="${qrApiUrl}" alt="QR Code" style="width: ${qr.size || 400}px; height: ${qr.size || 400}px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffffff; border-radius: 50%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
-                <img src="images/logo.png" alt="Tropiplus" style="width: 80px; height: 80px; object-fit: contain;">
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); border-radius: 50%; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);">
+                <img src="images/logo.png" alt="Tropiplus" style="width: 52px; height: 52px; object-fit: contain;">
               </div>
             </div>
             <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">${qr.name || 'Escanea para más información'}</p>
