@@ -550,7 +550,7 @@ function applyTvModeVisibility(mode) {
 
     const isProductsMode = mode === 'products' || mode === 'mixed';
     const isPromoMode = mode === 'promo' || mode === 'mixed';
-    const isQrMode = mode === 'qr';
+    const isQrMode = mode === 'qr' || mode === 'mixed';
 
     // Opciones de productos
     setVisible('tv-category-group', isProductsMode);
@@ -558,8 +558,10 @@ function applyTvModeVisibility(mode) {
     setVisible('tv-show-price-group', isProductsMode);
     setVisible('tv-show-offer-group', isProductsMode);
 
-    // Segundos aplica para productos, orders y mixed (rotación/refresco)
-    setVisible('tv-slide-seconds-group', mode !== 'promo' && mode !== 'qr');
+    // Segundos base (productos / orders)
+    setVisible('tv-slide-seconds-group', mode !== 'promo' && mode !== 'qr' && mode !== 'mixed');
+    // Segundos de transición para modo mixto
+    setVisible('tv-mixed-transition-seconds-group', mode === 'mixed');
 
     // Opciones de QR
     setVisible('tv-qr-select-group', isQrMode);
@@ -623,6 +625,8 @@ function resetTvForm() {
     document.getElementById('tv-category').value = '';
     document.getElementById('tv-product-count').value = '8';
     document.getElementById('tv-slide-seconds').value = '10';
+    const mixedSecondsInput = document.getElementById('tv-mixed-transition-seconds');
+    if (mixedSecondsInput) mixedSecondsInput.value = '12';
     document.getElementById('tv-show-price').checked = true;
     document.getElementById('tv-show-offer').checked = true;
     document.getElementById('tv-promo-text').value = '';
@@ -1221,6 +1225,8 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-category').value = tv.categoryId || '';
     document.getElementById('tv-product-count').value = tv.productCount || 8;
     document.getElementById('tv-slide-seconds').value = tv.slideSeconds || 10;
+    const mixedSecondsInput = document.getElementById('tv-mixed-transition-seconds');
+    if (mixedSecondsInput) mixedSecondsInput.value = tv.slideSeconds || 12;
     document.getElementById('tv-show-price').checked = tv.showPrice !== false;
     document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
     document.getElementById('tv-promo-text').value = tv.promoText || '';
@@ -1559,7 +1565,7 @@ function initTvTab() {
         modeSelect.addEventListener('change', () => {
             const mode = modeSelect.value;
             applyTvModeVisibility(mode);
-            if (mode === 'qr') {
+            if (mode === 'qr' || mode === 'mixed') {
                 populateTvQrSelect(document.getElementById('tv-qr-select')?.value || '');
             }
         });
@@ -1584,10 +1590,12 @@ function initTvTab() {
         const categoryId = document.getElementById('tv-category').value;
         const categoryName = document.getElementById('tv-category').selectedOptions?.[0]?.textContent || 'Todas las categorías';
         const productCount = Math.max(1, Math.min(50, parseInt(document.getElementById('tv-product-count').value || '8', 10)));
-        const slideSeconds = Math.max(3, Math.min(60, parseInt(document.getElementById('tv-slide-seconds').value || '10', 10)));
+        const slideSecondsProducts = Math.max(3, Math.min(60, parseInt(document.getElementById('tv-slide-seconds').value || '10', 10)));
+        const slideSecondsMixed = Math.max(5, Math.min(120, parseInt(document.getElementById('tv-mixed-transition-seconds')?.value || '12', 10)));
+        const slideSeconds = mode === 'mixed' ? slideSecondsMixed : slideSecondsProducts;
         const showPrice = document.getElementById('tv-show-price').checked;
         const showOffer = document.getElementById('tv-show-offer').checked;
-        const promoText = document.getElementById('tv-promo-text').value.trim();
+        let promoText = document.getElementById('tv-promo-text').value.trim();
         let qrId = document.getElementById('tv-qr-select')?.value || '';
         let qrUrl = '';
         let qrSize = 400;
@@ -1600,16 +1608,16 @@ function initTvTab() {
                 qrSize = selectedQr.size || 400;
             }
         }
-        const tickerEnabled = document.getElementById('tv-ticker-enabled')?.checked !== false;
+        let tickerEnabled = document.getElementById('tv-ticker-enabled')?.checked !== false;
         const tickerSpeed = document.getElementById('tv-ticker-speed')?.value || 'normal';
         const tickerFontSize = document.getElementById('tv-ticker-font-size')?.value || '28px';
         const tickerTextColor = document.getElementById('tv-ticker-text-color')?.value || '#ffec67';
         const tickerBgColor = document.getElementById('tv-ticker-bg-color')?.value || '#000000';
         const active = document.getElementById('tv-active').checked;
         
-        if (mode === 'qr' && !qrId) {
+        if ((mode === 'qr' || mode === 'mixed') && !qrId) {
             if (typeof showModal === 'function') {
-                showModal('Error', 'Debes seleccionar un QR configurado. Ve a la pestaña "QR" para crear uno.', 'error');
+                showModal('Error', 'Debes seleccionar un QR configurado para este modo. Ve a la pestaña "QR" para crear uno.', 'error');
             }
             return;
         }
@@ -1619,7 +1627,7 @@ function initTvTab() {
             // En modo QR: limpiar texto promocional y desactivar ticker (QR es solo QR)
             promoText = '';
             tickerEnabled = false;
-        } else {
+        } else if (mode !== 'mixed') {
             // Si NO es QR: limpiar valores de QR
             qrId = '';
             qrUrl = '';

@@ -192,8 +192,8 @@ async function initTvScreen() {
     console.log('📦 [TV] Productos cargados:', allTvProducts.length);
   }
   
-  // Renderizar grid inicial
-  await renderProductsGrid();
+  // Renderizar grid inicial (en mixed no avanzar modo en primer render)
+  await renderProductsGrid(selected.mode !== 'mixed');
   startTvRotation(selected);
   startAutoRefresh(selected.id);
 }
@@ -411,7 +411,7 @@ function loadQrConfigs() {
   }];
 }
 
-async function renderProductsGrid() {
+async function renderProductsGrid(advanceMode = true) {
   const gridEl = document.getElementById('tv-products-grid');
   if (!gridEl || !currentTvConfig) return;
   
@@ -509,15 +509,18 @@ async function renderProductsGrid() {
         })
       );
       gridEl.innerHTML = productsHtml.join('');
-      // Los productos se muestran aleatoriamente cada vez, no necesitamos avanzar índice
-      // Avanzar al siguiente modo después de mostrar productos
-      tvMixedModeIndex++;
+      // Avanzar al siguiente modo solo en ciclo de rotación, no en auto-refresh.
+      if (advanceMode) {
+        tvMixedModeIndex++;
+      }
       return;
     } else if (currentMode === 'promo') {
       // Mostrar promoción
       const promoText = currentTvConfig.promoText || getPromoConfig().text || '';
       if (!promoText.trim()) {
-        tvMixedModeIndex++;
+        if (advanceMode) {
+          tvMixedModeIndex++;
+        }
         return;
       }
       gridEl.innerHTML = `
@@ -530,8 +533,9 @@ async function renderProductsGrid() {
           </div>
         </div>
       `;
-      // Avanzar al siguiente modo después de mostrar promoción
-      tvMixedModeIndex++;
+      if (advanceMode) {
+        tvMixedModeIndex++;
+      }
       return;
     } else if (currentMode === 'orders' && allTvOrders.length > 0) {
       // Mostrar pedidos - ROTAR TODAS (no solo las primeras 6)
@@ -593,12 +597,13 @@ async function renderProductsGrid() {
         `;
       }).join('');
       gridEl.innerHTML = ordersHtml;
-      // Avanzar índice de órdenes para próxima rotación
-      tvOrdersRotationIndex++;
-      // Si ya mostramos todas las órdenes, resetear índice y avanzar al siguiente modo
-      if (tvOrdersRotationIndex * ordersPerPage >= allTvOrders.length) {
-        tvOrdersRotationIndex = 0;
-        tvMixedModeIndex++;
+      if (advanceMode) {
+        tvOrdersRotationIndex++;
+        // Si ya mostramos todas las órdenes, resetear índice y avanzar al siguiente modo
+        if (tvOrdersRotationIndex * ordersPerPage >= allTvOrders.length) {
+          tvOrdersRotationIndex = 0;
+          tvMixedModeIndex++;
+        }
       }
       return;
     } else if (currentMode === 'qr') {
@@ -627,17 +632,18 @@ async function renderProductsGrid() {
             </div>
           </div>
         `;
-        // Avanzar índice de QR para próxima rotación
-        tvQrRotationIndex++;
-        // Si ya mostramos todos los QRs, resetear índice y avanzar al siguiente modo
-        if (tvQrRotationIndex >= allQrConfigs.length) {
-          tvQrRotationIndex = 0;
-          tvMixedModeIndex++;
-          // Restaurar ticker cuando salga de modo QR
-          if (currentTvConfig.tickerEnabled !== false && currentTvConfig.promoText && currentTvConfig.promoText.trim()) {
-            if (tickerContainer) {
-              tickerContainer.style.display = 'flex';
-              configureTicker(currentTvConfig);
+        if (advanceMode) {
+          tvQrRotationIndex++;
+          // Si ya mostramos todos los QRs, resetear índice y avanzar al siguiente modo
+          if (tvQrRotationIndex >= allQrConfigs.length) {
+            tvQrRotationIndex = 0;
+            tvMixedModeIndex++;
+            // Restaurar ticker cuando salga de modo QR
+            if (currentTvConfig.tickerEnabled !== false && currentTvConfig.promoText && currentTvConfig.promoText.trim()) {
+              if (tickerContainer) {
+                tickerContainer.style.display = 'flex';
+                configureTicker(currentTvConfig);
+              }
             }
           }
         }
@@ -646,7 +652,9 @@ async function renderProductsGrid() {
     }
     
     // Si no hay contenido para el modo actual, avanzar al siguiente
-    tvMixedModeIndex++;
+    if (advanceMode) {
+      tvMixedModeIndex++;
+    }
     return;
   }
   
@@ -909,13 +917,12 @@ function startTvRotation(tvConfig) {
   }
   
   // Modo mixed: rotar entre modos activos
-  // Aumentar tiempo de rotación para que cada categoría se vea más tiempo
-  const mixedModeSeconds = Math.max(8, seconds * 1.5); // Mínimo 8 segundos, o 1.5x el tiempo configurado
+  // Usa el selector de transición configurado en admin (slideSeconds para mixed).
+  const mixedModeSeconds = Math.max(6, seconds);
   if (tvConfig.mode === 'mixed') {
-    renderProductsGrid();
+    renderProductsGrid(false);
     tvSlideTimer = setInterval(async () => {
-      // Solo renderizar - el avance de modo se hace dentro de renderProductsGrid
-      await renderProductsGrid();
+      await renderProductsGrid(true);
     }, mixedModeSeconds * 1000);
     return;
   }
@@ -978,6 +985,6 @@ function startAutoRefresh(tvId) {
     } else if (config.mode !== 'qr' && config.mode !== 'promo') {
       await loadProductsForTv(config);
     }
-    await renderProductsGrid();
+    await renderProductsGrid(false);
   }, 2000); // Actualizar cada 2 segundos (tiempo real)
 }
