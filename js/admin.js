@@ -1179,7 +1179,7 @@ function renderTvList() {
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
     
     container.innerHTML = tvConfigs.map(tv => {
-        const tvUrl = `${baseUrl}tv.html?tv=${encodeURIComponent(tv.id)}&v=20260210u`;
+        const tvUrl = `${baseUrl}tv.html?tv=${encodeURIComponent(tv.id)}&v=20260210v`;
         return `
         <div class="tv-list-item">
             <h4>${tv.name || 'TV sin nombre'} ${tv.active ? '' : '<span style="color:#d93025; font-size:12px;">(Inactivo)</span>'}</h4>
@@ -1199,7 +1199,7 @@ function renderTvList() {
                 </button>
             </div>
             <div class="tv-actions">
-                <a class="tv-btn-open" href="tv.html?tv=${encodeURIComponent(tv.id)}&v=20260210u" target="_blank" rel="noopener noreferrer">Abrir Pantalla TV</a>
+                <a class="tv-btn-open" href="tv.html?tv=${encodeURIComponent(tv.id)}&v=20260210v" target="_blank" rel="noopener noreferrer">Abrir Pantalla TV</a>
                 <button class="tv-btn-rotate" data-tv-action="rotate" data-tv-id="${tv.id}" style="background: #9c27b0; color: white; padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fas fa-sync-alt"></i> Girar pantalla
                 </button>
