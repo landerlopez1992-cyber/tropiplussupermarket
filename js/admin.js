@@ -1615,7 +1615,12 @@ function initTvTab() {
         }
 
         // Limpiar valores que no aplican según modo para evitar confusiones
-        if (mode !== 'qr') {
+        if (mode === 'qr') {
+            // En modo QR: limpiar texto promocional y desactivar ticker (QR es solo QR)
+            promoText = '';
+            tickerEnabled = false;
+        } else {
+            // Si NO es QR: limpiar valores de QR
             qrId = '';
             qrUrl = '';
             qrSize = 400;
