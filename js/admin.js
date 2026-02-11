@@ -1185,7 +1185,7 @@ function renderTvList() {
             <h4>${tv.name || 'TV sin nombre'} ${tv.active ? '' : '<span style="color:#d93025; font-size:12px;">(Inactivo)</span>'}</h4>
             <div class="tv-meta">
                 Modo: <b>${tv.mode || 'mixed'}</b> | Categoría: <b>${tv.categoryName || 'Todas'}</b> |
-                Productos: <b>${tv.productCount || 8}</b> | Seg: <b>${tv.slideSeconds || 10}</b>
+                Productos: <b>${tv.productCount || 8}</b> | Seg sección: <b>${tv.slideSeconds || 10}</b>
             </div>
             <div style="background: #f0f7ff; border: 1px solid #42b649; border-radius: 6px; padding: 10px; margin: 10px 0; font-size: 12px;">
                 <strong style="color: #1f318a; display: block; margin-bottom: 6px;">
