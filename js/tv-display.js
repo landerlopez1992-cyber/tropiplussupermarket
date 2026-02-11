@@ -227,30 +227,42 @@ function configureTicker(tvConfig) {
   const textA = document.getElementById('tv-ticker-text');
   const textB = document.getElementById('tv-ticker-text-2');
 
-  // Verificar si el ticker está habilitado
+  // REGLA 1: Si el modo es QR, NO mostrar ticker (QR es solo QR, sin texto promocional)
+  const mode = tvConfig.mode || 'mixed';
+  if (mode === 'qr') {
+    if (tickerContainer) {
+      tickerContainer.style.display = 'none';
+    }
+    console.log('⚠️ [TV] Modo QR: ticker deshabilitado automáticamente');
+    return;
+  }
+
+  // REGLA 2: Verificar si el ticker está habilitado explícitamente
   const tickerEnabled = tvConfig.tickerEnabled !== false;
   
   if (!tickerEnabled || !tickerContainer) {
     if (tickerContainer) {
       tickerContainer.style.display = 'none';
     }
-    console.log('⚠️ [TV] Ticker deshabilitado o contenedor no encontrado');
+    console.log('⚠️ [TV] Ticker deshabilitado en configuración');
     return;
   }
 
-  // Mostrar el contenedor del ticker
-  tickerContainer.style.display = 'flex';
-
-  const promo = getPromoConfig();
-  const mode = tvConfig.mode || 'mixed';
+  // REGLA 3: Verificar si hay texto promocional (SOLO desde BD, sin fallbacks demo)
   const customText = (tvConfig.promoText || '').trim();
-  const text = customText || promo.text || '';
   
-  if (!text || text.trim() === '') {
-    tickerContainer.style.display = 'none';
-    console.log('⚠️ [TV] No hay texto promocional para mostrar');
+  // NO usar fallbacks demo - solo mostrar si hay texto real en BD
+  if (!customText || customText.trim() === '') {
+    if (tickerContainer) {
+      tickerContainer.style.display = 'none';
+    }
+    console.log('⚠️ [TV] No hay texto promocional configurado - ticker oculto');
     return;
   }
+
+  // Si llegamos aquí, hay texto promocional real y ticker habilitado
+  tickerContainer.style.display = 'flex';
+  const text = customText;
   
   // Solo DOS copias del texto para que pase completo y luego se repita suavemente
   const separator = '   •   ';
@@ -259,8 +271,8 @@ function configureTicker(tvConfig) {
   if (textA) textA.textContent = finalTicker;
   if (textB) textB.textContent = finalTicker;
 
-  // Usar la velocidad del TV si está configurada, sino usar la promoción global
-  const speed = tvConfig.tickerSpeed || promo.speed || 'normal';
+  // Usar la velocidad del TV desde BD (sin fallbacks)
+  const speed = tvConfig.tickerSpeed || 'normal';
   
   // Usar los mismos valores de duración que en la web principal
   const durationBySpeed = {
@@ -271,7 +283,7 @@ function configureTicker(tvConfig) {
   
   const duration = durationBySpeed[speed] || durationBySpeed.normal;
   
-  console.log('⚡ [TV] Velocidad configurada:', speed, '(TV:', tvConfig.tickerSpeed, '| Global:', promo.speed, ')');
+  console.log('⚡ [TV] Velocidad configurada:', speed, '(desde BD)');
   console.log('⚡ [TV] Duración aplicada:', duration);
   
   if (ticker) {
@@ -291,17 +303,8 @@ function configureTicker(tvConfig) {
     console.log('🎨 [TV] Estilos aplicados - Tamaño:', fontSize, 'Color texto:', textColor, 'Color fondo:', bgColor);
   }
 
-  if (mode === 'products') {
-    // En modo solo productos, mantenemos el ticker pero con texto corto.
-    const productsText = customText || '';
-    if (!productsText.trim()) {
-      tickerContainer.style.display = 'none';
-      return;
-    }
-    const productsTicker = `${productsText}${separator}${productsText}${separator}`;
-    if (textA) textA.textContent = productsTicker;
-    if (textB) textB.textContent = productsTicker;
-  }
+  // Nota: El ticker ya está configurado arriba con el texto de BD
+  // No necesitamos lógica especial para modo 'products' - si hay texto, se muestra
 }
 
 async function loadProductsForTv(tvConfig) {
