@@ -232,8 +232,52 @@ async function openTvSelector(configs) {
 
 function applyScreenOrientation(orientation) {
   const body = document.body;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
   body.setAttribute('data-orientation', orientation);
-  console.log(`📺 [TV] Orientación aplicada: ${orientation}`);
+
+  if (orientation === 'portrait') {
+    // Rotar con escala compensada para ocupar TODO el viewport (sin media pantalla vacia).
+    if (viewportWidth > viewportHeight) {
+      const scaleX = viewportWidth / viewportHeight;
+      const scaleY = viewportHeight / viewportWidth;
+
+      body.style.position = 'fixed';
+      body.style.left = '50%';
+      body.style.top = '50%';
+      body.style.width = `${viewportHeight}px`;
+      body.style.height = `${viewportWidth}px`;
+      body.style.margin = '0';
+      body.style.transformOrigin = 'center center';
+      body.style.transform = `translate(-50%, -50%) rotate(90deg) scale(${scaleX}, ${scaleY})`;
+      body.style.overflow = 'hidden';
+      console.log('📱 [TV] Orientación portrait full-viewport', { viewportWidth, viewportHeight, scaleX, scaleY });
+    } else {
+      // Si el dispositivo ya esta fisicamente en portrait, no forzar rotacion.
+      body.style.position = '';
+      body.style.left = '';
+      body.style.top = '';
+      body.style.width = '';
+      body.style.height = '';
+      body.style.margin = '';
+      body.style.transformOrigin = '';
+      body.style.transform = '';
+      body.style.overflow = '';
+      console.log('📱 [TV] Orientación portrait nativa');
+    }
+  } else {
+    body.style.position = '';
+    body.style.left = '';
+    body.style.top = '';
+    body.style.width = '';
+    body.style.height = '';
+    body.style.margin = '';
+    body.style.transformOrigin = '';
+    body.style.transform = '';
+    body.style.overflow = '';
+    console.log('📺 [TV] Orientación landscape');
+  }
 
   setTimeout(() => {
     if (typeof renderProductsGrid === 'function') {

@@ -32,26 +32,11 @@
             overflow: hidden;
         }
         
-        /* Rotacion vertical robusta: ocupa todo el viewport, sin dejar mitad vacia */
-        @media (orientation: landscape) {
-            body[data-orientation="portrait"] .tv-root {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vh;
-                height: 100vw;
-                transform-origin: top left;
-                transform: rotate(90deg) translateY(-100vh);
-                overflow: hidden;
-                grid-template-rows: 64px 1fr 44px;
-            }
-        }
-        @media (orientation: portrait) {
-            body[data-orientation="portrait"] .tv-root {
-                width: 100%;
-                height: 100%;
-                grid-template-rows: 64px 1fr 44px;
-            }
+        /* Modo vertical: la rotacion se aplica desde JS para ajustar escala exacta al viewport */
+        body[data-orientation="portrait"] .tv-root {
+            width: 100%;
+            height: 100%;
+            grid-template-rows: 64px 1fr 44px;
         }
         body[data-orientation="portrait"] {
             overflow: hidden;
@@ -430,8 +415,8 @@
         </footer>
     </div>
 
-    <script src="js/square-config.js?v=20260210t"></script>
-    <script src="js/supabase-config.js?v=20260210t"></script>
-    <script src="js/tv-display.js?v=20260210t"></script>
+    <script src="js/square-config.js?v=20260210u"></script>
+    <script src="js/supabase-config.js?v=20260210u"></script>
+    <script src="js/tv-display.js?v=20260210u"></script>
 </body>
 </html>
