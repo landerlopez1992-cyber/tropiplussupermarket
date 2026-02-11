@@ -499,8 +499,9 @@ async function renderProductsGrid() {
         })
       );
       gridEl.innerHTML = productsHtml.join('');
-      // Avanzar índice de productos para próxima rotación
-      tvProductsRotationIndex++;
+      // Los productos se muestran aleatoriamente cada vez, no necesitamos avanzar índice
+      // Avanzar al siguiente modo después de mostrar productos
+      tvMixedModeIndex++;
       return;
     } else if (currentMode === 'promo') {
       // Mostrar promoción
@@ -519,6 +520,8 @@ async function renderProductsGrid() {
           </div>
         </div>
       `;
+      // Avanzar al siguiente modo después de mostrar promoción
+      tvMixedModeIndex++;
       return;
     } else if (currentMode === 'orders' && allTvOrders.length > 0) {
       // Mostrar pedidos - ROTAR TODAS (no solo las primeras 6)
@@ -582,7 +585,7 @@ async function renderProductsGrid() {
       gridEl.innerHTML = ordersHtml;
       // Avanzar índice de órdenes para próxima rotación
       tvOrdersRotationIndex++;
-      // Si ya mostramos todas las órdenes, avanzar al siguiente modo
+      // Si ya mostramos todas las órdenes, resetear índice y avanzar al siguiente modo
       if (tvOrdersRotationIndex * ordersPerPage >= allTvOrders.length) {
         tvOrdersRotationIndex = 0;
         tvMixedModeIndex++;
@@ -610,7 +613,7 @@ async function renderProductsGrid() {
         `;
         // Avanzar índice de QR para próxima rotación
         tvQrRotationIndex++;
-        // Si ya mostramos todos los QRs, avanzar al siguiente modo
+        // Si ya mostramos todos los QRs, resetear índice y avanzar al siguiente modo
         if (tvQrRotationIndex >= allQrConfigs.length) {
           tvQrRotationIndex = 0;
           tvMixedModeIndex++;
