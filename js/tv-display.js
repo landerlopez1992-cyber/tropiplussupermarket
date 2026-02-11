@@ -535,25 +535,20 @@ async function renderProductsGrid() {
         const stateColor = stateColors[state] || '#ff9800';
         
         return `
-          <div class="tv-product-card" style="min-height: 200px;">
+          <div class="tv-product-card" style="min-height: 180px;">
             <div class="tv-product-info" style="width: 100%;">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
-                <div>
-                  <h2 class="tv-product-name" style="font-size: 28px; margin-bottom: 8px;">${customerName}</h2>
-                  <p style="font-size: 18px; color: rgba(255,255,255,0.8);">Orden: ${orderId.substring(0, 12)}...</p>
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div style="flex: 1;">
+                  <h2 class="tv-product-name" style="font-size: clamp(20px, 2vw, 28px); margin-bottom: 6px; line-height: 1.2;">${customerName}</h2>
                 </div>
-                <span style="background: ${stateColor}; color: white; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 16px;">
+                <span style="background: ${stateColor}; color: white; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap; margin-left: 12px;">
                   ${stateLabel}
                 </span>
               </div>
-              <div style="display: flex; gap: 16px; margin-top: 16px;">
-                <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                <span style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.85); font-size: 16px;">
                   <i class="fas fa-shopping-bag"></i>
-                  ${order.line_items?.length || 0} artículos
-                </span>
-                <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
-                  <i class="fas fa-dollar-sign"></i>
-                  ${order.total_money ? ((order.total_money.amount / 100).toFixed(2)) : '0.00'} US$
+                  <strong>${order.line_items?.length || 0}</strong> artículos
                 </span>
               </div>
             </div>
@@ -681,25 +676,20 @@ async function renderProductsGrid() {
       const stateColor = stateColors[state] || '#ff9800';
       
       return `
-        <div class="tv-product-card" style="min-height: 200px;">
+        <div class="tv-product-card" style="min-height: 180px;">
           <div class="tv-product-info" style="width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
-              <div>
-                <h2 class="tv-product-name" style="font-size: 28px; margin-bottom: 8px;">${customerName}</h2>
-                <p style="font-size: 18px; color: rgba(255,255,255,0.8);">Orden: ${orderId.substring(0, 12)}...</p>
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+              <div style="flex: 1;">
+                <h2 class="tv-product-name" style="font-size: clamp(20px, 2vw, 28px); margin-bottom: 6px; line-height: 1.2;">${customerName}</h2>
               </div>
-              <span style="background: ${stateColor}; color: white; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 16px;">
+              <span style="background: ${stateColor}; color: white; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap; margin-left: 12px;">
                 ${stateLabel}
               </span>
             </div>
-            <div style="display: flex; gap: 16px; margin-top: 16px;">
-              <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+              <span style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.85); font-size: 16px;">
                 <i class="fas fa-shopping-bag"></i>
-                ${order.line_items?.length || 0} artículos
-              </span>
-              <span style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7);">
-                <i class="fas fa-dollar-sign"></i>
-                ${order.total_money ? ((order.total_money.amount / 100).toFixed(2)) : '0.00'} US$
+                <strong>${order.line_items?.length || 0}</strong> artículos
               </span>
             </div>
           </div>
