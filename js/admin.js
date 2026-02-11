@@ -137,6 +137,25 @@ function getTvConfigs() {
     }
 }
 
+async function hydrateTvConfigsFromSupabase() {
+    if (typeof window.getTvConfigsFromSupabase !== 'function') {
+        return getTvConfigs();
+    }
+
+    try {
+        const remoteTvs = await window.getTvConfigsFromSupabase();
+        if (Array.isArray(remoteTvs)) {
+            localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(remoteTvs));
+            window.tropiplusTVs = remoteTvs;
+            return remoteTvs;
+        }
+    } catch (error) {
+        console.warn('⚠️ [Admin] No se pudo hidratar TVs desde Supabase:', error);
+    }
+
+    return getTvConfigs();
+}
+
 async function saveTvConfigs(tvConfigs) {
     // Guardar en localStorage (backup)
     localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
@@ -1489,7 +1508,12 @@ function initTvTab() {
     populateTvCategorySelect();
     populateTvQrSelect();
     renderTvList();
-    seedSupabaseFromLocalIfNeeded().then(() => refreshPublicTvSyncStatus());
+    seedSupabaseFromLocalIfNeeded()
+        .then(() => hydrateTvConfigsFromSupabase())
+        .then(() => {
+            renderTvList();
+            refreshPublicTvSyncStatus();
+        });
 
     resetBtn?.addEventListener('click', () => {
         resetTvForm();
@@ -1512,6 +1536,7 @@ function initTvTab() {
             const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
             try {
                 await saveTvConfigs(tvConfigs);
+                await hydrateTvConfigsFromSupabase();
                 renderTvList();
                 refreshPublicTvSyncStatus();
                 if (typeof showModal === 'function') {
@@ -1636,6 +1661,7 @@ function initTvTab() {
 
         try {
             await saveTvConfigs(tvConfigs);
+            await hydrateTvConfigsFromSupabase();
             console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
             console.log('💾 [Admin] Ticker config:', {
                 enabled: tvPayload.tickerEnabled,

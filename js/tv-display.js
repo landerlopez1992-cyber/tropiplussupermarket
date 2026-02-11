@@ -90,59 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function getTvConfigs() {
-  // PRIORIDAD 1: Intentar leer desde Supabase (BD principal)
-  if (typeof window.getTvConfigsFromSupabase === 'function') {
-    try {
-      const tvs = await window.getTvConfigsFromSupabase();
-      if (Array.isArray(tvs) && tvs.length > 0) {
-        // Guardar cache offline para cuando no haya internet
-        localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
-        console.log('✅ [TV] Configuración cargada desde Supabase:', tvs.length);
-        return tvs;
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ [TV] Error leyendo desde Supabase, intentando JSON público:', supabaseError);
-    }
-  }
-  
-  // PRIORIDAD 2: JSON público (legacy/fallback)
-  try {
-    const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
-    const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    });
-    
-    if (response.ok) {
-      const tvs = await response.json();
-      if (Array.isArray(tvs) && tvs.length > 0) {
-        // Guardar cache offline para cuando no haya internet
-        localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
-        console.log('✅ [TV] Configuración cargada desde JSON público (fallback):', tvs.length);
-        return tvs;
-      }
-    }
-  } catch (error) {
-    console.warn('⚠️ [TV] Error leyendo JSON público, intentando localStorage:', error);
-  }
-  
-  // PRIORIDAD 3: localStorage (solo si falla todo - offline)
-  try {
-    const raw = localStorage.getItem(TV_CACHE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log('📺 [TV] Configuración cargada desde localStorage (offline fallback)');
-        return parsed;
-      }
-    }
-  } catch (_error) {
-    console.warn('❌ [TV] Error leyendo fallback localStorage:', _error);
+  if (typeof window.getTvConfigsFromSupabase !== 'function') {
+    throw new Error('Supabase no está disponible en pantalla TV');
   }
 
+  const tvs = await window.getTvConfigsFromSupabase();
+  if (Array.isArray(tvs)) {
+    localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
+    console.log('✅ [TV] Configuración cargada desde Supabase:', tvs.length);
+    return tvs;
+  }
   return [];
 }
 
@@ -242,32 +199,7 @@ async function openTvSelector(configs) {
   const fullscreenBtn = document.getElementById('tv-fullscreen-btn');
   overlay.classList.add('active');
 
-  // Si no hay configs, intentar cargar desde JSON público
-  let activeConfigs = configs ? configs.filter(item => item.active !== false) : [];
-  
-  if (activeConfigs.length === 0) {
-    try {
-      const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
-      const response = await fetch(`${TVS_JSON_URL}?t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (response.ok) {
-        const tvs = await response.json();
-        if (Array.isArray(tvs)) {
-          activeConfigs = tvs.filter(item => item && item.active !== false);
-          // Guardar cache offline
-          localStorage.setItem(TV_CACHE_KEY, JSON.stringify(tvs));
-        }
-      }
-    } catch (error) {
-      console.error('Error cargando TVs desde JSON público:', error);
-    }
-  }
+  const activeConfigs = configs ? configs.filter(item => item.active !== false) : [];
   
   selector.innerHTML = activeConfigs.length
     ? activeConfigs.map(tv => `<option value="${tv.id}">${tv.name}</option>`).join('')
@@ -312,7 +244,7 @@ function configureTicker(tvConfig) {
   const promo = getPromoConfig();
   const mode = tvConfig.mode || 'mixed';
   const customText = (tvConfig.promoText || '').trim();
-  const text = customText || promo.text || 'Ofertas en Tropiplus Supermarket';
+  const text = customText || promo.text || '';
   
   if (!text || text.trim() === '') {
     tickerContainer.style.display = 'none';
@@ -361,7 +293,11 @@ function configureTicker(tvConfig) {
 
   if (mode === 'products') {
     // En modo solo productos, mantenemos el ticker pero con texto corto.
-    const productsText = customText || 'Productos y ofertas del día en Tropiplus';
+    const productsText = customText || '';
+    if (!productsText.trim()) {
+      tickerContainer.style.display = 'none';
+      return;
+    }
     const productsTicker = `${productsText}${separator}${productsText}${separator}`;
     if (textA) textA.textContent = productsTicker;
     if (textB) textB.textContent = productsTicker;
@@ -549,7 +485,11 @@ async function renderProductsGrid() {
       return;
     } else if (currentMode === 'promo') {
       // Mostrar promoción
-      const promoText = currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día';
+      const promoText = currentTvConfig.promoText || getPromoConfig().text || '';
+      if (!promoText.trim()) {
+        tvMixedModeIndex++;
+        return;
+      }
       gridEl.innerHTML = `
         <div class="tv-product-card" style="grid-column: 1 / -1;">
           <div class="tv-product-image-container">
@@ -772,7 +712,7 @@ async function renderProductsGrid() {
           <img src="images/Barnner1.png" alt="Promoción">
         </div>
         <div class="tv-product-info">
-          <h1 class="tv-product-name">${currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día'}</h1>
+          <h1 class="tv-product-name">${currentTvConfig.promoText || getPromoConfig().text || ''}</h1>
         </div>
       </div>
     `;
@@ -856,7 +796,7 @@ async function renderCurrentSlide() {
   if (!currentTvConfig) return;
 
   if (currentTvConfig.mode === 'promo') {
-    if (nameEl) nameEl.textContent = (currentTvConfig.promoText || getPromoConfig().text || 'Promoción del día');
+    if (nameEl) nameEl.textContent = (currentTvConfig.promoText || getPromoConfig().text || '');
     if (imageEl) imageEl.src = 'images/Barnner1.png';
     if (priceRow) priceRow.style.display = 'none';
     if (badgeEl) badgeEl.style.display = 'none';

@@ -148,9 +148,8 @@
         </div>
     </div>
 
-    <script src="js/supabase-config.js?v=20260210g"></script>
+    <script src="js/supabase-config.js?v=20260210h"></script>
     <script>
-        const TVS_JSON_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
         const TV_SELECTED_KEY = 'tropiplus_tv_selected';
         
         function selectTv(tvId) {
@@ -182,59 +181,12 @@
             try {
                 let tvs = [];
                 
-                // PRIORIDAD 1: Intentar leer desde Supabase (BD principal)
+                // Fuente única: Supabase
                 if (typeof window.getTvConfigsFromSupabase === 'function') {
-                    try {
-                        tvs = await window.getTvConfigsFromSupabase();
-                        console.log('✅ [TV Selector] TVs cargados desde Supabase:', tvs.length);
-                    } catch (supabaseError) {
-                        console.warn('⚠️ [TV Selector] Error leyendo desde Supabase, intentando JSON público:', supabaseError);
-                        // Fallback: JSON público (legacy)
-                        const timestamp = Date.now();
-                        const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
-                            method: 'GET',
-                            cache: 'no-store',
-                            headers: {
-                                'Cache-Control': 'no-cache',
-                                'Pragma': 'no-cache'
-                            }
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        
-                        const text = await response.text();
-                        if (!text || text.trim() === '') {
-                            throw new Error('Archivo JSON vacío');
-                        }
-                        
-                        tvs = JSON.parse(text);
-                        console.log('✅ [TV Selector] TVs cargados desde JSON público (fallback):', tvs.length);
-                    }
+                    tvs = await window.getTvConfigsFromSupabase();
+                    console.log('✅ [TV Selector] TVs cargados desde Supabase:', tvs.length);
                 } else {
-                    // Fallback: JSON público (legacy)
-                    const timestamp = Date.now();
-                    const response = await fetch(`${TVS_JSON_URL}?t=${timestamp}`, {
-                        method: 'GET',
-                        cache: 'no-store',
-                        headers: {
-                            'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const text = await response.text();
-                    if (!text || text.trim() === '') {
-                        throw new Error('Archivo JSON vacío');
-                    }
-                    
-                    tvs = JSON.parse(text);
-                    console.log('✅ [TV Selector] TVs cargados desde JSON público (fallback):', tvs.length);
+                    throw new Error('Supabase no está disponible en esta página');
                 }
                 
                 if (!Array.isArray(tvs)) {
