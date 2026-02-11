@@ -231,40 +231,9 @@ async function openTvSelector(configs) {
 }
 
 function applyScreenOrientation(orientation) {
-  const html = document.documentElement;
   const body = document.body;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  html.setAttribute('data-orientation', orientation);
   body.setAttribute('data-orientation', orientation);
-
-  if (orientation === 'portrait' && viewportWidth > viewportHeight) {
-    // Rotar el lienzo completo y ocupar el viewport entero sin dejar media pantalla vacia.
-    body.style.transform = 'translate(-50%, -50%) rotate(90deg)';
-    body.style.transformOrigin = 'center center';
-    body.style.position = 'fixed';
-    body.style.left = '50%';
-    body.style.top = '50%';
-    body.style.width = `${viewportHeight}px`;
-    body.style.height = `${viewportWidth}px`;
-    body.style.margin = '0';
-    body.style.overflow = 'hidden';
-    html.style.overflow = 'hidden';
-    console.log('📱 [TV] Orientación aplicada: portrait full-screen');
-  } else {
-    body.style.transform = '';
-    body.style.transformOrigin = '';
-    body.style.position = '';
-    body.style.left = '';
-    body.style.top = '';
-    body.style.width = '';
-    body.style.height = '';
-    body.style.margin = '';
-    body.style.overflow = '';
-    html.style.overflow = '';
-    console.log('📺 [TV] Orientación aplicada: landscape');
-  }
+  console.log(`📺 [TV] Orientación aplicada: ${orientation}`);
 
   setTimeout(() => {
     if (typeof renderProductsGrid === 'function') {
