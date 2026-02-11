@@ -886,13 +886,14 @@ function startTvRotation(tvConfig) {
   }
   
   // Modo mixed: rotar entre modos activos
-  // renderProductsGrid maneja internamente el avance de índices cuando cada sección termina
+  // Aumentar tiempo de rotación para que cada categoría se vea más tiempo
+  const mixedModeSeconds = Math.max(8, seconds * 1.5); // Mínimo 8 segundos, o 1.5x el tiempo configurado
   if (tvConfig.mode === 'mixed') {
     renderProductsGrid();
     tvSlideTimer = setInterval(async () => {
       // Solo renderizar - el avance de modo se hace dentro de renderProductsGrid
       await renderProductsGrid();
-    }, seconds * 1000);
+    }, mixedModeSeconds * 1000);
     return;
   }
   
