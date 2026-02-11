@@ -1200,8 +1200,8 @@ function renderTvList() {
             </div>
             <div class="tv-actions">
                 <a class="tv-btn-open" href="tv.html?tv=${encodeURIComponent(tv.id)}" target="_blank" rel="noopener noreferrer">Abrir Pantalla TV</a>
-                <button class="tv-btn-cast" data-tv-action="cast" data-tv-id="${tv.id}" data-tv-url="${tvUrl}" style="background: #ff6b35; color: white; padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-broadcast-tower"></i> Transmitir a TV
+                <button class="tv-btn-rotate" data-tv-action="rotate" data-tv-id="${tv.id}" style="background: #9c27b0; color: white; padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-sync-alt"></i> Girar pantalla
                 </button>
                 <button class="tv-btn-edit" data-tv-action="edit" data-tv-id="${tv.id}">Editar</button>
                 <button class="tv-btn-delete" data-tv-action="delete" data-tv-id="${tv.id}">Eliminar</button>
@@ -1226,7 +1226,10 @@ function loadTvIntoForm(tvId) {
     document.getElementById('tv-product-count').value = tv.productCount || 8;
     document.getElementById('tv-slide-seconds').value = tv.slideSeconds || 10;
     const mixedSecondsInput = document.getElementById('tv-mixed-transition-seconds');
-    if (mixedSecondsInput) mixedSecondsInput.value = tv.slideSeconds || 12;
+    if (mixedSecondsInput) mixedSecondsInput.value = tv.mixedTransitionSeconds || tv.slideSeconds || 12;
+    // Aplicar visibilidad según el modo cargado
+    const mode = tv.mode || 'mixed';
+    applyTvModeVisibility(mode);
     document.getElementById('tv-show-price').checked = tv.showPrice !== false;
     document.getElementById('tv-show-offer').checked = tv.showOffer !== false;
     document.getElementById('tv-promo-text').value = tv.promoText || '';
@@ -1554,8 +1557,8 @@ function initTvTab() {
             return;
         }
 
-        if (action === 'cast') {
-            showTvCastModal(tvUrl, tvId);
+        if (action === 'rotate') {
+            toggleTvScreenOrientation(tvId);
             return;
         }
     });
@@ -1641,6 +1644,9 @@ function initTvTab() {
             return;
         }
 
+        const mixedTransitionSeconds = mode === 'mixed' ? Math.max(5, Math.min(120, parseInt(document.getElementById('tv-mixed-transition-seconds')?.value || '12', 10))) : undefined;
+        const screenOrientation = getTvConfigs().find(t => t.id === id)?.screenOrientation || 'landscape';
+        
         const tvPayload = {
             id,
             name,
@@ -1649,6 +1655,7 @@ function initTvTab() {
             categoryName: categoryId ? categoryName : 'Todas',
             productCount,
             slideSeconds,
+            mixedTransitionSeconds,
             showPrice,
             showOffer,
             promoText,
@@ -1660,6 +1667,7 @@ function initTvTab() {
             tickerFontSize,
             tickerTextColor,
             tickerBgColor,
+            screenOrientation,
             active,
             updatedAt: Date.now()
         };
@@ -3768,6 +3776,37 @@ async function editProduct(productId, variationId) {
         console.error('Error cargando producto para editar:', error);
         if (typeof showModal === 'function') {
             showModal('Error', `Error al cargar el producto: ${error.message}`, 'error');
+        }
+    }
+}
+
+async function toggleTvScreenOrientation(tvId) {
+    const tvConfigs = getTvConfigs();
+    const tv = tvConfigs.find(t => t.id === tvId);
+    if (!tv) {
+        if (typeof showModal === 'function') {
+            showModal('Error', 'TV no encontrado', 'error');
+        }
+        return;
+    }
+    
+    // Alternar entre landscape y portrait
+    const currentOrientation = tv.screenOrientation || 'landscape';
+    const newOrientation = currentOrientation === 'landscape' ? 'portrait' : 'landscape';
+    
+    tv.screenOrientation = newOrientation;
+    tv.updatedAt = Date.now();
+    
+    try {
+        await saveTvConfigs(tvConfigs);
+        renderTvList();
+        if (typeof showModal === 'function') {
+            showModal('Éxito', `Pantalla configurada en modo ${newOrientation === 'landscape' ? 'horizontal' : 'vertical'}`, 'success');
+        }
+    } catch (error) {
+        console.error('Error guardando orientación:', error);
+        if (typeof showModal === 'function') {
+            showModal('Error', `Error al guardar orientación: ${error.message}`, 'error');
         }
     }
 }

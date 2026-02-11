@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS tv_configs (
     category_name TEXT DEFAULT 'Todas',
     product_count INTEGER DEFAULT 8,
     slide_seconds INTEGER DEFAULT 10,
+    mixed_transition_seconds INTEGER DEFAULT 12,
+    screen_orientation TEXT DEFAULT 'landscape',
     show_price BOOLEAN DEFAULT true,
     show_offer BOOLEAN DEFAULT true,
     promo_text TEXT DEFAULT '',

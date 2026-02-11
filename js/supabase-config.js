@@ -71,6 +71,7 @@ async function getTvConfigsFromSupabase() {
             categoryName: tv.category_name || 'Todas',
             productCount: tv.product_count || 8,
             slideSeconds: tv.slide_seconds || 10,
+            mixedTransitionSeconds: tv.mixed_transition_seconds || 12,
             showPrice: tv.show_price !== false,
             showOffer: tv.show_offer !== false,
             promoText: tv.promo_text || '',
@@ -82,7 +83,8 @@ async function getTvConfigsFromSupabase() {
             tickerBgColor: tv.ticker_bg_color || '#000000',
             qrId: tv.qr_id || null,
             qrUrl: tv.qr_url || null,
-            qrSize: tv.qr_size || 400
+            qrSize: tv.qr_size || 400,
+            screenOrientation: tv.screen_orientation || 'landscape'
         }));
     } catch (error) {
         console.error('❌ [Supabase] Error cargando TVs:', error);
@@ -104,6 +106,7 @@ async function saveTvConfigsToSupabase(tvConfigs) {
                 category_name: tv.categoryName || 'Todas',
                 product_count: tv.productCount || 8,
                 slide_seconds: tv.slideSeconds || 10,
+                mixed_transition_seconds: tv.mixedTransitionSeconds || 12,
                 show_price: tv.showPrice !== false,
                 show_offer: tv.showOffer !== false,
                 promo_text: tv.promoText || '',
@@ -115,7 +118,8 @@ async function saveTvConfigsToSupabase(tvConfigs) {
                 ticker_bg_color: tv.tickerBgColor || '#000000',
                 qr_id: tv.qrId || null,
                 qr_url: tv.qrUrl || null,
-                qr_size: tv.qrSize || 400
+                qr_size: tv.qrSize || 400,
+                screen_orientation: tv.screenOrientation || 'landscape'
             }));
 
         // Usar la anon key configurada (prioridad: código > localStorage)

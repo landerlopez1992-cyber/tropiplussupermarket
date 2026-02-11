@@ -167,6 +167,9 @@ async function initTvScreen() {
     bgColor: selected.tickerBgColor
   });
 
+  // Aplicar orientación de pantalla
+  applyScreenOrientation(selected.screenOrientation || 'landscape');
+
   // Verificar horario de la tienda
   const isClosed = checkStoreHours();
   if (isClosed) {
@@ -225,6 +228,39 @@ async function openTvSelector(configs) {
       // Ignore fullscreen errors
     }
   };
+}
+
+function applyScreenOrientation(orientation) {
+  const root = document.documentElement;
+  const body = document.body;
+  
+  if (orientation === 'portrait') {
+    // Modo vertical: rotar 90 grados
+    root.style.transform = 'rotate(90deg)';
+    root.style.transformOrigin = 'center center';
+    root.style.width = '100vh';
+    root.style.height = '100vw';
+    root.style.position = 'absolute';
+    root.style.top = '50%';
+    root.style.left = '50%';
+    root.style.marginTop = '-50vw';
+    root.style.marginLeft = '-50vh';
+    body.style.overflow = 'hidden';
+    console.log('📱 [TV] Orientación aplicada: vertical (portrait)');
+  } else {
+    // Modo horizontal: normal
+    root.style.transform = '';
+    root.style.transformOrigin = '';
+    root.style.width = '';
+    root.style.height = '';
+    root.style.position = '';
+    root.style.top = '';
+    root.style.left = '';
+    root.style.marginTop = '';
+    root.style.marginLeft = '';
+    body.style.overflow = '';
+    console.log('📺 [TV] Orientación aplicada: horizontal (landscape)');
+  }
 }
 
 function configureTicker(tvConfig) {
@@ -605,14 +641,15 @@ async function renderProductsGrid(advanceMode = true) {
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qr.size || 400}x${qr.size || 400}&data=${encodeURIComponent(qr.url)}`;
         gridEl.innerHTML = `
           <div class="tv-product-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 500px;">
-            <div style="text-align: center;">
+            <div style="text-align: center; position: relative;">
               <div style="position: relative; display: inline-block;">
                 <img src="${qrApiUrl}" alt="QR Code" style="width: ${qr.size || 400}px; height: ${qr.size || 400}px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); border-radius: 50%; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);">
-                  <img src="images/logo.png" alt="Tropiplus" style="width: 52px; height: 52px; object-fit: contain;">
+                <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                  <img src="images/logo.png" alt="Tropiplus" style="width: 36px; height: 36px; object-fit: contain;">
                 </div>
               </div>
               <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">${qr.name || 'Escanea para más información'}</p>
+              <p style="margin-top: 8px; font-size: 16px; color: rgba(255,255,255,0.7); word-break: break-all; max-width: 600px; margin-left: auto; margin-right: auto;">${qr.url || ''}</p>
             </div>
           </div>
         `;
@@ -659,14 +696,15 @@ async function renderProductsGrid(advanceMode = true) {
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qr.size || 400}x${qr.size || 400}&data=${encodeURIComponent(qr.url)}`;
       gridEl.innerHTML = `
         <div class="tv-product-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 500px;">
-          <div style="text-align: center;">
+          <div style="text-align: center; position: relative;">
             <div style="position: relative; display: inline-block;">
               <img src="${qrApiUrl}" alt="QR Code" style="width: ${qr.size || 400}px; height: ${qr.size || 400}px; border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.95); border-radius: 50%; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);">
-                <img src="images/logo.png" alt="Tropiplus" style="width: 52px; height: 52px; object-fit: contain;">
+              <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                <img src="images/logo.png" alt="Tropiplus" style="width: 36px; height: 36px; object-fit: contain;">
               </div>
             </div>
             <p style="margin-top: 24px; font-size: 24px; color: #ffffff;">${qr.name || 'Escanea para más información'}</p>
+            <p style="margin-top: 8px; font-size: 16px; color: rgba(255,255,255,0.7); word-break: break-all; max-width: 600px; margin-left: auto; margin-right: auto;">${qr.url || ''}</p>
           </div>
         </div>
       `;
