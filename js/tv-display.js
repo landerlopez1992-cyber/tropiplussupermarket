@@ -17,8 +17,47 @@ let tvQrRotationIndex = 0; // Para rotar todos los QRs
 let tvPromoRotationIndex = 0; // Para rotar promociones
 
 function checkStoreHours() {
-  // Modo live-only: no dependemos de configuraciones locales para evitar inconsistencias por navegador.
-  return false;
+  try {
+    const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
+    const raw = localStorage.getItem(HOURS_STORAGE_KEY);
+    if (!raw) {
+      console.log('📅 [TV] No hay configuración de horarios - asumiendo abierto');
+      return false; // Si no hay horarios configurados, asumir abierto
+    }
+    
+    const hoursConfig = JSON.parse(raw);
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutos desde medianoche
+    
+    const dayConfig = hoursConfig[currentDay];
+    if (!dayConfig || !dayConfig.enabled) {
+      console.log(`📅 [TV] Día ${currentDay} no habilitado - cerrado`);
+      return true; // Si el día no está habilitado, está cerrado
+    }
+    
+    // Convertir horarios a minutos desde medianoche
+    const [startHours, startMinutes] = dayConfig.start.split(':').map(Number);
+    const [endHours, endMinutes] = dayConfig.end.split(':').map(Number);
+    const startTime = startHours * 60 + startMinutes;
+    const endTime = endHours * 60 + endMinutes;
+    
+    // Verificar si la hora actual está dentro del horario de apertura
+    const isOpen = currentTime >= startTime && currentTime < endTime;
+    
+    console.log(`📅 [TV] Verificación horarios:`, {
+      day: currentDay,
+      currentTime: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
+      start: dayConfig.start,
+      end: dayConfig.end,
+      isOpen
+    });
+    
+    return !isOpen; // Retornar true si está cerrado
+  } catch (error) {
+    console.error('❌ [TV] Error verificando horarios:', error);
+    return false; // En caso de error, asumir abierto para no bloquear
+  }
 }
 
 // Mostrar pantalla de cerrado
@@ -28,12 +67,15 @@ function showClosedScreen() {
   
   if (gridEl) {
     gridEl.innerHTML = `
-      <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; height: 100%; background: #d32f2f; border-radius: 20px;">
-        <div style="text-align: center;">
-          <h1 style="font-size: clamp(48px, 8vw, 120px); font-weight: 900; color: #ffffff; margin: 0; text-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 100%; width: 100%; background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); border-radius: 20px; box-shadow: 0 8px 32px rgba(211, 47, 47, 0.4);">
+        <div style="text-align: center; padding: 40px;">
+          <div style="font-size: clamp(80px, 12vw, 180px); margin-bottom: 30px;">
+            <i class="fas fa-door-closed" style="color: rgba(255,255,255,0.9);"></i>
+          </div>
+          <h1 style="font-size: clamp(56px, 8vw, 140px); font-weight: 900; color: #ffffff; margin: 0 0 20px 0; text-shadow: 0 4px 20px rgba(0,0,0,0.5); letter-spacing: 4px;">
             CERRADO
           </h1>
-          <p style="font-size: clamp(24px, 3vw, 48px); color: rgba(255,255,255,0.9); margin-top: 20px;">
+          <p style="font-size: clamp(28px, 3.5vw, 56px); color: rgba(255,255,255,0.95); margin-top: 20px; font-weight: 500;">
             Volveremos pronto
           </p>
         </div>
