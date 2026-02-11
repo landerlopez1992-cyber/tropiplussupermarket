@@ -211,6 +211,26 @@
             align-content: start;
         }
         
+        /* Modo vertical: ajustar grid para más columnas */
+        body[data-orientation="portrait"] .tv-products-grid {
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        body[data-orientation="portrait"] .tv-product-card {
+            min-height: 160px;
+            grid-template-columns: 1.2fr 1fr;
+        }
+        
+        body[data-orientation="portrait"] .tv-product-name {
+            font-size: clamp(18px, 1.5vw, 24px);
+        }
+        
+        body[data-orientation="portrait"] .tv-product-price {
+            font-size: clamp(22px, 2vw, 36px);
+        }
+        
         .tv-product-card {
             background: linear-gradient(135deg, rgba(16,42,120,0.95) 0%, rgba(8,26,82,0.95) 100%);
             border: 2px solid rgba(255,255,255,0.2);
@@ -377,8 +397,8 @@
         </footer>
     </div>
 
-    <script src="js/square-config.js?v=20260210p"></script>
-    <script src="js/supabase-config.js?v=20260210p"></script>
-    <script src="js/tv-display.js?v=20260210p"></script>
+    <script src="js/square-config.js?v=20260210q"></script>
+    <script src="js/supabase-config.js?v=20260210q"></script>
+    <script src="js/tv-display.js?v=20260210q"></script>
 </body>
 </html>

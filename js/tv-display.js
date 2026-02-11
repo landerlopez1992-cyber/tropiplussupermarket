@@ -233,34 +233,95 @@ async function openTvSelector(configs) {
 function applyScreenOrientation(orientation) {
   const root = document.documentElement;
   const body = document.body;
+  const tvRoot = document.querySelector('.tv-root');
+  
+  // Remover atributo anterior
+  body.removeAttribute('data-orientation');
   
   if (orientation === 'portrait') {
-    // Modo vertical: rotar 90 grados
-    root.style.transform = 'rotate(90deg)';
-    root.style.transformOrigin = 'center center';
-    root.style.width = '100vh';
-    root.style.height = '100vw';
-    root.style.position = 'absolute';
-    root.style.top = '50%';
-    root.style.left = '50%';
-    root.style.marginTop = '-50vw';
-    root.style.marginLeft = '-50vh';
-    body.style.overflow = 'hidden';
-    console.log('📱 [TV] Orientación aplicada: vertical (portrait)');
+    // Modo vertical: usar viewport completo y rotar
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Si el viewport es más ancho que alto, rotamos 90 grados
+    if (viewportWidth > viewportHeight) {
+      // Rotar el body completo usando transform
+      body.style.transform = 'rotate(90deg)';
+      body.style.transformOrigin = 'center center';
+      body.style.width = `${viewportHeight}px`;
+      body.style.height = `${viewportWidth}px`;
+      body.style.position = 'fixed';
+      body.style.top = '50%';
+      body.style.left = '50%';
+      body.style.marginTop = `-${viewportWidth / 2}px`;
+      body.style.marginLeft = `-${viewportHeight / 2}px`;
+      body.style.overflow = 'hidden';
+      body.setAttribute('data-orientation', 'portrait');
+      
+      // Asegurar que el root use todo el espacio disponible
+      root.style.width = '100%';
+      root.style.height = '100%';
+      root.style.overflow = 'hidden';
+      
+      // Ajustar el contenedor principal para aprovechar todo el espacio
+      if (tvRoot) {
+        tvRoot.style.width = '100vw';
+        tvRoot.style.height = '100vh';
+        tvRoot.style.maxWidth = 'none';
+        tvRoot.style.maxHeight = 'none';
+      }
+      
+      console.log('📱 [TV] Orientación aplicada: vertical (portrait)', {
+        viewportWidth,
+        viewportHeight,
+        rotatedWidth: viewportHeight,
+        rotatedHeight: viewportWidth
+      });
+    } else {
+      // Ya está en vertical, solo ajustar layout
+      body.setAttribute('data-orientation', 'portrait');
+      if (tvRoot) {
+        tvRoot.style.width = '100vw';
+        tvRoot.style.height = '100vh';
+      }
+      console.log('📱 [TV] Ya está en modo vertical, ajustando layout');
+    }
   } else {
-    // Modo horizontal: normal
-    root.style.transform = '';
-    root.style.transformOrigin = '';
+    // Modo horizontal: normal - remover todas las transformaciones
+    body.style.transform = '';
+    body.style.transformOrigin = '';
+    body.style.width = '';
+    body.style.height = '';
+    body.style.position = '';
+    body.style.top = '';
+    body.style.left = '';
+    body.style.marginTop = '';
+    body.style.marginLeft = '';
+    body.style.overflow = '';
+    body.setAttribute('data-orientation', 'landscape');
+    
     root.style.width = '';
     root.style.height = '';
-    root.style.position = '';
-    root.style.top = '';
-    root.style.left = '';
-    root.style.marginTop = '';
-    root.style.marginLeft = '';
-    body.style.overflow = '';
+    root.style.overflow = '';
+    
+    if (tvRoot) {
+      tvRoot.style.width = '';
+      tvRoot.style.height = '';
+      tvRoot.style.maxWidth = '';
+      tvRoot.style.maxHeight = '';
+    }
+    
     console.log('📺 [TV] Orientación aplicada: horizontal (landscape)');
   }
+  
+  // Forzar re-renderizado del contenido después de un breve delay
+  setTimeout(() => {
+    if (typeof renderProductsGrid === 'function') {
+      renderProductsGrid();
+    }
+    // Ajustar viewport si es necesario
+    window.dispatchEvent(new Event('resize'));
+  }, 150);
 }
 
 function configureTicker(tvConfig) {
