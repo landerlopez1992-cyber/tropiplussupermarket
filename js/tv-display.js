@@ -309,7 +309,7 @@ function configureTicker(tvConfig) {
 
 async function loadProductsForTv(tvConfig) {
   try {
-    // Modo live-only: consultar API en vivo en cada recarga.
+    // Modo live-only: consultar API en vivo en cada recarga (tiempo real)
     let items = [];
     
     // Esperar a que squareApiCall esté disponible
@@ -320,49 +320,53 @@ async function loadProductsForTv(tvConfig) {
     }
     
     if (typeof window.squareApiCall === 'function') {
-      // Fallback: cargar directamente desde Square API
-      console.log('⏳ [TV] Cargando productos directamente desde Square API...');
+      // Cargar directamente desde Square API (tiempo real)
+      console.log('⏳ [TV] Cargando productos desde Square API (tiempo real)...');
       try {
+        // Usar query más amplia para obtener todos los productos
         const response = await window.squareApiCall('/v2/catalog/search', 'POST', {
           object_types: ['ITEM'],
-          query: {
-            exact_query: {
-              attribute_name: 'name',
-              attribute_value: ''
-            }
-          },
           limit: 1000
         });
         items = response?.objects || [];
-        console.log('✅ [TV] Productos cargados directamente:', items.length);
+        console.log('✅ [TV] Productos cargados desde API:', items.length, 'productos totales');
       } catch (error) {
-        console.error('❌ [TV] Error cargando productos:', error);
+        console.error('❌ [TV] Error cargando productos desde API:', error);
+        console.error('❌ [TV] Detalles del error:', error.message || error);
         items = [];
       }
     } else {
-      console.error('❌ [TV] squareApiCall no está disponible');
+      console.warn('⚠️ [TV] squareApiCall no está disponible - requiere iniciar sesión en admin');
       items = [];
     }
 
+    // Filtrar productos válidos
     const filtered = items.filter(item => {
       const itemData = item?.item_data;
       if (!itemData?.name) return false;
       const lower = itemData.name.toLowerCase();
+      // Excluir remesas y recargas
       if (lower.includes('remesa') || lower.includes('recarga tarjeta')) return false;
 
+      // Filtrar por categoría si está configurada
       if (!tvConfig.categoryId || tvConfig.categoryId === '') return true;
       const categoryId = itemData.category_id || itemData.categories?.[0]?.id || '';
       return categoryId === tvConfig.categoryId;
     });
 
     console.log('🔍 [TV] Productos filtrados:', filtered.length, 'de', items.length, 'total');
-    console.log('🔍 [TV] Configuración de categoría:', tvConfig.categoryId || 'Todas');
+    console.log('🔍 [TV] Categoría configurada:', tvConfig.categoryId || 'Todas');
 
+    // Limitar cantidad según configuración
     const maxCount = Math.max(1, parseInt(tvConfig.productCount || 8, 10));
     allTvProducts = filtered.slice(0, maxCount);
-    console.log('✅ [TV] Productos finales para mostrar:', allTvProducts.length);
+    console.log('✅ [TV] Productos finales para mostrar:', allTvProducts.length, 'de', maxCount, 'máximo');
+    
+    if (allTvProducts.length === 0 && items.length > 0) {
+      console.warn('⚠️ [TV] Hay productos en API pero ninguno pasó el filtro');
+    }
   } catch (error) {
-    console.error('Error cargando productos para TV:', error);
+    console.error('❌ [TV] Error cargando productos para TV:', error);
     allTvProducts = [];
   }
 }
@@ -905,15 +909,19 @@ function startAutoRefresh(tvId) {
     currentTvConfig = config;
     configureTicker(config);
     
-    // Recargar SIEMPRE en vivo para evitar datos viejos.
+    // Recargar SIEMPRE en vivo para evitar datos viejos (cada 2 segundos)
     if (config.mode === 'orders') {
       await loadOrdersForTv();
     } else if (config.mode === 'mixed') {
       await loadProductsForTv(config);
       await loadOrdersForTv();
+      allQrConfigs = loadQrConfigs();
+    } else if (config.mode === 'products') {
+      // Modo productos: recargar productos desde API en tiempo real
+      await loadProductsForTv(config);
     } else if (config.mode !== 'qr' && config.mode !== 'promo') {
       await loadProductsForTv(config);
     }
     await renderProductsGrid();
-  }, 5000);
+  }, 2000); // Actualizar cada 2 segundos (tiempo real)
 }
