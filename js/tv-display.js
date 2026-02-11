@@ -420,6 +420,16 @@ async function renderProductsGrid() {
   
   // Modo Mixed: Rotar entre productos, promos, pedidos y QRs (solo los activos)
   if (currentTvConfig.mode === 'mixed') {
+    // Asegurar que el ticker se muestre en modo mixto (si está configurado)
+    // Solo ocultar en modo QR específico, pero en mixed debe mostrarse en todas las demás categorías
+    if (currentTvConfig.tickerEnabled !== false && currentTvConfig.promoText && currentTvConfig.promoText.trim()) {
+      const tickerContainer = document.querySelector('.tv-footer-ticker');
+      if (tickerContainer) {
+        tickerContainer.style.display = 'flex';
+        configureTicker(currentTvConfig);
+      }
+    }
+    
     // Construir lista de modos activos
     const activeModes = [];
     if (allTvProducts.length > 0) activeModes.push('products');
@@ -593,6 +603,12 @@ async function renderProductsGrid() {
       return;
     } else if (currentMode === 'qr') {
       // Mostrar QR - ROTAR TODOS los QRs
+      // En modo QR, ocultar ticker temporalmente
+      const tickerContainer = document.querySelector('.tv-footer-ticker');
+      if (tickerContainer) {
+        tickerContainer.style.display = 'none';
+      }
+      
       allQrConfigs = loadQrConfigs();
       if (allQrConfigs.length > 0) {
         const qrIndex = tvQrRotationIndex % allQrConfigs.length;
@@ -617,6 +633,13 @@ async function renderProductsGrid() {
         if (tvQrRotationIndex >= allQrConfigs.length) {
           tvQrRotationIndex = 0;
           tvMixedModeIndex++;
+          // Restaurar ticker cuando salga de modo QR
+          if (currentTvConfig.tickerEnabled !== false && currentTvConfig.promoText && currentTvConfig.promoText.trim()) {
+            if (tickerContainer) {
+              tickerContainer.style.display = 'flex';
+              configureTicker(currentTvConfig);
+            }
+          }
         }
         return;
       }
