@@ -10,6 +10,12 @@ let tvMixedModeIndex = 0;
 let tvSlideTimer = null;
 const imageCache = {};
 
+// Índices para rotación completa de cada sección en modo mixto
+let tvProductsRotationIndex = 0; // Para rotar productos aleatoriamente
+let tvOrdersRotationIndex = 0; // Para rotar todas las órdenes
+let tvQrRotationIndex = 0; // Para rotar todos los QRs
+let tvPromoRotationIndex = 0; // Para rotar promociones
+
 function checkStoreHours() {
   // Modo live-only: no dependemos de configuraciones locales para evitar inconsistencias por navegador.
   return false;
@@ -447,9 +453,13 @@ async function renderProductsGrid() {
     const currentMode = activeModes[tvMixedModeIndex % activeModes.length];
     
     if (currentMode === 'products' && allTvProducts.length > 0) {
-      // Mostrar productos
+      // Mostrar productos ALEATORIAMENTE (diferentes cada vez)
+      // Mezclar productos para mostrar diferentes cada vez
+      const shuffled = [...allTvProducts].sort(() => Math.random() - 0.5);
+      const productsToShow = shuffled.slice(0, Math.min(8, shuffled.length));
+      
       const productsHtml = await Promise.all(
-        allTvProducts.slice(0, 8).map(async (product) => {
+        productsToShow.map(async (product) => {
           const itemData = product.item_data || {};
           const variation = itemData.variations?.[0];
           const currentPrice = formatMoneyFromVariation(variation);
@@ -489,6 +499,8 @@ async function renderProductsGrid() {
         })
       );
       gridEl.innerHTML = productsHtml.join('');
+      // Avanzar índice de productos para próxima rotación
+      tvProductsRotationIndex++;
       return;
     } else if (currentMode === 'promo') {
       // Mostrar promoción
@@ -509,8 +521,20 @@ async function renderProductsGrid() {
       `;
       return;
     } else if (currentMode === 'orders' && allTvOrders.length > 0) {
-      // Mostrar pedidos
-      const ordersHtml = allTvOrders.slice(0, 6).map(order => {
+      // Mostrar pedidos - ROTAR TODAS (no solo las primeras 6)
+      // Calcular qué pedidos mostrar basado en el índice de rotación
+      const ordersPerPage = 6;
+      const startIndex = (tvOrdersRotationIndex * ordersPerPage) % allTvOrders.length;
+      const endIndex = Math.min(startIndex + ordersPerPage, allTvOrders.length);
+      let ordersToShow = allTvOrders.slice(startIndex, endIndex);
+      
+      // Si no hay suficientes, tomar del inicio para completar
+      if (ordersToShow.length < ordersPerPage && allTvOrders.length > ordersPerPage) {
+        const remaining = ordersPerPage - ordersToShow.length;
+        ordersToShow = [...ordersToShow, ...allTvOrders.slice(0, remaining)];
+      }
+      
+      const ordersHtml = ordersToShow.map(order => {
         const customerName = order.recipient_name || 'Cliente';
         const orderId = order.id || 'N/A';
         const fulfillments = order.fulfillments || [];
@@ -556,12 +580,19 @@ async function renderProductsGrid() {
         `;
       }).join('');
       gridEl.innerHTML = ordersHtml;
+      // Avanzar índice de órdenes para próxima rotación
+      tvOrdersRotationIndex++;
+      // Si ya mostramos todas las órdenes, avanzar al siguiente modo
+      if (tvOrdersRotationIndex * ordersPerPage >= allTvOrders.length) {
+        tvOrdersRotationIndex = 0;
+        tvMixedModeIndex++;
+      }
       return;
     } else if (currentMode === 'qr') {
-      // Mostrar QR (rotar entre QRs activos)
+      // Mostrar QR - ROTAR TODOS los QRs
       allQrConfigs = loadQrConfigs();
       if (allQrConfigs.length > 0) {
-        const qrIndex = tvMixedModeIndex % allQrConfigs.length;
+        const qrIndex = tvQrRotationIndex % allQrConfigs.length;
         const qr = allQrConfigs[qrIndex];
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qr.size || 400}x${qr.size || 400}&data=${encodeURIComponent(qr.url)}`;
         gridEl.innerHTML = `
@@ -577,11 +608,18 @@ async function renderProductsGrid() {
             </div>
           </div>
         `;
+        // Avanzar índice de QR para próxima rotación
+        tvQrRotationIndex++;
+        // Si ya mostramos todos los QRs, avanzar al siguiente modo
+        if (tvQrRotationIndex >= allQrConfigs.length) {
+          tvQrRotationIndex = 0;
+          tvMixedModeIndex++;
+        }
         return;
       }
     }
     
-    // Si no hay contenido para el modo actual, intentar siguiente
+    // Si no hay contenido para el modo actual, avanzar al siguiente
     tvMixedModeIndex++;
     return;
   }
