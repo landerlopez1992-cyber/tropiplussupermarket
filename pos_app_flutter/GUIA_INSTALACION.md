@@ -1,5 +1,18 @@
 # 📱 Guía de Instalación - Tropiplus POS App
 
+## ⚠️ IMPORTANTE: Tipo de Terminal
+
+**Si tienes Square Register 0431 (sin USB):**
+- ❌ NO puedes instalar APK directamente
+- ✅ Usa la **Web App** desde el navegador
+- Ver: `SQUARE_REGISTER_INSTALACION.md`
+
+**Si tienes Clover o Android genérico (con USB):**
+- ✅ Puedes instalar el APK
+- Sigue las opciones abajo
+
+---
+
 ## 📋 Opciones de Instalación
 
 Hay varias formas de instalar la app en el terminal POS. Elige la que mejor se adapte a tu situación:
