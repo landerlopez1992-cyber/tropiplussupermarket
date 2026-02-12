@@ -1,51 +1,67 @@
 // Square API Client simplificado
-// Usa el access token de OAuth para hacer llamadas a Square API
+// Usa el proxy existente de Square API (squareApiCall) que ya está configurado
 
-let squareApiClient = {
-    accessToken: null,
-    locationId: null,
-    baseUrl: 'https://connect.squareup.com'
-};
+// Cargar la configuración de Square desde el proyecto principal
+let SQUARE_CONFIG = null;
+let squareApiCall = null;
 
-// Inicializar cliente con tokens
-function initSquareApi(accessToken, locationId) {
-    squareApiClient.accessToken = accessToken;
-    squareApiClient.locationId = locationId;
+// Inicializar usando el proxy existente
+function initSquareApi() {
+    // Intentar cargar desde el script principal si está disponible
+    if (typeof window !== 'undefined') {
+        if (window.squareApiCall && window.SQUARE_CONFIG) {
+            squareApiCall = window.squareApiCall;
+            SQUARE_CONFIG = window.SQUARE_CONFIG;
+            console.log('✅ Usando squareApiCall del proyecto principal');
+            return true;
+        }
+    }
+    
+    // Si no está disponible, cargar dinámicamente
+    return loadSquareConfig();
 }
 
-// Función genérica para llamar a Square API
-async function squareApiRequest(endpoint, method = 'GET', body = null) {
-    if (!squareApiClient.accessToken) {
-        throw new Error('No hay conexión con Square. Por favor, conéctate primero.');
-    }
-    
-    const url = `${squareApiClient.baseUrl}${endpoint}`;
-    const options = {
-        method: method,
-        headers: {
-            'Authorization': `Bearer ${squareApiClient.accessToken}`,
-            'Content-Type': 'application/json',
-            'Square-Version': '2024-01-18'
-        }
-    };
-    
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
-    
+// Cargar configuración de Square dinámicamente
+async function loadSquareConfig() {
     try {
-        const response = await fetch(url, options);
+        // Cargar el script de configuración de Square
+        const script = document.createElement('script');
+        script.src = '../js/square-config.js';
+        document.head.appendChild(script);
         
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.errors?.[0]?.detail || `Error ${response.status}: ${response.statusText}`);
-        }
-        
-        return await response.json();
+        return new Promise((resolve) => {
+            script.onload = () => {
+                if (window.squareApiCall && window.SQUARE_CONFIG) {
+                    squareApiCall = window.squareApiCall;
+                    SQUARE_CONFIG = window.SQUARE_CONFIG;
+                    console.log('✅ Configuración de Square cargada');
+                    resolve(true);
+                } else {
+                    console.error('❌ No se pudo cargar la configuración de Square');
+                    resolve(false);
+                }
+            };
+            script.onerror = () => {
+                console.error('❌ Error cargando square-config.js');
+                resolve(false);
+            };
+        });
     } catch (error) {
-        console.error('Error en Square API:', error);
-        throw error;
+        console.error('Error cargando configuración:', error);
+        return false;
     }
+}
+
+// Función genérica para llamar a Square API usando el proxy existente
+async function squareApiRequest(endpoint, method = 'GET', body = null) {
+    if (!squareApiCall) {
+        const loaded = await initSquareApi();
+        if (!loaded) {
+            throw new Error('No se pudo cargar la configuración de Square API');
+        }
+    }
+    
+    return squareApiCall(endpoint, method, body);
 }
 
 // ============ INVENTARIO ============
@@ -53,6 +69,10 @@ async function squareApiRequest(endpoint, method = 'GET', body = null) {
 // Obtener inventario de todos los productos
 async function getInventory() {
     try {
+        if (!SQUARE_CONFIG) {
+            await initSquareApi();
+        }
+        
         // Primero obtener todos los items
         const catalogResponse = await squareApiRequest('/v2/catalog/search', 'POST', {
             object_types: ['ITEM'],
@@ -78,7 +98,7 @@ async function getInventory() {
         // Obtener inventario en lotes
         const inventoryResponse = await squareApiRequest('/v2/inventory/batch-retrieve-counts', 'POST', {
             catalog_object_ids: variationIds,
-            location_ids: [squareApiClient.locationId]
+            location_ids: [SQUARE_CONFIG.locationId]
         });
         
         const inventoryCounts = inventoryResponse.counts || [];
@@ -147,7 +167,7 @@ async function updateInventory(variationId, quantity, adjustmentType = 'set') {
                     catalog_object_type: 'ITEM_VARIATION',
                     from_state: 'NONE',
                     to_state: 'NONE',
-                    location_id: squareApiClient.locationId,
+                    location_id: SQUARE_CONFIG.locationId,
                     quantity: finalQuantity.toString(),
                     occurred_at: new Date().toISOString()
                 }
@@ -180,7 +200,17 @@ async function getOrders(statusFilter = null) {
             };
         }
         
-        const response = await squareApiRequest('/v2/orders/search', 'POST', query);
+        const response = await squareApiRequest('/v2/orders/search', 'POST', {
+            location_ids: [SQUARE_CONFIG.locationId],
+            query: {
+                filter: statusFilter ? {
+                    state_filter: {
+                        states: [statusFilter]
+                    }
+                } : {}
+            },
+            limit: 100
+        });
         return response.orders || [];
     } catch (error) {
         console.error('Error obteniendo pedidos:', error);
@@ -278,5 +308,6 @@ window.squareApi = {
     getOrders,
     getProducts,
     createProduct,
-    getCategories
+    getCategories,
+    getLocationId: () => SQUARE_CONFIG?.locationId
 };

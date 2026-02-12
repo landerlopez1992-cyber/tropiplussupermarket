@@ -12,16 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
-    // Verificar conexión con Square
-    const connection = window.squareOAuth?.getConnection();
+    // Inicializar Square API usando el proxy existente
+    const initialized = await window.squareApi.init();
     
-    if (connection && connection.connected) {
-        window.squareApi.init(connection.accessToken, connection.locationId);
+    if (initialized) {
         updateConnectionUI(true);
         loadInitialData();
     } else {
         updateConnectionUI(false);
-        showWelcomeMessage();
+        showError('No se pudo cargar la configuración de Square API. Verifica que square-config.js esté disponible.');
     }
     
     // Event listeners
@@ -29,12 +28,10 @@ async function initApp() {
 }
 
 function setupEventListeners() {
-    // Botón conectar
+    // Botón conectar (ya no necesario con proxy directo, pero lo mantenemos por si acaso)
     const connectBtn = document.getElementById('connect-btn');
     if (connectBtn) {
-        connectBtn.addEventListener('click', () => {
-            window.squareOAuth.initiate();
-        });
+        connectBtn.style.display = 'none'; // Ocultar botón de conexión
     }
     
     // Tabs
@@ -418,34 +415,35 @@ function updateConnectionUI(connected) {
     if (connected) {
         statusEl.className = 'connection-status connected';
         statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Conectado</span>';
-        connectBtn.innerHTML = '<i class="fas fa-check"></i> Conectado';
-        connectBtn.disabled = true;
-        connectBtn.style.background = '#4caf50';
+        if (connectBtn) {
+            connectBtn.style.display = 'none';
+        }
     } else {
         statusEl.className = 'connection-status disconnected';
         statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Desconectado</span>';
-        connectBtn.innerHTML = '<i class="fas fa-plug"></i> Conectar con Square';
-        connectBtn.disabled = false;
-        connectBtn.style.background = '';
+        if (connectBtn) {
+            connectBtn.style.display = 'inline-flex';
+        }
     }
 }
 
-function showWelcomeMessage() {
+function showError(message) {
     const inventoryGrid = document.getElementById('inventory-grid');
     if (inventoryGrid) {
         inventoryGrid.innerHTML = `
             <div class="empty-state" style="grid-column: 1 / -1;">
-                <i class="fas fa-plug" style="font-size: 64px; color: var(--primary-color);"></i>
-                <h3 style="margin: 20px 0 10px;">Conecta con Square</h3>
+                <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: var(--danger-color);"></i>
+                <h3 style="margin: 20px 0 10px;">Error de Conexión</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                    Para comenzar a gestionar tu inventario y pedidos, necesitas conectar tu cuenta de Square.
+                    ${message}
                 </p>
-                <button class="btn-primary" onclick="window.squareOAuth.initiate()">
-                    <i class="fas fa-plug"></i> Conectar con Square
-                </button>
             </div>
         `;
     }
+}
+
+function showWelcomeMessage() {
+    // Ya no necesario - la app se conecta automáticamente usando el proxy
 }
 
 // Hacer funciones globales para onclick
