@@ -4,17 +4,19 @@ App Android nativa para instalar directamente en terminales POS de Square/Clover
 
 ## 🎯 Funcionalidades
 
-- ✅ **Ver Inventario**: Visualizar todos los productos con su stock actual
-- ✅ **Actualizar Inventario**: Modificar cantidades de productos (NO agregar nuevos)
-- ✅ **Ver Pedidos**: Lista de pedidos para recoger o entregar a domicilio
-- ✅ **Ver Remesas**: Remesas entrantes con estado y tracking
+- ✅ **Ver Inventario**: Visualizar todos los productos con su stock actual desde Square API
+- ✅ **Actualizar Inventario**: Modificar cantidades de productos (NO agregar nuevos) - se actualiza en Square API
+- ✅ **Ver Pedidos**: Lista de pedidos para recoger o entregar a domicilio desde Square API
+- ✅ **Ver Remesas**: Remesas entrantes creadas desde la web - se leen desde Supabase/Square
 
 ## 📱 Características
 
 - App Android nativa (APK)
 - Se instala directamente en el terminal POS
 - Interfaz táctil optimizada
-- Conecta directamente con Square API
+- **NO requiere login** - Clover ya tiene sesión abierta
+- Conecta con Square API para productos/inventario/pedidos
+- Conecta con Supabase para remesas (creadas desde la web)
 - Sin necesidad de navegador
 
 ## 🚀 Compilar e Instalar
@@ -46,10 +48,28 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 ## ⚙️ Configuración
 
-La app usa el proxy de Square API configurado en Supabase. No requiere configuración adicional.
+### Conexiones
+
+**Square API (Productos/Inventario/Pedidos):**
+- Usa el proxy de Square API configurado en Supabase
+- `lib/services/square_api.dart` → Conecta con Square vía proxy
+
+**Supabase (Remesas):**
+- Las remesas se crean desde la web y se guardan en Square como órdenes
+- La app lee las remesas filtrando órdenes que contengan "Remesa" en el note
+- `lib/services/supabase_api.dart` → Lee remesas desde Square API (filtradas)
+
+### Sin Login Requerido
+
+**La app NO requiere login** porque:
+- Clover POS ya tiene sesión de Square abierta
+- La app usa el proxy de Square API que ya está autenticado
+- No hay pantalla de login en la app
+
+### Cambiar Location ID
 
 Si necesitas cambiar el `locationId`, edita:
-- `lib/services/square_api.dart` → `_locationId`
+- `lib/services/square_api.dart` → `_locationId` (línea ~12)
 
 O guárdalo en SharedPreferences desde la app.
 

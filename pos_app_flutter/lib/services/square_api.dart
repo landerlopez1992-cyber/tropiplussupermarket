@@ -202,23 +202,23 @@ class SquareAPI {
   }
   
   // Obtener remesas - ahora se leen desde Supabase (creadas desde la web)
-  // Esta función se mantiene por compatibilidad pero usa SupabaseAPI
+  // Las remesas se crean desde la web y se guardan en Square como órdenes
+  // Esta función lee desde Square API pero filtra solo remesas
   static Future<List<Map<String, dynamic>>> getShipments() async {
-    // Importar SupabaseAPI dinámicamente
-    // Las remesas vienen de Supabase, no de Square
+    await init();
+    
     try {
-      // Intentar leer desde Supabase primero
-      final supabaseShipments = await SupabaseAPI.getShipments();
-      if (supabaseShipments.isNotEmpty) {
-        return supabaseShipments;
-      }
-      
-      // Fallback: leer desde Square API pero filtrar solo remesas
-      await init();
+      // Leer desde Square API pero filtrar solo remesas
       return await SupabaseAPI.getShipmentsFromSquare(_proxyUrl, _locationId!);
     } catch (e) {
       print('Error obteniendo remesas: $e');
-      return [];
+      // Si falla, intentar desde Supabase directamente
+      try {
+        return await SupabaseAPI.getShipments();
+      } catch (e2) {
+        print('Error obteniendo remesas de Supabase: $e2');
+        return [];
+      }
     }
   }
 }
