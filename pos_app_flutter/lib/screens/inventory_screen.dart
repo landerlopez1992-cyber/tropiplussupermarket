@@ -246,7 +246,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Precio: \$${NumberFormat('#,##0.00').format(price)}',
+                                    'Precio: ${NumberFormat.currency(symbol: '\$').format(price)}',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey[600],
