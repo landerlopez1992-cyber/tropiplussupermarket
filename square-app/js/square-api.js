@@ -138,13 +138,17 @@ async function getInventory() {
 // Actualizar inventario
 async function updateInventory(variationId, quantity, adjustmentType = 'set') {
     try {
+        if (!SQUARE_CONFIG) {
+            await initSquareApi();
+        }
+        
         let finalQuantity = quantity;
         
         if (adjustmentType === 'add' || adjustmentType === 'subtract') {
             // Obtener cantidad actual
             const currentResponse = await squareApiRequest('/v2/inventory/batch-retrieve-counts', 'POST', {
                 catalog_object_ids: [variationId],
-                location_ids: [squareApiClient.locationId]
+                location_ids: [SQUARE_CONFIG.locationId]
             });
             
             const currentCount = currentResponse.counts?.[0];
