@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'supabase_api.dart';
 
 class SquareAPI {
   // URL del proxy de Supabase
@@ -200,40 +201,24 @@ class SquareAPI {
     }).toList();
   }
   
-  // Obtener remesas (shipments/fulfillments)
+  // Obtener remesas - ahora se leen desde Supabase (creadas desde la web)
+  // Esta función se mantiene por compatibilidad pero usa SupabaseAPI
   static Future<List<Map<String, dynamic>>> getShipments() async {
-    await init();
-    
-    final response = await _makeRequest(
-      '/v2/orders/search',
-      'POST',
-      {
-        'location_ids': [_locationId],
-        'query': {
-          'filter': {
-            'fulfillment_filter': {
-              'fulfillment_types': ['SHIPMENT'],
-            },
-          },
-        },
-        'limit': 100,
-      },
-    );
-    
-    final orders = (response['orders'] as List?) ?? [];
-    
-    return orders.map((order) {
-      final fulfillments = (order['fulfillments'] as List?) ?? [];
-      final shipment = fulfillments.isNotEmpty ? fulfillments[0] as Map<String, dynamic> : null;
+    // Importar SupabaseAPI dinámicamente
+    // Las remesas vienen de Supabase, no de Square
+    try {
+      // Intentar leer desde Supabase primero
+      final supabaseShipments = await SupabaseAPI.getShipments();
+      if (supabaseShipments.isNotEmpty) {
+        return supabaseShipments;
+      }
       
-      return {
-        'id': order['id'] ?? '',
-        'orderNumber': (order['order_number'] ?? '').toString(),
-        'customerName': order['recipient_name'] ?? 'Cliente',
-        'status': shipment?['state'] ?? 'Pendiente',
-        'trackingNumber': shipment?['shipment_details']?['carrier'] ?? '',
-        'createdAt': order['created_at'] ?? '',
-      };
-    }).toList();
+      // Fallback: leer desde Square API pero filtrar solo remesas
+      await init();
+      return await SupabaseAPI.getShipmentsFromSquare(_proxyUrl, _locationId!);
+    } catch (e) {
+      print('Error obteniendo remesas: $e');
+      return [];
+    }
   }
 }

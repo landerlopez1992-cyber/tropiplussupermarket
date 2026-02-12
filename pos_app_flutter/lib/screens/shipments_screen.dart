@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../services/square_api.dart';
 
 class ShipmentsScreen extends StatefulWidget {
@@ -130,14 +131,32 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 8),
-                                if (shipment['trackingNumber'] != null && 
-                                    shipment['trackingNumber'].toString().isNotEmpty)
+                                if (shipment['recipientId'] != null && 
+                                    shipment['recipientId'].toString().isNotEmpty)
                                   Row(
                                     children: [
-                                      Icon(Icons.qr_code, size: 16, color: Colors.grey),
+                                      Icon(Icons.badge, size: 16, color: Colors.grey),
                                       const SizedBox(width: 4),
-                                      Text('Tracking: ${shipment['trackingNumber']}'),
+                                      Text('CI: ${shipment['recipientId']}'),
                                     ],
+                                  ),
+                                if (shipment['amount'] != null && 
+                                    (shipment['amount'] as num) > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.attach_money, size: 16, color: Colors.green),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${shipment['currency'] == 'USD' ? '\$' : '₱'}${NumberFormat('#,##0.00').format(shipment['amount'])}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                               ],
                             ),
