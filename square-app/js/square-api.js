@@ -1,17 +1,37 @@
 // Square API Client simplificado
-// Usa el proxy existente de Square API (squareApiCall) que ya está configurado
+// Soporta dos modos:
+// 1. OAuth (App Marketplace) - cada merchant autoriza su cuenta
+// 2. Proxy directo (fallback) - usa squareApiCall del proyecto principal
 
-// Cargar la configuración de Square desde el proyecto principal
 let SQUARE_CONFIG = null;
 let squareApiCall = null;
+let oauthMode = false; // true si usa OAuth, false si usa proxy directo
 
-// Inicializar usando el proxy existente
+// Inicializar con OAuth (App Marketplace)
+function initSquareApiWithOAuth(accessToken, locationId) {
+    oauthMode = true;
+    SQUARE_CONFIG = {
+        accessToken: accessToken,
+        locationId: locationId,
+        apiBaseUrl: 'https://connect.squareup.com'
+    };
+    console.log('✅ Usando OAuth (App Marketplace)');
+    return true;
+}
+
+// Inicializar usando el proxy existente (fallback)
 function initSquareApi() {
+    // Si ya está inicializado con OAuth, no cambiar
+    if (oauthMode && SQUARE_CONFIG) {
+        return true;
+    }
+    
     // Intentar cargar desde el script principal si está disponible
     if (typeof window !== 'undefined') {
         if (window.squareApiCall && window.SQUARE_CONFIG) {
             squareApiCall = window.squareApiCall;
             SQUARE_CONFIG = window.SQUARE_CONFIG;
+            oauthMode = false;
             console.log('✅ Usando squareApiCall del proyecto principal');
             return true;
         }
@@ -52,8 +72,40 @@ async function loadSquareConfig() {
     }
 }
 
-// Función genérica para llamar a Square API usando el proxy existente
+// Función genérica para llamar a Square API
 async function squareApiRequest(endpoint, method = 'GET', body = null) {
+    // Si está en modo OAuth, hacer llamada directa
+    if (oauthMode && SQUARE_CONFIG && SQUARE_CONFIG.accessToken) {
+        const url = `${SQUARE_CONFIG.apiBaseUrl}${endpoint}`;
+        const options = {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${SQUARE_CONFIG.accessToken}`,
+                'Content-Type': 'application/json',
+                'Square-Version': '2024-01-18'
+            }
+        };
+        
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
+        
+        try {
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.errors?.[0]?.detail || `Error ${response.status}: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error en Square API (OAuth):', error);
+            throw error;
+        }
+    }
+    
+    // Si no está en modo OAuth, usar proxy
     if (!squareApiCall) {
         const loaded = await initSquareApi();
         if (!loaded) {
@@ -307,6 +359,7 @@ async function getCategories() {
 // Exportar funciones
 window.squareApi = {
     init: initSquareApi,
+    initWithOAuth: initSquareApiWithOAuth, // Para App Marketplace
     getInventory,
     updateInventory,
     getOrders,

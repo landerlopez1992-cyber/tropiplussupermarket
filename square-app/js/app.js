@@ -17,7 +17,7 @@ async function initApp() {
     
     if (connection && connection.connected) {
         // Usar tokens de OAuth si están disponibles (App Marketplace)
-        window.squareApi.init(connection.accessToken, connection.locationId);
+        window.squareApi.initWithOAuth(connection.accessToken, connection.locationId);
         updateConnectionUI(true);
         loadInitialData();
     } else {
