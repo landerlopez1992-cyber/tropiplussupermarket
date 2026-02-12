@@ -1,12 +1,15 @@
-// Square OAuth Integration
+// Square OAuth Integration para App Marketplace
 // Basado en: https://developer.squareup.com/docs/app-marketplace/build
+// IMPORTANTE: Cada merchant debe autorizar la app para acceder a su cuenta de Square
 
 const SQUARE_APP_CONFIG = {
     // Application ID de tu app en Square Developer Dashboard
+    // ⚠️ ACTUALIZA ESTE VALOR con tu Application ID real
     applicationId: 'sq0idp-1soiZa2SKukDWOuzVG9QAA',
     
     // Redirect URI configurado en Square Developer Dashboard
-    redirectUri: window.location.origin + '/square-app/oauth-callback.html',
+    // Debe coincidir EXACTAMENTE con el configurado en Square
+    redirectUri: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/oauth-callback.html'),
     
     // Scopes necesarios para la app
     scopes: [
@@ -109,8 +112,10 @@ function handleOAuthCallback() {
 async function exchangeCodeForToken(code) {
     try {
         // IMPORTANTE: Este intercambio debe hacerse en el servidor por seguridad
-        // Usar el proxy de Supabase o crear un endpoint seguro
-        const response = await fetch('https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-oauth', {
+        // El Application Secret NUNCA debe estar en el frontend
+        const SUPABASE_OAUTH_URL = 'https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-oauth';
+        
+        const response = await fetch(SUPABASE_OAUTH_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
