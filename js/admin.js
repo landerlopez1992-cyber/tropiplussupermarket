@@ -3650,22 +3650,20 @@ async function lookupBarcodeInSquare(productName) {
 }
 
 async function lookupBarcodeFromInternet(productData = {}) {
-    const name = productData.name || '';
-    const description = productData.description || '';
     const sku = productData.sku || '';
-    
-    // PRIORIDAD 1: Buscar en Square Catalog API (si tenemos nombre)
-    if (name) {
-        const fromSquare = await lookupBarcodeInSquare(name);
-        if (fromSquare?.barcode) {
-            return fromSquare;
-        }
+
+    // Solo aceptamos códigos confiables en cliente sin backend:
+    // - Un SKU que YA sea un código de barras válido.
+    // No buscamos por nombre en Square para evitar falsos positivos
+    // que terminan marcando "producto existente" por error.
+    const skuBarcode = normalizeBarcodeValue(sku);
+    if (skuBarcode) {
+        return {
+            barcode: skuBarcode,
+            source: 'SKU del formulario'
+        };
     }
-    
-    // PRIORIDAD 2: No hay backend disponible en GitHub Pages
-    // El código de barras debe extraerse directamente desde la URL de origen
-    // Si no se encontró en la extracción inicial, no hay forma de buscarlo automáticamente
-    // sin un backend dedicado
+
     throw new Error('No se encontró código de barras. Intenta extraerlo manualmente desde la página del producto o desde Square Catalog.');
 }
 
@@ -4584,9 +4582,11 @@ function initUrlExtractorForm() {
                 const productData = await extractProductDataFromUrl(url);
                 fillProductFormWithExtractedData(productData);
 
-                // Si no se detecto GTIN directo, intentar buscarlo en bases externas
+                // No buscar GTIN automáticamente por nombre (Square) para evitar
+                // falsos positivos de duplicados en importación por URL.
+                // Solo informamos; el usuario puede usar el botón manual si desea.
                 if (!normalizeBarcodeValue(productData.gtin)) {
-                    await autoFillBarcodeFromCurrentFields();
+                    setBarcodeLookupStatus('<i class="fas fa-info-circle"></i> Sin código automático confiable. Puedes completar GTIN manualmente.', 'info');
                 }
                 
                 // Cerrar el modal después de un breve delay
