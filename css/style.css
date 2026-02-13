@@ -105,7 +105,7 @@ body {
     font-family: var(--font-roboto);
     color: var(--black);
     line-height: 1.5;
-    background-color: var(--white);
+    background-color: #000000;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
