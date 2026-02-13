@@ -31,11 +31,14 @@ const PUBLIC_TVS_URL = 'https://landerlopez1992-cyber.github.io/tropiplussuperma
 
 // Cargar datos de proveedores desde Supabase (con fallback a localStorage)
 async function loadSuppliersData() {
-    // Intentar cargar desde Supabase primero
+    let loadedGlobalFromSupabase = false;
+    let loadedProductSuppliersFromSupabase = false;
+
+    // Intentar cargar proveedores globales desde Supabase primero
     if (typeof window.getSuppliersFromSupabase === 'function') {
         try {
             const supabaseSuppliers = await window.getSuppliersFromSupabase();
-            if (supabaseSuppliers && supabaseSuppliers.length > 0) {
+            if (Array.isArray(supabaseSuppliers)) {
                 // Convertir array de Supabase a objeto para compatibilidad
                 globalSuppliers = {};
                 supabaseSuppliers.forEach(supplier => {
@@ -49,37 +52,64 @@ async function loadSuppliersData() {
                         updatedAt: supplier.updatedAt
                     };
                 });
-                
+
                 // Sincronizar localStorage como cache
                 localStorage.setItem('tropiplus_global_suppliers', JSON.stringify(globalSuppliers));
                 console.log('✅ Proveedores cargados desde Supabase:', Object.keys(globalSuppliers).length);
-                return;
+                loadedGlobalFromSupabase = true;
             }
         } catch (error) {
             console.warn('⚠️ Error cargando proveedores desde Supabase, usando localStorage:', error);
         }
     }
-    
-    // Fallback: cargar desde localStorage
-    const stored = localStorage.getItem('tropiplus_suppliers');
-    if (stored) {
+
+    // Intentar cargar mapeo producto->proveedor desde Supabase
+    if (typeof window.getProductSuppliersFromSupabase === 'function') {
         try {
-            suppliersData = JSON.parse(stored);
-        } catch (e) {
-            console.error('Error cargando datos de proveedores:', e);
-            suppliersData = {};
+            const productSuppliers = await window.getProductSuppliersFromSupabase();
+            if (Array.isArray(productSuppliers)) {
+                suppliersData = {};
+                productSuppliers.forEach(item => {
+                    const key = item.mappingKey || item.mapping_key || item.variationId || item.variation_id || item.productId || item.product_id;
+                    if (!key) return;
+                    suppliersData[key] = {
+                        ...item,
+                        mappingKey: key
+                    };
+                });
+                localStorage.setItem('tropiplus_suppliers', JSON.stringify(suppliersData));
+                console.log('✅ Relación producto/proveedor cargada desde Supabase:', Object.keys(suppliersData).length);
+                loadedProductSuppliersFromSupabase = true;
+            }
+        } catch (error) {
+            console.warn('⚠️ Error cargando relación producto/proveedor desde Supabase, usando localStorage:', error);
         }
     }
-    
-    // Cargar proveedores globales desde localStorage
-    const globalStored = localStorage.getItem('tropiplus_global_suppliers');
-    if (globalStored) {
-        try {
-            globalSuppliers = JSON.parse(globalStored);
-            console.log('✅ Proveedores cargados desde localStorage (fallback):', Object.keys(globalSuppliers).length);
-        } catch (e) {
-            console.error('Error cargando proveedores globales:', e);
-            globalSuppliers = {};
+
+    // Fallback local para relación producto->proveedor
+    if (!loadedProductSuppliersFromSupabase) {
+        const stored = localStorage.getItem('tropiplus_suppliers');
+        if (stored) {
+            try {
+                suppliersData = JSON.parse(stored);
+            } catch (e) {
+                console.error('Error cargando datos de proveedores:', e);
+                suppliersData = {};
+            }
+        }
+    }
+
+    // Fallback local para proveedores globales
+    if (!loadedGlobalFromSupabase) {
+        const globalStored = localStorage.getItem('tropiplus_global_suppliers');
+        if (globalStored) {
+            try {
+                globalSuppliers = JSON.parse(globalStored);
+                console.log('✅ Proveedores cargados desde localStorage (fallback):', Object.keys(globalSuppliers).length);
+            } catch (e) {
+                console.error('Error cargando proveedores globales:', e);
+                globalSuppliers = {};
+            }
         }
     }
 }
@@ -105,6 +135,32 @@ async function saveSuppliersData() {
             console.log('✅ Proveedores sincronizados con Supabase');
         } catch (error) {
             console.warn('⚠️ Error sincronizando proveedores con Supabase:', error);
+        }
+    }
+
+    // Intentar guardar mapeo producto->proveedor en Supabase
+    if (typeof window.saveProductSupplierToSupabase === 'function') {
+        try {
+            const productSupplierList = Object.entries(suppliersData).map(([mappingKey, item]) => ({
+                ...item,
+                mappingKey,
+                productId: item.productId || item.product_id || null,
+                variationId: item.variationId || item.variation_id || null
+            }));
+
+            for (const productSupplier of productSupplierList) {
+                if (!productSupplier.productId) {
+                    continue;
+                }
+                try {
+                    await window.saveProductSupplierToSupabase(productSupplier);
+                } catch (error) {
+                    console.warn('⚠️ Error guardando relación producto/proveedor en Supabase:', productSupplier.mappingKey, error);
+                }
+            }
+            console.log('✅ Relación producto/proveedor sincronizada con Supabase');
+        } catch (error) {
+            console.warn('⚠️ Error sincronizando relación producto/proveedor con Supabase:', error);
         }
     }
 }
@@ -2803,7 +2859,13 @@ function getSupplierInfo(productId, variationId) {
 
 function setSupplierInfo(productId, variationId, supplierData) {
     const key = variationId || productId;
-    suppliersData[key] = supplierData;
+    suppliersData[key] = {
+        ...supplierData,
+        productId,
+        variationId: variationId || null,
+        mappingKey: key,
+        updatedAt: new Date().toISOString()
+    };
     saveSuppliersData();
 }
 
@@ -2867,6 +2929,10 @@ async function renderProductsTable(products) {
             } catch (e) {
                 console.warn('Error obteniendo imagen del producto:', e);
             }
+        }
+        // Fallback: imagen externa guardada en la relación producto/proveedor
+        if ((!itemData?.image_ids || itemData.image_ids.length === 0) && supplierInfo?.imageUrl) {
+            productImageUrl = supplierInfo.imageUrl;
         }
 
         return `
@@ -4130,7 +4196,7 @@ async function saveNewProduct() {
                         supplierId = existingSupplier.id;
                     } else {
                         // Crear nuevo proveedor global
-                        supplierId = addGlobalSupplier({
+                        supplierId = await addGlobalSupplier({
                             name: domain.charAt(0).toUpperCase() + domain.slice(1),
                             url: `${urlObj.protocol}//${urlObj.hostname}`,
                             address: '',
@@ -4143,10 +4209,19 @@ async function saveNewProduct() {
                         name: existingSupplier?.name || (domain.charAt(0).toUpperCase() + domain.slice(1)),
                         url: existingSupplier?.url || `${urlObj.protocol}//${urlObj.hostname}`,
                         purchaseUrl: sourceUrl, // URL de compra específica del producto
+                        imageUrl: extractedImageUrl || '',
                         notes: `Producto extraído desde ${sourceUrl}`
                     };
                     
                     setSupplierInfo(createdProductId, createdVariationId, supplierData);
+                    if (typeof window.saveProductSupplierToSupabase === 'function') {
+                        await window.saveProductSupplierToSupabase({
+                            mappingKey: createdVariationId || createdProductId,
+                            productId: createdProductId,
+                            variationId: createdVariationId || null,
+                            ...supplierData
+                        });
+                    }
                     saveSuppliersData();
                     
                     console.log('✅ Proveedor guardado automáticamente desde URL:', supplierData);
@@ -4519,8 +4594,9 @@ function initUrlExtractorForm() {
 // Función para editar un producto existente
 async function editProduct(productId, variationId) {
     try {
-        // Cambiar a la pestaña de agregar producto
-        switchTab('add-product');
+        // Cambiar al módulo Admin y a la subpestaña correcta
+        switchTab('admin');
+        switchSubTab('add-product');
         
         // Obtener el producto desde Square
         const productResponse = await squareApiCall(`/v2/catalog/object/${productId}`, 'GET');

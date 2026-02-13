@@ -788,6 +788,119 @@ async function deleteSupplierFromSupabase(supplierId) {
     }
 }
 
+// ============================================
+// FUNCIONES PARA RELACION PRODUCTO -> PROVEEDOR
+// ============================================
+
+// Obtener relación producto/proveedor desde Supabase
+async function getProductSuppliersFromSupabase() {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
+        }
+
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/product_suppliers?select=*&order=updated_at.desc`,
+            {
+                method: 'GET',
+                headers
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error cargando relación producto/proveedor:', response.status, errorText);
+            if (response.status === 404 || errorText.includes('42P01') || errorText.includes('does not exist')) {
+                console.warn('⚠️ [Supabase] Tabla product_suppliers no existe. Ejecuta el SQL de migración.');
+                return [];
+            }
+            return [];
+        }
+
+        const rows = await response.json();
+        return (rows || []).map(row => ({
+            mappingKey: row.mapping_key,
+            productId: row.product_id,
+            variationId: row.variation_id,
+            name: row.name || '',
+            address: row.address || '',
+            url: row.url || '',
+            purchaseUrl: row.purchase_url || '',
+            imageUrl: row.image_url || '',
+            notes: row.notes || '',
+            updatedAt: row.updated_at || row.created_at
+        }));
+    } catch (error) {
+        console.error('❌ [Supabase] Error cargando relación producto/proveedor:', error);
+        return [];
+    }
+}
+
+// Guardar relación producto/proveedor en Supabase
+async function saveProductSupplierToSupabase(data) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation,resolution=merge-duplicates',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+
+        const mappingKey = data.mappingKey || data.mapping_key || data.variationId || data.variation_id || data.productId || data.product_id;
+        const productId = data.productId || data.product_id;
+        if (!mappingKey || !productId) {
+            throw new Error('Faltan mappingKey o productId para guardar proveedor del producto.');
+        }
+
+        const payload = {
+            mapping_key: mappingKey,
+            product_id: productId,
+            variation_id: data.variationId || data.variation_id || null,
+            name: data.name || null,
+            address: data.address || null,
+            url: data.url || null,
+            purchase_url: data.purchaseUrl || data.purchase_url || null,
+            image_url: data.imageUrl || data.image_url || null,
+            notes: data.notes || null,
+            updated_at: new Date().toISOString()
+        };
+
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/product_suppliers`,
+            {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error guardando relación producto/proveedor:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const saved = await response.json();
+        return Array.isArray(saved) ? saved[0] : saved;
+    } catch (error) {
+        console.error('❌ [Supabase] Error guardando relación producto/proveedor:', error);
+        throw error;
+    }
+}
+
 window.saveDeliveryOrderToSupabase = saveDeliveryOrderToSupabase;
 window.getDeliveryOrdersFromSupabase = getDeliveryOrdersFromSupabase;
 window.updateDeliveryOrderStatus = updateDeliveryOrderStatus;
@@ -799,3 +912,5 @@ window.generateConfirmationCode = generateConfirmationCode;
 window.getSuppliersFromSupabase = getSuppliersFromSupabase;
 window.saveSupplierToSupabase = saveSupplierToSupabase;
 window.deleteSupplierFromSupabase = deleteSupplierFromSupabase;
+window.getProductSuppliersFromSupabase = getProductSuppliersFromSupabase;
+window.saveProductSupplierToSupabase = saveProductSupplierToSupabase;
