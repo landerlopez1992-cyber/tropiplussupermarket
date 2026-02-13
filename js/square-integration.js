@@ -683,7 +683,7 @@ async function createProductCard(item) {
       const cupAmount = window.convertUsdToCup(usdAmount);
       if (cupAmount !== null) {
         const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        cupPriceHtml = `<div class="product-price-cup" style="font-size: 14px; color: #666; margin-top: 4px; font-weight: 500;">${cupFormatted} CUP</div>`;
+        cupPriceHtml = `<div class="product-price-cup">${cupFormatted} CUP</div>`;
       }
     }
   }

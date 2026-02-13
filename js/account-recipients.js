@@ -118,9 +118,9 @@ function formatAddress(address) {
     const parts = [];
     if (address.address_line_1) parts.push(address.address_line_1);
     if (address.locality) parts.push(address.locality);
+    if (address.municipality) parts.push(address.municipality);
     if (address.administrative_district_level_1) parts.push(address.administrative_district_level_1);
     if (address.postal_code) parts.push(address.postal_code);
-    if (address.country) parts.push(address.country);
     return parts.join(', ') || 'Sin dirección';
 }
 
@@ -143,9 +143,9 @@ function showEditRecipientModal(recipient, index) {
         document.getElementById('recipient-modal-name').value = recipient.name || '';
         document.getElementById('recipient-modal-address').value = recipient.address?.address_line_1 || '';
         document.getElementById('recipient-modal-city').value = recipient.address?.locality || '';
-        document.getElementById('recipient-modal-state').value = recipient.address?.administrative_district_level_1 || '';
+        document.getElementById('recipient-modal-province').value = recipient.address?.administrative_district_level_1 || 'Cienfuegos';
+        document.getElementById('recipient-modal-municipality').value = recipient.address?.municipality || '';
         document.getElementById('recipient-modal-postal').value = recipient.address?.postal_code || '';
-        document.getElementById('recipient-modal-country').value = recipient.address?.country || '';
         document.getElementById('recipient-modal-phone').value = recipient.phone || '';
     }
     
@@ -178,30 +178,42 @@ function createRecipientModal(recipient = null, index = null) {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="recipient-modal-city" class="form-label">Ciudad *</label>
-                        <input type="text" id="recipient-modal-city" class="form-input" required>
+                        <label for="recipient-modal-province" class="form-label">Provincia *</label>
+                        <select id="recipient-modal-province" class="form-input" required>
+                            <option value="">Seleccione</option>
+                            <option value="Cienfuegos" selected>Cienfuegos</option>
+                        </select>
+                        <small style="color: var(--gray-text); display:block; margin-top:4px; font-size:11px;">
+                            Solo realizamos entregas en provincia Cienfuegos
+                        </small>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-modal-state" class="form-label">Estado/Provincia *</label>
-                        <input type="text" id="recipient-modal-state" class="form-input" required>
+                        <label for="recipient-modal-municipality" class="form-label">Municipio *</label>
+                        <select id="recipient-modal-municipality" class="form-input" required>
+                            <option value="">Seleccione municipio</option>
+                            <option value="Aguada de Pasajeros">Aguada de Pasajeros</option>
+                            <option value="Cienfuegos">Cienfuegos</option>
+                            <option value="Rodas">Rodas</option>
+                            <option value="Palmira">Palmira</option>
+                            <option value="Cruces">Cruces</option>
+                            <option value="Cumanayagua">Cumanayagua</option>
+                            <option value="Lajas">Lajas</option>
+                            <option value="Abreus">Abreus</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="recipient-modal-postal" class="form-label">Código postal *</label>
-                        <input type="text" id="recipient-modal-postal" class="form-input" required>
+                        <label for="recipient-modal-city" class="form-label">Pueblo/Localidad *</label>
+                        <input type="text" id="recipient-modal-city" class="form-input" required placeholder="Ej: Real Campiña, Centro, etc.">
                     </div>
                     <div class="form-group">
-                        <label for="recipient-modal-country" class="form-label">País *</label>
-                        <select id="recipient-modal-country" class="form-input" required>
-                            <option value="">Seleccione</option>
-                            <option value="US">Estados Unidos</option>
-                            <option value="CU">Cuba</option>
-                            <option value="MX">México</option>
-                            <option value="ES">España</option>
-                        </select>
+                        <label for="recipient-modal-postal" class="form-label">Código postal</label>
+                        <input type="text" id="recipient-modal-postal" class="form-input" placeholder="Opcional">
                     </div>
                 </div>
+                <input type="hidden" id="recipient-modal-country" value="CU">
+                <input type="hidden" id="recipient-modal-state" value="">
                 <div class="form-group">
                     <label for="recipient-modal-phone" class="form-label">Teléfono</label>
                     <input type="tel" id="recipient-modal-phone" class="form-input">
@@ -253,14 +265,27 @@ async function saveRecipient(recipient, index) {
             throw new Error('Usuario no encontrado');
         }
         
+        const province = document.getElementById('recipient-modal-province').value;
+        const municipality = document.getElementById('recipient-modal-municipality').value;
+        const city = document.getElementById('recipient-modal-city').value;
+        
+        if (province !== 'Cienfuegos') {
+            throw new Error('Solo realizamos entregas en provincia Cienfuegos');
+        }
+        
+        if (!municipality) {
+            throw new Error('Debe seleccionar un municipio');
+        }
+        
         const recipientData = {
             name: document.getElementById('recipient-modal-name').value,
             address: {
                 address_line_1: document.getElementById('recipient-modal-address').value,
-                locality: document.getElementById('recipient-modal-city').value,
-                administrative_district_level_1: document.getElementById('recipient-modal-state').value,
-                postal_code: document.getElementById('recipient-modal-postal').value,
-                country: document.getElementById('recipient-modal-country').value
+                locality: city,
+                municipality: municipality,
+                administrative_district_level_1: province,
+                postal_code: document.getElementById('recipient-modal-postal').value || '',
+                country: 'CU'
             },
             phone: document.getElementById('recipient-modal-phone').value || undefined
         };

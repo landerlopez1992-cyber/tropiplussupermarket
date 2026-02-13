@@ -104,6 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCartCount();
     });
     
+    // Inicializar selector de método de entrega
+    initDeliveryMethodSelector();
+    
     // Inicializar Square Payments después de cargar el SDK
     const statusContainer = document.getElementById('payment-status-container');
     loadSquareSdk()
@@ -780,12 +783,25 @@ async function processPayment(paymentMethod, paymentToken, customerId) {
             customerId: customerId
         });
 
+        // Obtener método de entrega y destinatario
+        const deliveryMethod = getSelectedDeliveryMethod();
+        let deliveryRecipient = null;
+        
+        if (deliveryMethod === 'delivery') {
+            deliveryRecipient = await getSelectedDeliveryRecipient();
+            if (!deliveryRecipient) {
+                throw new Error('Debe seleccionar una dirección de entrega');
+            }
+        }
+        
         // Crear la orden en Square
         const order = await createSquareOrder(
             getCart(),
             customerId,
             paymentMethod,
-            paymentToken
+            paymentToken,
+            deliveryMethod,
+            deliveryRecipient
         );
 
         if (!order || !order.id) {
@@ -903,6 +919,163 @@ function updateCartCount() {
     cartBadges.forEach(badge => {
         badge.textContent = totalItems;
     });
+}
+
+// Inicializar selector de método de entrega
+function initDeliveryMethodSelector() {
+    const pickupRadio = document.getElementById('delivery-method-pickup');
+    const deliveryRadio = document.getElementById('delivery-method-delivery');
+    const pickupSection = document.getElementById('pickup-info-section');
+    const deliverySection = document.getElementById('delivery-info-section');
+    const recipientSelect = document.getElementById('delivery-recipient-select');
+    const btnAddAddress = document.getElementById('btn-add-delivery-address');
+    
+    if (!pickupRadio || !deliveryRadio) return;
+    
+    // Cambiar entre pickup y delivery
+    pickupRadio.addEventListener('change', () => {
+        if (pickupRadio.checked) {
+            pickupSection.style.display = 'block';
+            deliverySection.style.display = 'none';
+            if (recipientSelect) recipientSelect.removeAttribute('required');
+        }
+    });
+    
+    deliveryRadio.addEventListener('change', async () => {
+        if (deliveryRadio.checked) {
+            pickupSection.style.display = 'none';
+            deliverySection.style.display = 'block';
+            if (recipientSelect) recipientSelect.setAttribute('required', 'required');
+            await loadDeliveryRecipients();
+        }
+    });
+    
+    // Botón agregar dirección
+    if (btnAddAddress) {
+        btnAddAddress.addEventListener('click', () => {
+            window.location.href = 'account-recipients.html';
+        });
+    }
+    
+    // Cambiar dirección seleccionada
+    if (recipientSelect) {
+        recipientSelect.addEventListener('change', () => {
+            const selectedIndex = recipientSelect.value;
+            if (selectedIndex && selectedIndex !== '') {
+                displaySelectedRecipient(selectedIndex);
+            } else {
+                document.getElementById('selected-delivery-address').style.display = 'none';
+            }
+        });
+    }
+}
+
+// Cargar direcciones del usuario para delivery
+async function loadDeliveryRecipients() {
+    const recipientSelect = document.getElementById('delivery-recipient-select');
+    if (!recipientSelect) return;
+    
+    try {
+        const user = getCurrentUser();
+        if (!user || !user.id) {
+            recipientSelect.innerHTML = '<option value="">Debe iniciar sesión para usar delivery</option>';
+            return;
+        }
+        
+        // Obtener destinatarios desde Square
+        if (typeof getRecipientsFromSquare === 'function') {
+            const recipients = await getRecipientsFromSquare(user.id);
+            
+            recipientSelect.innerHTML = '<option value="">Seleccione una dirección...</option>';
+            
+            if (recipients && recipients.length > 0) {
+                recipients.forEach((recipient, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${recipient.name} - ${formatRecipientAddress(recipient.address)}`;
+                    recipientSelect.appendChild(option);
+                });
+            } else {
+                recipientSelect.innerHTML += '<option value="" disabled>No tiene direcciones guardadas. Agregue una dirección primero.</option>';
+            }
+        } else {
+            recipientSelect.innerHTML = '<option value="">Error: función no disponible</option>';
+        }
+    } catch (error) {
+        console.error('Error cargando destinatarios:', error);
+        recipientSelect.innerHTML = '<option value="">Error al cargar direcciones</option>';
+    }
+}
+
+// Formatear dirección del destinatario
+function formatRecipientAddress(address) {
+    if (!address) return 'Sin dirección';
+    const parts = [];
+    if (address.address_line_1) parts.push(address.address_line_1);
+    if (address.locality) parts.push(address.locality);
+    if (address.municipality) parts.push(address.municipality);
+    return parts.join(', ') || 'Sin dirección';
+}
+
+// Mostrar dirección seleccionada
+async function displaySelectedRecipient(index) {
+    try {
+        const user = getCurrentUser();
+        if (!user || !user.id) return;
+        
+        const recipients = await getRecipientsFromSquare(user.id);
+        if (!recipients || !recipients[index]) return;
+        
+        const recipient = recipients[index];
+        const displayDiv = document.getElementById('selected-delivery-address');
+        const nameSpan = document.getElementById('delivery-recipient-name');
+        const addressSpan = document.getElementById('delivery-recipient-address');
+        const phoneSpan = document.getElementById('delivery-recipient-phone');
+        
+        if (displayDiv && nameSpan && addressSpan) {
+            nameSpan.textContent = recipient.name || 'Destinatario';
+            addressSpan.textContent = formatRecipientAddress(recipient.address);
+            if (phoneSpan) {
+                phoneSpan.textContent = recipient.phone ? `Tel: ${recipient.phone}` : '';
+            }
+            displayDiv.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error mostrando destinatario:', error);
+    }
+}
+
+// Obtener método de entrega seleccionado
+function getSelectedDeliveryMethod() {
+    const pickupRadio = document.getElementById('delivery-method-pickup');
+    if (pickupRadio && pickupRadio.checked) {
+        return 'pickup';
+    }
+    return 'delivery';
+}
+
+// Obtener destinatario seleccionado para delivery
+async function getSelectedDeliveryRecipient() {
+    const recipientSelect = document.getElementById('delivery-recipient-select');
+    if (!recipientSelect || !recipientSelect.value || recipientSelect.value === '') {
+        return null;
+    }
+    
+    try {
+        const user = getCurrentUser();
+        if (!user || !user.id) return null;
+        
+        const recipients = await getRecipientsFromSquare(user.id);
+        const index = parseInt(recipientSelect.value);
+        
+        if (recipients && recipients[index]) {
+            return recipients[index];
+        }
+    } catch (error) {
+        console.error('Error obteniendo destinatario:', error);
+    }
+    
+    return null;
 }
 
 // Función para mostrar modal de error de pago

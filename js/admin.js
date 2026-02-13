@@ -1942,6 +1942,225 @@ window.closeDeliverRemesaModal = closeDeliverRemesaModal;
 window.deliverRemesa = deliverRemesa;
 window.cancelRemesa = cancelRemesa;
 
+// ============================================
+// GESTIÓN DE DELIVERY EN ADMIN
+// ============================================
+
+function initDeliveryTab() {
+    const filterStatus = document.getElementById('delivery-filter-status');
+    const refreshBtn = document.getElementById('delivery-refresh-btn');
+    
+    // Filtro por estado
+    if (filterStatus) {
+        filterStatus.addEventListener('change', () => {
+            loadDeliveryOrders(filterStatus.value || null);
+        });
+    }
+    
+    // Botón de actualizar
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadDeliveryOrders(filterStatus?.value || null);
+        });
+    }
+    
+    // Cargar órdenes inicialmente
+    loadDeliveryOrders();
+}
+
+async function loadDeliveryOrders(statusFilter = null) {
+    const container = document.getElementById('delivery-orders-list-container');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+            <p>Cargando órdenes de delivery...</p>
+        </div>
+    `;
+    
+    try {
+        if (typeof window.getDeliveryOrdersFromSupabase !== 'function') {
+            throw new Error('Función getDeliveryOrdersFromSupabase no disponible. Verifica que supabase-config.js esté cargado.');
+        }
+        
+        const orders = await window.getDeliveryOrdersFromSupabase(statusFilter);
+        renderDeliveryOrdersList(orders);
+    } catch (error) {
+        console.error('❌ [Admin] Error cargando órdenes de delivery:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--red-badge);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 15px;"></i>
+                <p><strong>Error cargando órdenes de delivery</strong></p>
+                <p style="font-size: 14px; margin-top: 8px;">${error.message || 'Error desconocido'}</p>
+                <button onclick="loadDeliveryOrders()" class="btn-primary" style="margin-top: 16px;">
+                    <i class="fas fa-sync-alt"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+function renderDeliveryOrdersList(orders) {
+    const container = document.getElementById('delivery-orders-list-container');
+    if (!container) return;
+    
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+                <i class="fas fa-truck" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i>
+                <p>No hay órdenes de delivery para mostrar.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const ordersHtml = orders.map(order => {
+        const statusColors = {
+            pending: '#ff9800',
+            preparing: '#2196f3',
+            ready: '#4caf50',
+            out_for_delivery: '#9c27b0',
+            delivered: '#4caf50',
+            cancelled: '#9e9e9e'
+        };
+        
+        const statusLabels = {
+            pending: 'Pendiente',
+            preparing: 'En preparación',
+            ready: 'Lista',
+            out_for_delivery: 'En camino',
+            delivered: 'Entregada',
+            cancelled: 'Cancelada'
+        };
+        
+        const statusColor = statusColors[order.status] || '#616161';
+        const statusLabel = statusLabels[order.status] || order.status;
+        
+        const createdDate = new Date(order.created_at).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const address = order.recipient_address || {};
+        const addressText = [
+            address.address_line_1,
+            address.locality,
+            address.municipality,
+            address.administrative_district_level_1
+        ].filter(Boolean).join(', ');
+        
+        return `
+            <div style="border: 2px solid var(--gray-border); border-radius: 8px; padding: 20px; margin-bottom: 16px; background: white;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <h3 style="margin: 0; color: var(--dark-blue-nav); font-size: 18px;">
+                                Orden #${order.order_id.substring(0, 8)}
+                            </h3>
+                            <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 12px;">
+                                ${statusLabel}
+                            </span>
+                        </div>
+                        <p style="margin: 0; color: var(--gray-text); font-size: 13px;">
+                            <i class="fas fa-calendar"></i> Creada: ${createdDate}
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--gray-text); text-transform: uppercase;">
+                        <i class="fas fa-user"></i> Destinatario
+                    </h4>
+                    <p style="margin: 0; font-weight: 600; color: var(--dark-blue-nav);">${order.recipient_name || 'N/A'}</p>
+                    ${order.recipient_phone ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: var(--gray-text);"><i class="fas fa-phone"></i> ${order.recipient_phone}</p>` : ''}
+                </div>
+                
+                <div style="background: #f0f7ff; border-left: 4px solid #42b649; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--gray-text); text-transform: uppercase;">
+                        <i class="fas fa-map-marker-alt"></i> Dirección de Entrega
+                    </h4>
+                    <p style="margin: 0; font-weight: 600; color: var(--dark-blue-nav);">${addressText || 'Sin dirección'}</p>
+                </div>
+                
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    ${order.status === 'pending' ? `
+                        <button onclick="updateDeliveryOrderStatus('${order.order_id}', 'preparing')" 
+                                class="btn-primary" 
+                                style="background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-utensils"></i> En Preparación
+                        </button>
+                    ` : ''}
+                    ${order.status === 'preparing' ? `
+                        <button onclick="updateDeliveryOrderStatus('${order.order_id}', 'ready')" 
+                                class="btn-primary" 
+                                style="background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check"></i> Lista
+                        </button>
+                    ` : ''}
+                    ${order.status === 'ready' ? `
+                        <button onclick="updateDeliveryOrderStatus('${order.order_id}', 'out_for_delivery')" 
+                                class="btn-primary" 
+                                style="background: #9c27b0; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-truck"></i> En Camino
+                        </button>
+                    ` : ''}
+                    ${order.status === 'out_for_delivery' ? `
+                        <button onclick="updateDeliveryOrderStatus('${order.order_id}', 'delivered')" 
+                                class="btn-primary" 
+                                style="background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle"></i> Entregada
+                        </button>
+                    ` : ''}
+                    ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                        <button onclick="updateDeliveryOrderStatus('${order.order_id}', 'cancelled')" 
+                                class="btn-secondary" 
+                                style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-times-circle"></i> Cancelar
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = ordersHtml;
+}
+
+async function updateDeliveryOrderStatus(orderId, newStatus) {
+    if (!confirm(`¿Estás seguro de que deseas cambiar el estado a "${newStatus}"?`)) {
+        return;
+    }
+    
+    try {
+        if (typeof window.updateDeliveryOrderStatus !== 'function') {
+            throw new Error('Función updateDeliveryOrderStatus no disponible.');
+        }
+        
+        await window.updateDeliveryOrderStatus(orderId, newStatus);
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'Estado de orden actualizado correctamente.', 'success');
+        }
+        
+        // Recargar lista
+        const filterStatus = document.getElementById('delivery-filter-status');
+        loadDeliveryOrders(filterStatus?.value || null);
+    } catch (error) {
+        console.error('❌ [Admin] Error actualizando estado de orden:', error);
+        if (typeof showModal === 'function') {
+            showModal('Error', error.message || 'No se pudo actualizar el estado de la orden.', 'error');
+        }
+    }
+}
+
+// Exportar funciones globalmente
+window.loadDeliveryOrders = loadDeliveryOrders;
+window.updateDeliveryOrderStatus = updateDeliveryOrderStatus;
+
 // Las funciones getCurrencyConfig y convertUsdToCup están definidas en square-integration.js
 // para que estén disponibles en todas las páginas, no solo en el admin
 
@@ -2414,6 +2633,10 @@ function switchSubTab(subtabName) {
     } else if (subtabName === 'tv') {
         populateTvCategorySelect();
         renderTvList();
+    } else if (subtabName === 'delivery') {
+        initDeliveryTab();
+    } else if (subtabName === 'currency') {
+        initRemesasManagement();
     }
 }
 

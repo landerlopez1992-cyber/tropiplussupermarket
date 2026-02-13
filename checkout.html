@@ -124,16 +124,48 @@
                 <div class="checkout-form-section">
                     <div class="checkout-card">
                         <h2 class="checkout-section-title">
-                            <i class="fas fa-store"></i> Información de Recogida
+                            <i class="fas fa-truck"></i> Método de Entrega
                         </h2>
-                        <div class="checkout-pickup-info">
+                        <div class="delivery-method-selector">
+                            <label class="delivery-method-option">
+                                <input type="radio" name="delivery-method" value="pickup" checked id="delivery-method-pickup">
+                                <span class="delivery-method-label">
+                                    <i class="fas fa-store"></i> Recogida en Tienda (Gratis)
+                                </span>
+                            </label>
+                            <label class="delivery-method-option">
+                                <input type="radio" name="delivery-method" value="delivery" id="delivery-method-delivery">
+                                <span class="delivery-method-label">
+                                    <i class="fas fa-truck"></i> Entrega a Domicilio
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div id="pickup-info-section" class="checkout-pickup-info">
                             <div class="pickup-info-box">
                                 <i class="fas fa-map-marker-alt"></i>
                                 <div>
                                     <strong>Tropiplus Supermarket Real Campiña</strong>
                                     <p>Aguada de Pasajeros, Cienfuegos</p>
-                                    <p class="pickup-note">Recogida en tienda - No realizamos envíos</p>
+                                    <p class="pickup-note">Recogida en tienda - Gratis</p>
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <div id="delivery-info-section" class="checkout-delivery-info" style="display: none;">
+                            <div class="delivery-address-selector">
+                                <label for="delivery-recipient-select" class="form-label">Seleccionar Dirección de Entrega *</label>
+                                <select id="delivery-recipient-select" class="form-input" required style="width: 100%; padding: 12px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px; margin-bottom: 12px;">
+                                    <option value="">Seleccione una dirección...</option>
+                                </select>
+                                <button type="button" id="btn-add-delivery-address" class="btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 12px;">
+                                    <i class="fas fa-plus"></i> Agregar Nueva Dirección
+                                </button>
+                            </div>
+                            <div id="selected-delivery-address" class="delivery-address-display" style="display: none; background: #f8f9fa; padding: 16px; border-radius: 8px; border-left: 4px solid var(--green-categories);">
+                                <strong id="delivery-recipient-name"></strong>
+                                <p id="delivery-recipient-address" style="margin: 8px 0 0 0; color: var(--gray-text);"></p>
+                                <p id="delivery-recipient-phone" style="margin: 4px 0 0 0; color: var(--gray-text); font-size: 13px;"></p>
                             </div>
                         </div>
 
@@ -441,6 +473,7 @@
     <script src="js/remesa.js"></script>
     <script src="js/giftcard.js"></script>
     <script src="js/square-orders.js"></script>
+    <script src="js/account-recipients.js"></script>
     <script src="js/checkout.js"></script>
 </body>
 </html>

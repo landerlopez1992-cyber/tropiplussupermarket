@@ -506,6 +506,132 @@ window.getTvConfigsFromSupabase = getTvConfigsFromSupabase;
 window.saveTvConfigsToSupabase = saveTvConfigsToSupabase;
 window.deleteTvConfigFromSupabase = deleteTvConfigFromSupabase;
 window.saveRemesaToSupabase = saveRemesaToSupabase;
+
+// Función para guardar orden de delivery en Supabase
+async function saveDeliveryOrderToSupabase(deliveryData) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
+        }
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/delivery_orders`,
+            {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(deliveryData)
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error guardando orden de delivery:', response.status, errorText);
+            throw new Error(`Error guardando orden de delivery: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Orden de delivery guardada en Supabase:', result);
+        return Array.isArray(result) ? result[0] : result;
+        
+    } catch (error) {
+        console.error('❌ Error guardando orden de delivery en Supabase:', error);
+        throw error;
+    }
+}
+
+// Función para obtener órdenes de delivery desde Supabase
+async function getDeliveryOrdersFromSupabase(filterStatus = null) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
+        }
+        
+        let url = `${SUPABASE_CONFIG.url}/rest/v1/delivery_orders?select=*&order=created_at.desc`;
+        if (filterStatus) {
+            url += `&status=eq.${filterStatus}`;
+        }
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error obteniendo órdenes de delivery:', response.status, errorText);
+            return [];
+        }
+        
+        const orders = await response.json();
+        console.log('✅ Órdenes de delivery cargadas:', orders.length);
+        return orders;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo órdenes de delivery:', error);
+        return [];
+    }
+}
+
+// Función para actualizar estado de orden de delivery
+async function updateDeliveryOrderStatus(orderId, newStatus) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
+        }
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/delivery_orders?order_id=eq.${orderId}`,
+            {
+                method: 'PATCH',
+                headers: headers,
+                body: JSON.stringify({
+                    status: newStatus,
+                    updated_at: new Date().toISOString()
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error actualizando orden de delivery:', response.status, errorText);
+            throw new Error(`Error actualizando orden: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        return Array.isArray(result) ? result[0] : result;
+        
+    } catch (error) {
+        console.error('❌ Error actualizando orden de delivery:', error);
+        throw error;
+    }
+}
+
+window.saveDeliveryOrderToSupabase = saveDeliveryOrderToSupabase;
+window.getDeliveryOrdersFromSupabase = getDeliveryOrdersFromSupabase;
+window.updateDeliveryOrderStatus = updateDeliveryOrderStatus;
 window.getAllRemesasFromSupabase = getAllRemesasFromSupabase;
 window.getUserRemesasFromSupabase = getUserRemesasFromSupabase;
 window.deliverRemesaFromSupabase = deliverRemesaFromSupabase;

@@ -9,7 +9,7 @@
  * @param {string} paymentToken - Token de pago (solo para CARD)
  * @returns {Promise} Orden creada en Square
  */
-async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', paymentToken = null) {
+async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', paymentToken = null, deliveryMethod = 'pickup', deliveryRecipient = null) {
     try {
         // Filtrar recargas de tarjetas - no deben estar en la orden
         cartItems = cartItems.filter(item => item.type !== 'giftcard_reload');
@@ -88,40 +88,83 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
         };
         Object.keys(recipient).forEach(key => recipient[key] === undefined && delete recipient[key]);
 
-        const pickupDetails = {
-            recipient,
-            schedule_type: 'ASAP',
-            note: 'Recogida en tienda - Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos'
+        // Determinar fulfillment según método de entrega
+        let fulfillments = [];
+        let metadata = {
+            source: 'web_app',
+            payment_method: paymentMethod,
+            created_at: new Date().toISOString()
         };
+        
+        if (deliveryMethod === 'delivery' && deliveryRecipient) {
+            // Entrega a domicilio
+            const deliveryRecipientInfo = {
+                display_name: deliveryRecipient.name || 'Destinatario',
+                email_address: undefined,
+                phone_number: deliveryRecipient.phone || undefined
+            };
+            Object.keys(deliveryRecipientInfo).forEach(key => deliveryRecipientInfo[key] === undefined && delete deliveryRecipientInfo[key]);
+            
+            const deliveryAddress = deliveryRecipient.address || {};
+            const deliveryDetails = {
+                recipient: deliveryRecipientInfo,
+                schedule_type: 'ASAP',
+                placed_at: new Date().toISOString(),
+                address: {
+                    address_line_1: deliveryAddress.address_line_1 || '',
+                    locality: deliveryAddress.locality || '',
+                    administrative_district_level_1: deliveryAddress.administrative_district_level_1 || 'Cienfuegos',
+                    postal_code: deliveryAddress.postal_code || '',
+                    country: deliveryAddress.country || 'CU'
+                },
+                note: `Entrega a domicilio - ${deliveryRecipient.name}`
+            };
+            
+            fulfillments.push({
+                type: 'DELIVERY',
+                state: 'PROPOSED',
+                delivery_details: deliveryDetails
+            });
+            
+            metadata.delivery_method = 'delivery';
+            metadata.delivery_address = `${deliveryAddress.address_line_1 || ''}, ${deliveryAddress.locality || ''}, ${deliveryAddress.municipality || ''}, ${deliveryAddress.administrative_district_level_1 || 'Cienfuegos'}`;
+            metadata.delivery_recipient_name = deliveryRecipient.name;
+            metadata.delivery_recipient_phone = deliveryRecipient.phone || '';
+        } else {
+            // Recogida en tienda
+            const pickupDetails = {
+                recipient,
+                schedule_type: 'ASAP',
+                note: 'Recogida en tienda - Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos'
+            };
+            
+            fulfillments.push({
+                type: 'PICKUP',
+                state: 'PROPOSED',
+                pickup_details: {
+                    ...pickupDetails,
+                    prep_time_duration: 'PT15M'
+                }
+            });
+            
+            metadata.delivery_method = 'pickup';
+            metadata.pickup_location = 'Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos';
+        }
 
         const orderData = {
             idempotency_key: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             order: {
                 location_id: SQUARE_CONFIG.locationId,
                 ticket_name: `WEB-${new Date().toLocaleString('es-ES')}`,
-                note: 'Pedido web (pago en tienda)',
+                note: deliveryMethod === 'delivery' ? 'Pedido web - Entrega a domicilio' : 'Pedido web (pago en tienda)',
                 source: {
                     name: 'Tropiplus Web'
                 },
                 line_items: lineItems,
                 customer_id: customerId,
-                state: 'OPEN', // Estado inicial: OPEN, COMPLETED, CANCELED
-                fulfillments: [
-                    {
-                        type: 'PICKUP', // Tipo: PICKUP, SHIPMENT, DELIVERY
-                        state: 'PROPOSED', // Estado: PROPOSED, RESERVED, PREPARED, COMPLETED, CANCELED, FAILED
-                        pickup_details: {
-                            ...pickupDetails,
-                            prep_time_duration: 'PT15M' // Tiempo de preparación estimado: 15 minutos
-                        }
-                    }
-                ],
-                metadata: {
-                    source: 'web_app',
-                    payment_method: paymentMethod,
-                    pickup_location: 'Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos',
-                    created_at: new Date().toISOString()
-                }
+                state: 'OPEN',
+                fulfillments: fulfillments,
+                metadata: metadata
             }
         };
 
@@ -164,6 +207,26 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
 
         const order = orderResponse.order;
         console.log('✅ Orden creada en Square:', order.id);
+        
+        // Si es delivery, guardar información en Supabase
+        if (deliveryMethod === 'delivery' && deliveryRecipient && typeof window.saveDeliveryOrderToSupabase === 'function') {
+            try {
+                await window.saveDeliveryOrderToSupabase({
+                    order_id: order.id,
+                    customer_id: customerId,
+                    delivery_method: 'delivery',
+                    recipient_name: deliveryRecipient.name,
+                    recipient_phone: deliveryRecipient.phone || null,
+                    recipient_address: deliveryRecipient.address || {},
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                });
+                console.log('✅ Información de delivery guardada en Supabase');
+            } catch (error) {
+                console.error('⚠️ Error guardando delivery en Supabase (la orden se creó correctamente):', error);
+                // No lanzar error - la orden ya se creó
+            }
+        }
 
         // DESCONTAR INVENTARIO cuando se crea la orden
         try {
