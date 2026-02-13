@@ -6,6 +6,90 @@ const SQUARE_API_BASE = 'https://connect.squareup.com';
 const SQUARE_ACCESS_TOKEN = Deno.env.get('SQUARE_ACCESS_TOKEN') || 
   'EAAAl2nJjLDUfcBLy2EIXc7ipUq3Pwkr3PcSji6oC1QmgtUK5E8UyeICc0mbowZB';
 
+function parseDataUrl(dataUrl: string) {
+  const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  const mimeType = match[1];
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return {
+    mimeType,
+    bytes
+  };
+}
+
+async function handleCreateCatalogImage(
+  squareUrl: string,
+  bodyText: string,
+  headersBase: Record<string, string>
+) {
+  const payload = bodyText ? JSON.parse(bodyText) : {};
+  const idempotencyKey = payload.idempotency_key || `img_key_${Date.now()}`;
+  const objectId = payload.object_id || undefined;
+  const imageName = payload.image_name || 'Imagen Producto';
+  const imageUrl = payload.image_url || '';
+  const imageDataUrl = payload.image_data_url || '';
+
+  let fileBlob: Blob | null = null;
+  let filename = 'product-image.jpg';
+
+  if (imageUrl) {
+    const downloaded = await fetch(imageUrl);
+    if (!downloaded.ok) {
+      throw new Error(`No se pudo descargar imagen externa (${downloaded.status})`);
+    }
+    const mimeType = downloaded.headers.get('content-type') || 'image/jpeg';
+    if (mimeType.includes('png')) filename = 'product-image.png';
+    if (mimeType.includes('gif')) filename = 'product-image.gif';
+    if (mimeType.includes('webp')) filename = 'product-image.webp';
+    const bytes = await downloaded.arrayBuffer();
+    fileBlob = new Blob([bytes], { type: mimeType });
+  } else if (imageDataUrl) {
+    const parsed = parseDataUrl(imageDataUrl);
+    if (!parsed) {
+      throw new Error('Formato de image_data_url inválido');
+    }
+    if (parsed.mimeType.includes('png')) filename = 'product-image.png';
+    if (parsed.mimeType.includes('gif')) filename = 'product-image.gif';
+    if (parsed.mimeType.includes('webp')) filename = 'product-image.webp';
+    fileBlob = new Blob([parsed.bytes], { type: parsed.mimeType || 'image/jpeg' });
+  } else {
+    throw new Error('Debes enviar image_url o image_data_url');
+  }
+
+  const requestPayload: any = {
+    idempotency_key: idempotencyKey,
+    image: {
+      type: 'IMAGE',
+      id: '#TMP_IMAGE',
+      image_data: {
+        name: imageName
+      }
+    }
+  };
+  if (objectId) {
+    requestPayload.object_id = objectId;
+  }
+
+  const formData = new FormData();
+  formData.append('request', JSON.stringify(requestPayload));
+  formData.append('file', fileBlob, filename);
+
+  const squareHeaders: Record<string, string> = {
+    'Square-Version': headersBase['Square-Version'],
+    'Authorization': headersBase['Authorization']
+  };
+
+  return fetch(squareUrl, {
+    method: 'POST',
+    headers: squareHeaders,
+    body: formData
+  });
+}
+
 // Log del token (solo primeros y últimos caracteres para seguridad)
 if (!SQUARE_ACCESS_TOKEN || SQUARE_ACCESS_TOKEN.length < 10) {
   console.error('[Square Proxy] ⚠️ SQUARE_ACCESS_TOKEN no está configurado o es inválido');
@@ -95,7 +179,7 @@ Deno.serve(async (req) => {
       );
     }
     
-    const headers = {
+    const headers: Record<string, string> = {
       'Square-Version': '2024-01-18',
       'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
@@ -114,18 +198,46 @@ Deno.serve(async (req) => {
         ? 'POST'
         : req.method;
 
-    // Preparar opciones para la petición
+    // Leer body una sola vez para reutilizarlo (incluye casos especiales)
+    let requestBodyText = '';
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+      requestBodyText = await req.text();
+    }
+
+    // Caso especial: CreateCatalogImage requiere multipart/form-data en Square.
+    // El frontend envía image_url/image_data_url en JSON y el proxy lo transforma.
+    if (
+      normalizedMethod === 'POST' &&
+      squareEndpoint === '/v2/catalog/images' &&
+      requestBodyText
+    ) {
+      const squareImageResponse = await handleCreateCatalogImage(squareUrl, requestBodyText, headers);
+      const responseText = await squareImageResponse.text();
+      let data: any;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        data = { raw: responseText };
+      }
+
+      return new Response(JSON.stringify(data), {
+        status: squareImageResponse.status,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    // Preparar opciones para la petición genérica
     const options: RequestInit = {
       method: normalizedMethod,
       headers: headers,
     };
 
     // Si hay body, incluirlo
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-      const body = await req.text();
-      if (body) {
-        options.body = body;
-      }
+    if (requestBodyText) {
+      options.body = requestBodyText;
     }
 
     // Fallback body for manual GET tests to /v2/catalog/search in the browser

@@ -3845,124 +3845,25 @@ async function uploadImageToSquare(imageFile) {
 }
 
 async function createCatalogImageFromUrl(imageUrl, productName, productObjectId) {
-    if (!imageUrl) {
-        console.warn('⚠️ No hay URL de imagen para subir');
-        return null;
-    }
-    
-    try {
-        console.log('📷 Subiendo imagen a Square desde URL:', imageUrl);
-        
-        // Intentar usar el proxy local si está disponible (para desarrollo)
-        // Si no, intentar directamente con Square API usando el formato correcto
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        let imageResponse = null;
-        
-        if (isLocalhost) {
-            // En desarrollo local, usar el proxy que maneja multipart/form-data
-            try {
-                const proxyResponse = await fetch('/api/square-proxy/v2/catalog/images', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                        object_id: productObjectId,
-                        image_url: imageUrl,
-                        image_name: `Imagen ${productName || 'Producto'}`
-                    })
-                });
-                
-                if (proxyResponse.ok) {
-                    imageResponse = await proxyResponse.json();
-                    console.log('✅ Imagen subida vía proxy local:', imageResponse);
-                }
-            } catch (proxyError) {
-                console.warn('⚠️ Proxy local no disponible, intentando método directo:', proxyError);
-            }
-        }
-        
-        // Si el proxy no funcionó o estamos en producción, usar método directo
-        // Square permite crear imágenes con URL externa directamente
-        if (!imageResponse) {
-            // Crear el objeto IMAGE en Square usando la URL externa
-            const imageObject = {
-                type: 'IMAGE',
-                id: `#img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                image_data: {
-                    name: `Imagen ${productName || 'Producto'}`,
-                    url: imageUrl
-                }
-            };
-            
-            const catalogObject = {
-                type: 'IMAGE',
-                id: `#img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                image_data: {
-                    name: `Imagen ${productName || 'Producto'}`,
-                    url: imageUrl
-                }
-            };
-            
-            // Crear la imagen en Square
-            imageResponse = await squareApiCall('/v2/catalog/object', 'POST', {
-                idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                object: catalogObject
-            });
-            
-            console.log('✅ Respuesta de Square para imagen:', imageResponse);
-        }
+    if (!imageUrl) return null;
 
-        // Extraer el ID de la imagen creada
-        const createdImageId = imageResponse?.catalog_object?.id || 
-                              imageResponse?.image?.id || 
-                              imageResponse?.id;
-        
-        if (createdImageId) {
-            console.log('✅ Imagen creada en Square con ID:', createdImageId);
-            
-            // Asociar la imagen al producto actualizando el producto
-            if (productObjectId && createdImageId) {
-                try {
-                    // Obtener el producto actual para mantener la versión
-                    const currentProduct = await squareApiCall(`/v2/catalog/object/${productObjectId}`, 'GET');
-                    if (currentProduct?.object) {
-                        const updateObject = {
-                            type: 'ITEM',
-                            id: productObjectId,
-                            version: currentProduct.object.version,
-                            item_data: {
-                                ...currentProduct.object.item_data,
-                                image_ids: [
-                                    ...(currentProduct.object.item_data?.image_ids || []),
-                                    createdImageId
-                                ]
-                            }
-                        };
-                        
-                        await squareApiCall('/v2/catalog/object', 'PUT', {
-                            idempotency_key: `img_assoc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                            object: updateObject
-                        });
-                        
-                        console.log('✅ Imagen asociada al producto:', productObjectId);
-                    }
-                } catch (assocError) {
-                    console.warn('⚠️ No se pudo asociar imagen al producto automáticamente:', assocError);
-                    // No es crítico, la imagen se creó, solo falta asociarla
-                }
-            }
-            
-            return createdImageId;
+    try {
+        // El proxy (local o Supabase) convierte image_url a multipart/form-data
+        // para usar correctamente CreateCatalogImage de Square.
+        const imageResponse = await squareApiCall('/v2/catalog/images', 'POST', {
+            idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            object_id: productObjectId || undefined,
+            image_url: imageUrl,
+            image_name: `Imagen ${productName || 'Producto'}`
+        });
+
+        const createdImageId = imageResponse?.image?.id || imageResponse?.catalog_object?.id || null;
+        if (!createdImageId) {
+            console.warn('⚠️ Square no devolvió ID de imagen:', imageResponse);
         }
-        
-        console.warn('⚠️ No se pudo obtener ID de imagen de la respuesta:', imageResponse);
-        return null;
+        return createdImageId;
     } catch (error) {
-        console.error('❌ Error subiendo imagen a Square:', error);
-        console.error('   URL:', imageUrl);
-        console.error('   Producto:', productName);
+        console.warn('No se pudo crear imagen en Square con URL externa:', error?.message || error);
         return null;
     }
 }
@@ -4325,47 +4226,60 @@ async function saveNewProduct() {
             }
             
             // Si el producto se creó desde una URL, guardar automáticamente el proveedor
-            const form = document.getElementById('add-product-form');
-            const sourceUrl = form?.dataset?.sourceUrl;
+            const sourceUrl = String(form?.dataset?.sourceUrl || '').trim();
             if (sourceUrl) {
                 try {
-                    const urlObj = new URL(sourceUrl);
-                    const domain = urlObj.hostname.replace('www.', '');
-                    
-                    // Buscar o crear proveedor global con este dominio
-                    let supplierId = null;
-                    const globalSuppliersList = getGlobalSuppliersList();
-                    const existingSupplier = globalSuppliersList.find(s => {
-                        const supplierUrl = s.url || '';
-                        try {
-                            const supplierUrlObj = new URL(supplierUrl);
-                            return supplierUrlObj.hostname.replace('www.', '') === domain;
-                        } catch {
-                            return supplierUrl.includes(domain);
-                        }
-                    });
-                    
-                    if (existingSupplier) {
-                        supplierId = existingSupplier.id;
-                    } else {
-                        // Crear nuevo proveedor global
-                        supplierId = await addGlobalSupplier({
-                            name: domain.charAt(0).toUpperCase() + domain.slice(1),
-                            url: `${urlObj.protocol}//${urlObj.hostname}`,
-                            address: '',
-                            notes: `Proveedor creado automáticamente desde ${sourceUrl}`
-                        });
+                    let domain = 'Proveedor Web';
+                    let providerBaseUrl = '';
+                    let existingSupplier = null;
+
+                    try {
+                        const urlObj = new URL(sourceUrl);
+                        domain = urlObj.hostname.replace('www.', '') || domain;
+                        providerBaseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
+                    } catch {
+                        // Continuar con fallback sin romper guardado del purchaseUrl.
                     }
-                    
-                    // Guardar información del proveedor para este producto
+
+                    // Guardar SIEMPRE la relación del producto con URL de compra,
+                    // aunque falle cualquier paso de proveedor global.
                     const supplierData = {
-                        name: existingSupplier?.name || (domain.charAt(0).toUpperCase() + domain.slice(1)),
-                        url: existingSupplier?.url || `${urlObj.protocol}//${urlObj.hostname}`,
-                        purchaseUrl: sourceUrl, // URL de compra específica del producto
+                        name: domain.charAt(0).toUpperCase() + domain.slice(1),
+                        url: providerBaseUrl,
+                        purchaseUrl: sourceUrl,
                         imageUrl: extractedImageUrl || '',
                         notes: `Producto extraído desde ${sourceUrl}`
                     };
-                    
+
+                    // Intentar enriquecer con proveedor global existente/creado
+                    try {
+                        const globalSuppliersList = getGlobalSuppliersList();
+                        existingSupplier = globalSuppliersList.find(s => {
+                            const supplierUrl = s.url || '';
+                            if (!providerBaseUrl) return false;
+                            try {
+                                const supplierUrlObj = new URL(supplierUrl);
+                                return supplierUrlObj.hostname.replace('www.', '') === domain;
+                            } catch {
+                                return supplierUrl.includes(domain);
+                            }
+                        });
+
+                        if (existingSupplier) {
+                            supplierData.name = existingSupplier.name || supplierData.name;
+                            supplierData.url = existingSupplier.url || supplierData.url;
+                        } else if (providerBaseUrl) {
+                            await addGlobalSupplier({
+                                name: supplierData.name,
+                                url: providerBaseUrl,
+                                address: '',
+                                notes: `Proveedor creado automáticamente desde ${sourceUrl}`
+                            });
+                        }
+                    } catch (globalSupplierError) {
+                        console.warn('⚠️ No se pudo sincronizar proveedor global:', globalSupplierError);
+                    }
+
                     setSupplierInfo(createdProductId, createdVariationId, supplierData);
                     if (typeof window.saveProductSupplierToSupabase === 'function') {
                         await window.saveProductSupplierToSupabase({
@@ -4806,16 +4720,17 @@ async function editProduct(productId, variationId) {
             }
         }
         
+        // Guardar modo edición aunque no exista proveedor
+        const editForm = document.getElementById('add-product-form');
+        if (editForm) {
+            editForm.dataset.editingProductId = productId;
+            editForm.dataset.editingVariationId = variationId;
+        }
+
         // Obtener información del proveedor si existe
         const supplierInfo = getSupplierInfo(productId, variationId);
-        if (supplierInfo) {
-            // Guardar en un campo oculto para mostrar después
-            const form = document.getElementById('add-product-form');
-            if (form) {
-                form.dataset.editingProductId = productId;
-                form.dataset.editingVariationId = variationId;
-                form.dataset.existingSupplier = JSON.stringify(supplierInfo);
-            }
+        if (supplierInfo && editForm) {
+            editForm.dataset.existingSupplier = JSON.stringify(supplierInfo);
         }
         
         // Cambiar el texto del botón de guardar
