@@ -1542,17 +1542,36 @@ function initTvTab() {
         }
 
         if (action === 'delete') {
-            const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
+            if (!confirm('¿Estás seguro de que deseas eliminar este TV?')) {
+                return;
+            }
+            
             try {
-                await saveTvConfigs(tvConfigs);
+                // Primero eliminar de Supabase
+                if (typeof window.deleteTvConfigFromSupabase === 'function') {
+                    await window.deleteTvConfigFromSupabase(tvId);
+                    console.log('✅ [Admin] TV eliminado de Supabase:', tvId);
+                } else {
+                    console.warn('⚠️ [Admin] Función deleteTvConfigFromSupabase no disponible');
+                }
+                
+                // Luego eliminar de localStorage
+                const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
+                localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
+                
+                // Recargar desde Supabase para sincronizar
                 await hydrateTvConfigsFromSupabase();
                 renderTvList();
                 refreshPublicTvSyncStatus();
+                
                 if (typeof showModal === 'function') {
                     showModal('Listo', 'TV eliminado correctamente.', 'success');
                 }
-            } catch (_error) {
-                // Error ya reportado en saveTvConfigs
+            } catch (error) {
+                console.error('❌ [Admin] Error eliminando TV:', error);
+                if (typeof showModal === 'function') {
+                    showModal('Error', `Error al eliminar TV: ${error.message || 'Error desconocido'}`, 'error');
+                }
             }
             return;
         }

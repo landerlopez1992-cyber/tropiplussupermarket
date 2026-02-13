@@ -163,6 +163,46 @@ async function saveTvConfigsToSupabase(tvConfigs) {
     }
 }
 
+// Función para eliminar un TV de Supabase
+async function deleteTvConfigFromSupabase(tvId) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Supabase] Anon key no configurada. No se puede eliminar de Supabase.');
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        // Eliminar el TV de Supabase
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/tv_configs?id=eq.${encodeURIComponent(tvId)}`,
+            {
+                method: 'DELETE',
+                headers: headers
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error eliminando TV:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        console.log('✅ [Supabase] TV eliminado:', tvId);
+        return true;
+    } catch (error) {
+        console.error('❌ [Supabase] Error eliminando TV:', error);
+        throw error;
+    }
+}
+
 // Exportar funciones globalmente
 window.getTvConfigsFromSupabase = getTvConfigsFromSupabase;
 window.saveTvConfigsToSupabase = saveTvConfigsToSupabase;
+window.deleteTvConfigFromSupabase = deleteTvConfigFromSupabase;
