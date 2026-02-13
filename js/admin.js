@@ -4544,6 +4544,38 @@ async function extractProductsFromCatalogUrl(sourceUrl, maxProducts = 30) {
     const anchors = Array.from(doc.querySelectorAll('a[href]'));
     const productLinks = [];
     const seen = new Set();
+    
+    // URLs que NO son productos (páginas generales del sitio)
+    const excludePatterns = [
+        /\/cart/i,
+        /\/checkout/i,
+        /\/checkout\//i,
+        /\/account/i,
+        /\/login/i,
+        /\/register/i,
+        /\/contact/i,
+        /\/about/i,
+        /\/home/i,
+        /\/index/i,
+        /\/shop$/i,  // Solo /shop sin más ruta
+        /\/store$/i,
+        /\/category/i,
+        /\/categories/i,
+        /\/search/i,
+        /\/tag/i,
+        /\/tags/i,
+        /\/blog/i,
+        /\/news/i,
+        /\/help/i,
+        /\/faq/i,
+        /\/terms/i,
+        /\/privacy/i,
+        /\/policy/i,
+        /\/wishlist/i,
+        /\/compare/i,
+        /^https?:\/\/[^\/]+\/?$/i  // Solo dominio raíz
+    ];
+    
     for (const a of anchors) {
         const hrefRaw = a.getAttribute('href') || '';
         if (!hrefRaw || hrefRaw.startsWith('#') || hrefRaw.startsWith('javascript:')) continue;
@@ -4553,8 +4585,27 @@ async function extractProductsFromCatalogUrl(sourceUrl, maxProducts = 30) {
         } catch {
             continue;
         }
-        const text = `${a.textContent || ''} ${href}`.toLowerCase();
-        const isProductLike = /product|producto|item|shop|store|dp\/|\/p\//.test(text);
+        
+        // Excluir URLs que son páginas generales
+        const shouldExclude = excludePatterns.some(pattern => pattern.test(href));
+        if (shouldExclude) continue;
+        
+        // Buscar patrones que indiquen que es un producto individual
+        const hrefLower = href.toLowerCase();
+        const text = `${a.textContent || ''} ${hrefLower}`.toLowerCase();
+        
+        // Patrones que indican producto: /product/, /producto/, /item/, /p/, /dp/, números en la URL, etc.
+        const isProductLike = 
+            /\/product[\/\-]/i.test(href) ||
+            /\/producto[\/\-]/i.test(href) ||
+            /\/item[\/\-]/i.test(href) ||
+            /\/p\/[^\/]+/i.test(href) ||
+            /\/dp\/[^\/]+/i.test(href) ||
+            /\/products\/[^\/]+/i.test(href) ||
+            /\/productos\/[^\/]+/i.test(href) ||
+            /\/[a-z]+\/[0-9]+/i.test(href) ||  // URL con números (ej: /product/12345)
+            (text.includes('product') && !text.includes('category') && !text.includes('shop') && !text.includes('store'));
+        
         if (!isProductLike) continue;
         if (seen.has(href)) continue;
         seen.add(href);
@@ -4571,6 +4622,7 @@ async function extractProductsFromCatalogUrl(sourceUrl, maxProducts = 30) {
     for (const link of productLinks) {
         try {
             const item = await extractProductDataFromUrl(link);
+            
             extracted.push({
                 selected: true,
                 name: item.name || 'Producto sin nombre',
@@ -4579,7 +4631,7 @@ async function extractProductsFromCatalogUrl(sourceUrl, maxProducts = 30) {
                 sku: item.sku || '',
                 gtin: item.gtin || '',
                 sourceUrl: link,
-                price: 1,
+                price: item.price > 0 ? item.price : 1, // Usar precio extraído, default 1 si no se encontró
                 quantity: 0,
                 categoryId: '',
                 locationId: SQUARE_CONFIG.locationId || ''
@@ -4913,6 +4965,7 @@ async function extractProductDataFromUrl(url) {
             name: '',
             description: '',
             image: '',
+            price: 0,
             sku: '',
             gtin: '',
             sourceUrl: url // Guardar la URL original
@@ -4951,6 +5004,60 @@ async function extractProductDataFromUrl(url) {
         
         productData.image = imageUrl ? (imageUrl.startsWith('http') ? imageUrl : new URL(imageUrl, url).href) : '';
         
+        // 3.5. Precio: meta price, itemprop price, .price, etc.
+        // Primero cargar JSON-LD scripts para buscar precio
+        const jsonLdScripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+        
+        const priceText = 
+            doc.querySelector('meta[property="product:price:amount"]')?.content ||
+            doc.querySelector('meta[property="product:price"]')?.content ||
+            doc.querySelector('[itemprop="price"]')?.content ||
+            doc.querySelector('[itemprop="price"]')?.textContent?.trim() ||
+            doc.querySelector('.price')?.textContent?.trim() ||
+            doc.querySelector('.product-price')?.textContent?.trim() ||
+            doc.querySelector('[class*="price"]')?.textContent?.trim() ||
+            doc.querySelector('[data-price]')?.getAttribute('data-price') ||
+            '';
+        
+        if (priceText) {
+            // Extraer número del precio (ej: "$19.99" -> 19.99, "€25,50" -> 25.50)
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+            if (priceMatch) {
+                productData.price = parseFloat(priceMatch[0].replace(/,/g, '')) || 0;
+            }
+        }
+        
+        // Buscar precio en JSON-LD
+        if (productData.price === 0) {
+            for (const script of jsonLdScripts) {
+                try {
+                    const parsed = JSON.parse(script.textContent || '{}');
+                    const entries = Array.isArray(parsed) ? parsed : [parsed];
+                    for (const entry of entries) {
+                        if (!entry || typeof entry !== 'object') continue;
+                        const priceCandidate = 
+                            entry.offers?.price ||
+                            entry.offers?.[0]?.price ||
+                            entry.price ||
+                            entry.lowPrice ||
+                            entry.highPrice;
+                        if (priceCandidate) {
+                            const priceNum = typeof priceCandidate === 'string' 
+                                ? parseFloat(priceCandidate.replace(/[^\d.]/g, '')) 
+                                : parseFloat(priceCandidate);
+                            if (!isNaN(priceNum) && priceNum > 0) {
+                                productData.price = priceNum;
+                                break;
+                            }
+                        }
+                    }
+                    if (productData.price > 0) break;
+                } catch (jsonError) {
+                    // Continuar
+                }
+            }
+        }
+        
         // 4. SKU: meta sku, product-sku, data-sku, etc.
         productData.sku = 
             doc.querySelector('meta[property="product:retailer_item_id"]')?.content ||
@@ -4979,7 +5086,6 @@ async function extractProductDataFromUrl(url) {
 
         // Buscar en JSON-LD estructurado (Amazon usa esto frecuentemente)
         let jsonLdBarcode = '';
-        const jsonLdScripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
         for (const script of jsonLdScripts) {
             if (jsonLdBarcode) break;
             try {
