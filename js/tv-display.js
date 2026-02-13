@@ -539,11 +539,26 @@ async function renderProductsGrid(advanceMode = true) {
             ? `${((amount * 1.12) / 100).toFixed(2)} US$` 
             : '';
           
+          // Calcular precio en CUP si está habilitado
+          let cupPriceHtml = '';
+          if (amount && typeof window.getCurrencyConfig === 'function' && typeof window.convertUsdToCup === 'function') {
+            const currencyConfig = window.getCurrencyConfig();
+            if (currencyConfig.enabled && currencyConfig.exchangeRate) {
+              const usdAmount = amount / 100; // Convertir centavos a dólares
+              const cupAmount = window.convertUsdToCup(usdAmount);
+              if (cupAmount !== null) {
+                const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                cupPriceHtml = `<div class="tv-product-price-cup">${cupFormatted} CUP</div>`;
+              }
+            }
+          }
+          
           const priceHtml = currentTvConfig.showPrice !== false
             ? `
               <div class="tv-product-price-container">
                 <span class="tv-product-price">${currentPrice}</span>
                 ${previousPrice ? `<span class="tv-product-old-price">${previousPrice}</span>` : ''}
+                ${cupPriceHtml}
               </div>
             `
             : '';
@@ -867,11 +882,26 @@ async function renderProductsGrid(advanceMode = true) {
         ? `${((amount * 1.12) / 100).toFixed(2)} US$` 
         : '';
       
+      // Calcular precio en CUP si está habilitado
+      let cupPriceHtml = '';
+      if (amount && typeof window.getCurrencyConfig === 'function' && typeof window.convertUsdToCup === 'function') {
+        const currencyConfig = window.getCurrencyConfig();
+        if (currencyConfig.enabled && currencyConfig.exchangeRate) {
+          const usdAmount = amount / 100; // Convertir centavos a dólares
+          const cupAmount = window.convertUsdToCup(usdAmount);
+          if (cupAmount !== null) {
+            const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            cupPriceHtml = `<div class="tv-product-price-cup">${cupFormatted} CUP</div>`;
+          }
+        }
+      }
+      
       const priceHtml = currentTvConfig.showPrice !== false
         ? `
           <div class="tv-product-price-container">
             <span class="tv-product-price">${currentPrice}</span>
             ${previousPrice ? `<span class="tv-product-old-price">${previousPrice}</span>` : ''}
+            ${cupPriceHtml}
           </div>
         `
         : '';
