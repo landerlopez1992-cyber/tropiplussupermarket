@@ -541,18 +541,48 @@ async function renderProductsGrid(advanceMode = true) {
           
           // Calcular precio en CUP si está habilitado
           let cupPriceHtml = '';
-          if (amount && typeof window.getCurrencyConfig === 'function' && typeof window.convertUsdToCup === 'function') {
-            const currencyConfig = window.getCurrencyConfig();
+          if (amount && typeof amount === 'number' && amount > 0) {
+            // Intentar obtener configuración de divisas (con fallback si no está disponible)
+            let currencyConfig = { exchangeRate: 500, enabled: true };
+            try {
+              if (typeof window.getCurrencyConfig === 'function') {
+                currencyConfig = window.getCurrencyConfig();
+              } else {
+                // Fallback: leer directamente de localStorage
+                const raw = localStorage.getItem('tropiplus_currency_config');
+                if (raw) {
+                  currencyConfig = JSON.parse(raw);
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ [TV] Error leyendo configuración de divisas:', error);
+            }
+            
             if (currencyConfig.enabled && currencyConfig.exchangeRate) {
               const usdAmount = amount / 100; // Convertir centavos a dólares
-              const cupAmount = window.convertUsdToCup(usdAmount);
-              if (cupAmount !== null) {
+              let cupAmount = null;
+              
+              try {
+                if (typeof window.convertUsdToCup === 'function') {
+                  cupAmount = window.convertUsdToCup(usdAmount);
+                } else {
+                  // Fallback: calcular directamente
+                  cupAmount = usdAmount * currencyConfig.exchangeRate;
+                }
+              } catch (error) {
+                console.warn('⚠️ [TV] Error calculando CUP:', error);
+                // Fallback: calcular directamente
+                cupAmount = usdAmount * currencyConfig.exchangeRate;
+              }
+              
+              if (cupAmount !== null && !isNaN(cupAmount)) {
                 const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 cupPriceHtml = `<div class="tv-product-price-cup">${cupFormatted} CUP</div>`;
               }
             }
           }
           
+          // SIEMPRE mostrar precio en USD si showPrice no está deshabilitado explícitamente
           const priceHtml = currentTvConfig.showPrice !== false
             ? `
               <div class="tv-product-price-container">
@@ -884,18 +914,48 @@ async function renderProductsGrid(advanceMode = true) {
       
       // Calcular precio en CUP si está habilitado
       let cupPriceHtml = '';
-      if (amount && typeof window.getCurrencyConfig === 'function' && typeof window.convertUsdToCup === 'function') {
-        const currencyConfig = window.getCurrencyConfig();
+      if (amount && typeof amount === 'number' && amount > 0) {
+        // Intentar obtener configuración de divisas (con fallback si no está disponible)
+        let currencyConfig = { exchangeRate: 500, enabled: true };
+        try {
+          if (typeof window.getCurrencyConfig === 'function') {
+            currencyConfig = window.getCurrencyConfig();
+          } else {
+            // Fallback: leer directamente de localStorage
+            const raw = localStorage.getItem('tropiplus_currency_config');
+            if (raw) {
+              currencyConfig = JSON.parse(raw);
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ [TV] Error leyendo configuración de divisas:', error);
+        }
+        
         if (currencyConfig.enabled && currencyConfig.exchangeRate) {
           const usdAmount = amount / 100; // Convertir centavos a dólares
-          const cupAmount = window.convertUsdToCup(usdAmount);
-          if (cupAmount !== null) {
+          let cupAmount = null;
+          
+          try {
+            if (typeof window.convertUsdToCup === 'function') {
+              cupAmount = window.convertUsdToCup(usdAmount);
+            } else {
+              // Fallback: calcular directamente
+              cupAmount = usdAmount * currencyConfig.exchangeRate;
+            }
+          } catch (error) {
+            console.warn('⚠️ [TV] Error calculando CUP:', error);
+            // Fallback: calcular directamente
+            cupAmount = usdAmount * currencyConfig.exchangeRate;
+          }
+          
+          if (cupAmount !== null && !isNaN(cupAmount)) {
             const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             cupPriceHtml = `<div class="tv-product-price-cup">${cupFormatted} CUP</div>`;
           }
         }
       }
       
+      // SIEMPRE mostrar precio en USD si showPrice no está deshabilitado explícitamente
       const priceHtml = currentTvConfig.showPrice !== false
         ? `
           <div class="tv-product-price-container">
