@@ -582,7 +582,8 @@ async function renderProductsGrid(advanceMode = true) {
             }
           }
           
-          // SIEMPRE mostrar precio en USD si showPrice no está deshabilitado explícitamente
+          // SIEMPRE mostrar precio en USD (obligatorio) - solo ocultar si showPrice está explícitamente en false
+          // El precio en USD es obligatorio, el CUP es opcional
           const priceHtml = currentTvConfig.showPrice !== false
             ? `
               <div class="tv-product-price-container">
@@ -591,7 +592,7 @@ async function renderProductsGrid(advanceMode = true) {
                 ${cupPriceHtml}
               </div>
             `
-            : '';
+            : '<div class="tv-product-price-container"><span class="tv-product-price">--</span></div>';
           
           const badgeHtml = showOffer
             ? '<span class="tv-product-badge">OFERTA</span>'
@@ -955,7 +956,8 @@ async function renderProductsGrid(advanceMode = true) {
         }
       }
       
-      // SIEMPRE mostrar precio en USD si showPrice no está deshabilitado explícitamente
+      // SIEMPRE mostrar precio en USD (obligatorio) - solo ocultar si showPrice está explícitamente en false
+      // El precio en USD es obligatorio, el CUP es opcional
       const priceHtml = currentTvConfig.showPrice !== false
         ? `
           <div class="tv-product-price-container">
@@ -964,7 +966,7 @@ async function renderProductsGrid(advanceMode = true) {
             ${cupPriceHtml}
           </div>
         `
-        : '';
+        : '<div class="tv-product-price-container"><span class="tv-product-price">--</span></div>';
       
       const badgeHtml = showOffer
         ? '<span class="tv-product-badge">OFERTA</span>'
