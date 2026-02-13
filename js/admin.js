@@ -22,6 +22,7 @@ let allProducts = [];
 let allProductsWithInventory = [];
 let suppliersData = {}; // Proveedores por producto
 let globalSuppliers = {}; // Proveedores globales (reutilizables)
+let bulkImportProducts = [];
 const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
 const QR_STORAGE_KEY = 'tropiplus_qr_configs';
@@ -231,6 +232,7 @@ async function initAdminPage() {
 
     // Inicializar formulario de extracción de URL
     initUrlExtractorForm();
+    initBulkUrlImportForm();
 
     // Inicializar pestaña de promoción
     initPromotionTab();
@@ -4490,6 +4492,380 @@ function closeUrlExtractorModal() {
     }
 }
 
+function openBulkUrlImportModal() {
+    const modal = document.getElementById('bulk-url-import-modal');
+    if (modal) {
+        modal.classList.add('active');
+        const form = document.getElementById('bulk-url-import-form');
+        if (form) form.reset();
+        bulkImportProducts = [];
+        const status = document.getElementById('bulk-url-import-status');
+        const results = document.getElementById('bulk-url-import-results');
+        if (status) status.style.display = 'none';
+        if (results) results.style.display = 'none';
+    }
+}
+
+function closeBulkUrlImportModal() {
+    const modal = document.getElementById('bulk-url-import-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function updateBulkImportStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('bulk-url-import-status');
+    const statusText = document.getElementById('bulk-url-import-status-text');
+    if (!statusDiv || !statusText) return;
+    statusDiv.style.display = 'block';
+    if (type === 'error') {
+        statusDiv.style.background = '#ffebee';
+        statusDiv.style.color = '#c62828';
+    } else if (type === 'success') {
+        statusDiv.style.background = '#e8f5e9';
+        statusDiv.style.color = '#2e7d32';
+    } else {
+        statusDiv.style.background = '#e3f2fd';
+        statusDiv.style.color = '#1976d2';
+    }
+    statusText.innerHTML = message;
+}
+
+async function extractProductsFromCatalogUrl(sourceUrl, maxProducts = 30) {
+    const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(sourceUrl)}`;
+    const response = await fetch(corsProxyUrl, { cache: 'no-store' });
+    if (!response.ok) {
+        throw new Error(`No se pudo abrir la URL del catálogo (${response.status})`);
+    }
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const anchors = Array.from(doc.querySelectorAll('a[href]'));
+    const productLinks = [];
+    const seen = new Set();
+    for (const a of anchors) {
+        const hrefRaw = a.getAttribute('href') || '';
+        if (!hrefRaw || hrefRaw.startsWith('#') || hrefRaw.startsWith('javascript:')) continue;
+        let href;
+        try {
+            href = new URL(hrefRaw, sourceUrl).href;
+        } catch {
+            continue;
+        }
+        const text = `${a.textContent || ''} ${href}`.toLowerCase();
+        const isProductLike = /product|producto|item|shop|store|dp\/|\/p\//.test(text);
+        if (!isProductLike) continue;
+        if (seen.has(href)) continue;
+        seen.add(href);
+        productLinks.push(href);
+        if (productLinks.length >= maxProducts) break;
+    }
+
+    // Fallback: si no detecta enlaces producto, intenta tratar la URL como producto único.
+    if (productLinks.length === 0) {
+        productLinks.push(sourceUrl);
+    }
+
+    const extracted = [];
+    for (const link of productLinks) {
+        try {
+            const item = await extractProductDataFromUrl(link);
+            extracted.push({
+                selected: true,
+                name: item.name || 'Producto sin nombre',
+                description: item.description || '',
+                image: item.image || '',
+                sku: item.sku || '',
+                gtin: item.gtin || '',
+                sourceUrl: link,
+                price: 1,
+                quantity: 0,
+                categoryId: '',
+                locationId: SQUARE_CONFIG.locationId || ''
+            });
+        } catch (error) {
+            console.warn('No se pudo extraer producto del enlace:', link, error);
+        }
+    }
+
+    return extracted;
+}
+
+function getCategoryOptionsHtml(selectedId = '') {
+    const categories = (typeof squareCategories !== 'undefined' && Array.isArray(squareCategories)) ? squareCategories : [];
+    const options = ['<option value="">Seleccionar categoría...</option>'];
+    categories.forEach((category) => {
+        const value = category.id;
+        const name = category.category_data?.name || category.id;
+        const selected = value === selectedId ? 'selected' : '';
+        options.push(`<option value="${value}" ${selected}>${name}</option>`);
+    });
+    return options.join('');
+}
+
+function getLocationOptionsHtml(selectedId = '') {
+    const locationSelect = document.getElementById('product-location');
+    if (locationSelect && locationSelect.options.length > 0) {
+        return Array.from(locationSelect.options).map((opt) => {
+            const selected = opt.value === selectedId ? 'selected' : '';
+            return `<option value="${opt.value}" ${selected}>${opt.textContent}</option>`;
+        }).join('');
+    }
+    return `<option value="${SQUARE_CONFIG.locationId}">TropiPlus Supermarket</option>`;
+}
+
+function renderBulkImportTable() {
+    const tbody = document.getElementById('bulk-products-table-body');
+    const results = document.getElementById('bulk-url-import-results');
+    const countLabel = document.getElementById('bulk-products-count');
+    if (!tbody || !results || !countLabel) return;
+
+    results.style.display = bulkImportProducts.length ? 'block' : 'none';
+    countLabel.textContent = `${bulkImportProducts.length} productos detectados`;
+
+    const categoryOptions = getCategoryOptionsHtml();
+    const locationOptions = getLocationOptionsHtml(SQUARE_CONFIG.locationId || '');
+
+    tbody.innerHTML = bulkImportProducts.map((item, idx) => `
+        <tr>
+            <td style="text-align:center;">
+                <input type="checkbox" class="bulk-item-check" data-index="${idx}" ${item.selected ? 'checked' : ''}>
+            </td>
+            <td style="text-align:center;">
+                <img src="${item.image || 'images/placeholder.svg'}" alt="img" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" onerror="this.src='images/placeholder.svg'">
+            </td>
+            <td>
+                <input type="text" class="bulk-item-name" data-index="${idx}" value="${(item.name || '').replace(/"/g, '&quot;')}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">
+                <small style="display:block;color:#666;margin-top:4px;">${(item.description || '').slice(0, 100)}</small>
+            </td>
+            <td><input type="number" step="0.01" min="0.01" class="bulk-item-price" data-index="${idx}" value="${Number(item.price || 1)}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>
+            <td><input type="number" min="0" class="bulk-item-qty" data-index="${idx}" value="${Number(item.quantity || 0)}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>
+            <td><select class="bulk-item-category" data-index="${idx}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">${categoryOptions}</select></td>
+            <td><select class="bulk-item-location" data-index="${idx}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">${locationOptions}</select></td>
+            <td><input type="url" class="bulk-item-url" data-index="${idx}" value="${(item.sourceUrl || '').replace(/"/g, '&quot;')}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>
+        </tr>
+    `).join('');
+
+    // Aplicar valores seleccionados por fila
+    bulkImportProducts.forEach((item, idx) => {
+        const catEl = tbody.querySelector(`.bulk-item-category[data-index="${idx}"]`);
+        const locEl = tbody.querySelector(`.bulk-item-location[data-index="${idx}"]`);
+        if (catEl) catEl.value = item.categoryId || '';
+        if (locEl) locEl.value = item.locationId || (SQUARE_CONFIG.locationId || '');
+    });
+}
+
+function syncBulkRowValuesFromUI() {
+    const tbody = document.getElementById('bulk-products-table-body');
+    if (!tbody) return;
+    bulkImportProducts.forEach((item, idx) => {
+        const checkedEl = tbody.querySelector(`.bulk-item-check[data-index="${idx}"]`);
+        const nameEl = tbody.querySelector(`.bulk-item-name[data-index="${idx}"]`);
+        const priceEl = tbody.querySelector(`.bulk-item-price[data-index="${idx}"]`);
+        const qtyEl = tbody.querySelector(`.bulk-item-qty[data-index="${idx}"]`);
+        const catEl = tbody.querySelector(`.bulk-item-category[data-index="${idx}"]`);
+        const locEl = tbody.querySelector(`.bulk-item-location[data-index="${idx}"]`);
+        const urlEl = tbody.querySelector(`.bulk-item-url[data-index="${idx}"]`);
+
+        item.selected = !!checkedEl?.checked;
+        item.name = (nameEl?.value || item.name || '').trim();
+        item.price = Math.max(0.01, Number(priceEl?.value || item.price || 1));
+        item.quantity = Math.max(0, Number(qtyEl?.value || item.quantity || 0));
+        item.categoryId = catEl?.value || item.categoryId || '';
+        item.locationId = locEl?.value || item.locationId || SQUARE_CONFIG.locationId || '';
+        item.sourceUrl = (urlEl?.value || item.sourceUrl || '').trim();
+    });
+}
+
+async function createSingleProductFromBulk(item) {
+    if (!item?.name || !item?.categoryId || !item?.locationId || !item?.price) {
+        throw new Error('Faltan campos obligatorios (nombre, precio, categoría, location).');
+    }
+
+    const productId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const variationId = `var_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const productObject = {
+        type: 'ITEM',
+        id: `#${productId}`,
+        present_at_all_locations: false,
+        present_at_location_ids: [item.locationId],
+        item_data: {
+            name: item.name,
+            description: item.description || undefined,
+            category_id: item.categoryId,
+            variations: [
+                {
+                    type: 'ITEM_VARIATION',
+                    id: `#${variationId}`,
+                    present_at_all_locations: false,
+                    present_at_location_ids: [item.locationId],
+                    item_variation_data: {
+                        name: 'Default',
+                        pricing_type: 'FIXED_PRICING',
+                        price_money: { amount: Math.round(Number(item.price) * 100), currency: 'USD' },
+                        sku: item.sku || undefined,
+                        track_inventory: Number(item.quantity || 0) > 0
+                    }
+                }
+            ]
+        }
+    };
+
+    if (item.gtin) {
+        productObject.item_data.variations[0].item_variation_data.upc = item.gtin;
+    }
+
+    const response = await squareApiCall('/v2/catalog/object', 'POST', {
+        idempotency_key: `prod_bulk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        object: productObject
+    });
+    const createdProductId = response?.catalog_object?.id;
+    const createdVariationId = response?.catalog_object?.item_data?.variations?.[0]?.id;
+    if (!createdProductId || !createdVariationId) {
+        throw new Error('Square no devolvió IDs del producto creado.');
+    }
+
+    if (item.image) {
+        await createCatalogImageFromUrl(item.image, item.name, createdProductId);
+    }
+
+    if (Number(item.quantity || 0) > 0) {
+        await squareApiCall('/v2/inventory/batch-change', 'POST', {
+            idempotency_key: `inv_bulk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            changes: [
+                {
+                    type: 'PHYSICAL_COUNT',
+                    physical_count: {
+                        catalog_object_id: createdVariationId,
+                        state: 'IN_STOCK',
+                        location_id: item.locationId,
+                        quantity: String(Number(item.quantity || 0)),
+                        occurred_at: new Date().toISOString()
+                    }
+                }
+            ]
+        });
+    }
+
+    if (item.sourceUrl) {
+        const supplierData = {
+            name: (() => {
+                try {
+                    const u = new URL(item.sourceUrl);
+                    return u.hostname.replace('www.', '');
+                } catch {
+                    return 'Proveedor Web';
+                }
+            })(),
+            url: (() => {
+                try {
+                    const u = new URL(item.sourceUrl);
+                    return `${u.protocol}//${u.hostname}`;
+                } catch {
+                    return '';
+                }
+            })(),
+            purchaseUrl: item.sourceUrl,
+            imageUrl: item.image || '',
+            notes: `Producto importado en masa desde ${item.sourceUrl}`
+        };
+        setSupplierInfo(createdProductId, createdVariationId, supplierData);
+        if (typeof window.saveProductSupplierToSupabase === 'function') {
+            await window.saveProductSupplierToSupabase({
+                mappingKey: createdVariationId || createdProductId,
+                productId: createdProductId,
+                variationId: createdVariationId || null,
+                ...supplierData
+            });
+        }
+    }
+}
+
+async function createSelectedBulkProducts() {
+    syncBulkRowValuesFromUI();
+    const selected = bulkImportProducts.filter(item => item.selected);
+    if (selected.length === 0) {
+        updateBulkImportStatus('Selecciona al menos un producto para crear.', 'error');
+        return;
+    }
+
+    updateBulkImportStatus(`<i class="fas fa-spinner fa-spin"></i> Creando ${selected.length} productos en Square...`, 'info');
+    let ok = 0;
+    const errors = [];
+    for (const item of selected) {
+        try {
+            await createSingleProductFromBulk(item);
+            ok += 1;
+        } catch (error) {
+            errors.push(`${item.name}: ${error.message || error}`);
+        }
+    }
+
+    if (errors.length === 0) {
+        updateBulkImportStatus(`<i class="fas fa-check-circle"></i> ${ok} productos creados correctamente.`, 'success');
+    } else {
+        updateBulkImportStatus(`<i class="fas fa-exclamation-triangle"></i> Creados: ${ok}. Con errores: ${errors.length}. Revisa consola.`, 'error');
+        console.warn('Errores importación masiva:', errors);
+    }
+
+    await loadProducts();
+}
+
+function initBulkUrlImportForm() {
+    const form = document.getElementById('bulk-url-import-form');
+    const selectAll = document.getElementById('bulk-select-all');
+    const createBtn = document.getElementById('bulk-create-selected-btn');
+    const modal = document.getElementById('bulk-url-import-modal');
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('bulk-source-url')?.value?.trim();
+            const maxProducts = Number(document.getElementById('bulk-max-products')?.value || 30);
+            if (!url) {
+                updateBulkImportStatus('Debes ingresar una URL válida.', 'error');
+                return;
+            }
+
+            try {
+                updateBulkImportStatus('<i class="fas fa-spinner fa-spin"></i> Escaneando productos del catálogo...', 'info');
+                await waitForSquareProducts();
+                await loadCategoriesForProductForm();
+                await loadLocationsForProductForm();
+                bulkImportProducts = await extractProductsFromCatalogUrl(url, Math.max(1, Math.min(100, maxProducts)));
+                renderBulkImportTable();
+                updateBulkImportStatus(`<i class="fas fa-check-circle"></i> Se detectaron ${bulkImportProducts.length} productos.`, 'success');
+            } catch (error) {
+                console.error('Error en importación masiva:', error);
+                updateBulkImportStatus(`<i class="fas fa-exclamation-circle"></i> ${error.message || 'Error escaneando URL.'}`, 'error');
+            }
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            const checked = !!selectAll.checked;
+            bulkImportProducts = bulkImportProducts.map(item => ({ ...item, selected: checked }));
+            renderBulkImportTable();
+        });
+    }
+
+    if (createBtn) {
+        createBtn.addEventListener('click', async () => {
+            await createSelectedBulkProducts();
+        });
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeBulkUrlImportModal();
+            }
+        });
+    }
+}
+
 async function extractProductDataFromUrl(url) {
     try {
         const statusDiv = document.getElementById('url-extractor-status');
@@ -4912,4 +5288,6 @@ async function toggleTvScreenOrientation(tvId) {
 window.openSupplierModal = openSupplierModal;
 window.openUrlExtractorModal = openUrlExtractorModal;
 window.closeUrlExtractorModal = closeUrlExtractorModal;
+window.openBulkUrlImportModal = openBulkUrlImportModal;
+window.closeBulkUrlImportModal = closeBulkUrlImportModal;
 window.editProduct = editProduct;
