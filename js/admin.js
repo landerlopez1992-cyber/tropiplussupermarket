@@ -4254,47 +4254,33 @@ async function extractProductDataFromUrl(url) {
         statusDiv.style.color = '#1976d2';
         statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extrayendo datos de la URL...';
         
-        // Intentar usar proxy si está disponible (solo funciona en servidor local o Vercel)
-        // Si no está disponible, usar CORS proxy público como fallback
-        let response;
-        let html;
+        // Usar CORS proxy público para acceder a la URL (necesario porque GitHub Pages no tiene backend)
+        // El sitio objetivo puede bloquear el acceso directo desde el navegador por políticas CORS
+        const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        console.log('🔗 Extrayendo datos desde URL usando proxy CORS:', url);
         
-        try {
-            const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-            console.log('🔗 Intentando proxy local:', proxyUrl);
-            response = await fetch(proxyUrl);
+        const response = await fetch(corsProxyUrl);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error accediendo a la URL:', response.status, errorText);
             
-            if (!response.ok) {
-                throw new Error(`Proxy local no disponible (${response.status})`);
+            let errorMessage = 'No se pudo acceder a la URL. Posibles causas:';
+            errorMessage += '\n• El sitio bloquea el acceso externo';
+            errorMessage += '\n• La URL no existe o no es accesible';
+            errorMessage += '\n• Problemas de conectividad';
+            
+            if (response.status === 404) {
+                errorMessage = `La URL no fue encontrada (Error 404). Verifica que la URL sea correcta y que el producto exista en el sitio.`;
+            } else if (response.status >= 500) {
+                errorMessage = `Error del servidor (${response.status}). El sitio puede estar temporalmente no disponible.`;
             }
             
-            html = await response.text();
-            console.log('✅ HTML recibido desde proxy local, longitud:', html.length);
-        } catch (proxyError) {
-            console.warn('⚠️ Proxy local no disponible, usando CORS proxy público:', proxyError);
-            
-            // Fallback: usar un CORS proxy público (limitado pero funcional)
-            const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-            console.log('🔗 Usando CORS proxy público:', corsProxyUrl);
-            
-            response = await fetch(corsProxyUrl);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Error en CORS proxy:', errorText);
-                let errorMessage = 'No se pudo acceder a la URL. El sitio puede bloquear el acceso externo.';
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorMessage = errorJson.error || errorMessage;
-                } catch (e) {
-                    errorMessage = `Error ${response.status}: ${response.statusText}`;
-                }
-                throw new Error(errorMessage);
-            }
-            
-            html = await response.text();
-            console.log('✅ HTML recibido desde CORS proxy, longitud:', html.length);
+            throw new Error(errorMessage);
         }
+        
+        const html = await response.text();
+        console.log('✅ HTML recibido, longitud:', html.length);
         
         // Crear un parser de HTML temporal
         const parser = new DOMParser();
