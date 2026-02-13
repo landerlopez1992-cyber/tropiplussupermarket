@@ -132,11 +132,43 @@ async function exchangeCodeForToken(code) {
         
         const data = await response.json();
         
+        // Obtener locationId si no viene en la respuesta
+        let locationId = data.location_id;
+        let merchantId = data.merchant_id;
+        
+        // Si no viene location_id, obtenerlo de la API
+        if (!locationId && data.access_token) {
+            try {
+                const baseUrl = 'https://connect.squareup.com';
+                const locationsResponse = await fetch(`${baseUrl}/v2/locations`, {
+                    headers: {
+                        'Authorization': `Bearer ${data.access_token}`,
+                        'Square-Version': '2024-01-18'
+                    }
+                });
+                
+                if (locationsResponse.ok) {
+                    const locationsData = await locationsResponse.json();
+                    locationId = locationsData.locations?.[0]?.id || null;
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo obtener location_id:', error);
+            }
+        }
+        
+        // Verificar acceso privado (si está configurado)
+        if (window.checkAccess && window.APP_CONFIG && window.APP_CONFIG.privateMode) {
+            const accessCheck = window.checkAccess(locationId, merchantId);
+            if (!accessCheck.allowed) {
+                throw new Error(accessCheck.message || 'Acceso denegado. Esta app es de uso privado.');
+            }
+        }
+        
         // Guardar tokens
         const connectionData = {
             accessToken: data.access_token,
-            locationId: data.location_id || data.locations?.[0]?.id,
-            merchantId: data.merchant_id,
+            locationId: locationId,
+            merchantId: merchantId,
             expiresAt: new Date(Date.now() + (data.expires_in * 1000)).toISOString()
         };
         
@@ -152,7 +184,8 @@ async function exchangeCodeForToken(code) {
         updateConnectionUI(true);
         
         // Redirigir a la app principal
-        window.location.href = window.location.origin + '/square-app/index.html';
+        const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+        window.location.href = window.location.origin + basePath + '/index.html';
         
     } catch (error) {
         console.error('Error intercambiando código:', error);
