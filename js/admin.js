@@ -28,6 +28,19 @@ const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
 const CURRENCY_STORAGE_KEY = 'tropiplus_currency_config';
 const PUBLIC_TVS_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
+const SUPPLIER_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const SUPPLIER_OOS_PATTERNS = [
+    'out of stock',
+    'currently unavailable',
+    'sold out',
+    'temporarily out of stock',
+    'unavailable',
+    'not available',
+    'agotado',
+    'sin stock',
+    'no disponible',
+    'fuera de inventario'
+];
 
 // Cargar datos de proveedores desde Supabase (con fallback a localStorage)
 async function loadSuppliersData() {
@@ -38,7 +51,7 @@ async function loadSuppliersData() {
     if (typeof window.getSuppliersFromSupabase === 'function') {
         try {
             const supabaseSuppliers = await window.getSuppliersFromSupabase();
-            if (Array.isArray(supabaseSuppliers)) {
+            if (Array.isArray(supabaseSuppliers) && supabaseSuppliers.length > 0) {
                 // Convertir array de Supabase a objeto para compatibilidad
                 globalSuppliers = {};
                 supabaseSuppliers.forEach(supplier => {
@@ -67,7 +80,7 @@ async function loadSuppliersData() {
     if (typeof window.getProductSuppliersFromSupabase === 'function') {
         try {
             const productSuppliers = await window.getProductSuppliersFromSupabase();
-            if (Array.isArray(productSuppliers)) {
+            if (Array.isArray(productSuppliers) && productSuppliers.length > 0) {
                 suppliersData = {};
                 productSuppliers.forEach(item => {
                     const key = item.mappingKey || item.mapping_key || item.variationId || item.variation_id || item.productId || item.product_id;
@@ -2818,6 +2831,12 @@ async function loadProducts() {
 
         // Renderizar tabla
         await renderProductsTable(allProductsWithInventory);
+
+        // Verificar en segundo plano si el proveedor sigue abasteciendo
+        // los productos que tienen URL de compra.
+        refreshSuppliersAvailability(allProductsWithInventory).catch((error) => {
+            console.warn('⚠️ Error verificando disponibilidad de proveedores:', error);
+        });
     } catch (error) {
         console.error('Error cargando productos:', error);
         tableBody.innerHTML = `
@@ -2853,20 +2872,123 @@ async function waitForSquareProducts() {
 }
 
 function getSupplierInfo(productId, variationId) {
-    const key = variationId || productId;
-    return suppliersData[key] || null;
+    const variationKey = variationId || '';
+    const productKey = productId || '';
+    return suppliersData[variationKey] || suppliersData[productKey] || null;
 }
 
 function setSupplierInfo(productId, variationId, supplierData) {
     const key = variationId || productId;
-    suppliersData[key] = {
+    const normalized = {
         ...supplierData,
         productId,
         variationId: variationId || null,
         mappingKey: key,
+        supplyStatus: supplierData.supplyStatus || 'unknown',
+        supplyMessage: supplierData.supplyMessage || '',
+        supplyCheckedAt: supplierData.supplyCheckedAt || null,
         updatedAt: new Date().toISOString()
     };
+    suppliersData[key] = normalized;
+    if (productId) {
+        suppliersData[productId] = {
+            ...normalized,
+            mappingKey: productId
+        };
+    }
     saveSuppliersData();
+}
+
+function getSupplierAvailabilityLabel(supplierInfo) {
+    const status = String(supplierInfo?.supplyStatus || 'unknown');
+    if (status === 'unavailable') {
+        return '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;background:#ffebee;color:#c62828;font-size:11px;font-weight:700;">No abastecible</span>';
+    }
+    if (status === 'available') {
+        return '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;">Disponible proveedor</span>';
+    }
+    return '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;background:#fff8e1;color:#f57c00;font-size:11px;font-weight:700;">Sin verificar</span>';
+}
+
+function isSupplierCheckStale(supplierInfo) {
+    if (!supplierInfo?.purchaseUrl) return false;
+    const checkedAt = Number(supplierInfo.supplyCheckedAt || 0);
+    if (!checkedAt) return true;
+    return (Date.now() - checkedAt) > SUPPLIER_CHECK_INTERVAL_MS;
+}
+
+async function checkSupplierAvailabilityForItem(productData, force = false) {
+    const supplierInfo = productData?.supplierInfo;
+    if (!supplierInfo?.purchaseUrl) return false;
+    if (!force && !isSupplierCheckStale(supplierInfo)) return false;
+
+    const url = supplierInfo.purchaseUrl;
+    const key = productData?.variationId || productData?.product?.id;
+    if (!key) return false;
+
+    let nextStatus = 'unknown';
+    let nextMessage = '';
+    try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl, { cache: 'no-store' });
+
+        if (!response.ok) {
+            nextStatus = 'unavailable';
+            nextMessage = `HTTP ${response.status}`;
+        } else {
+            const html = String(await response.text() || '').toLowerCase();
+            const hasOutOfStock = SUPPLIER_OOS_PATTERNS.some(pattern => html.includes(pattern));
+            if (hasOutOfStock) {
+                nextStatus = 'unavailable';
+                nextMessage = 'Proveedor indica agotado/no disponible';
+            } else {
+                nextStatus = 'available';
+                nextMessage = '';
+            }
+        }
+    } catch (error) {
+        nextStatus = 'unknown';
+        nextMessage = `Sin verificación (${error?.message || 'error'})`;
+    }
+
+    const updatedSupplier = {
+        ...supplierInfo,
+        supplyStatus: nextStatus,
+        supplyMessage: nextMessage,
+        supplyCheckedAt: Date.now(),
+        updatedAt: new Date().toISOString()
+    };
+
+    suppliersData[key] = {
+        ...updatedSupplier,
+        mappingKey: key
+    };
+    if (updatedSupplier.productId) {
+        suppliersData[updatedSupplier.productId] = {
+            ...updatedSupplier,
+            mappingKey: updatedSupplier.productId
+        };
+    }
+    localStorage.setItem('tropiplus_suppliers', JSON.stringify(suppliersData));
+    productData.supplierInfo = updatedSupplier;
+    return true;
+}
+
+async function refreshSuppliersAvailability(products) {
+    if (!Array.isArray(products) || products.length === 0) return;
+    const candidates = products.filter(p => p?.supplierInfo?.purchaseUrl);
+    if (candidates.length === 0) return;
+
+    let changed = false;
+    for (const item of candidates) {
+        const itemChanged = await checkSupplierAvailabilityForItem(item, false);
+        if (itemChanged) changed = true;
+    }
+
+    if (changed) {
+        await renderProductsTable(allProductsWithInventory);
+        updateStats();
+    }
 }
 
 function updateStats() {
@@ -2958,9 +3080,11 @@ async function renderProductsTable(products) {
                 </td>
                 <td>
                     ${supplierInfo?.purchaseUrl ? `
-                        <a href="${supplierInfo.purchaseUrl}" target="_blank" class="supplier-url">
+                        <a href="${supplierInfo.purchaseUrl}" target="_blank" class="supplier-url" style="${supplierInfo.supplyStatus === 'unavailable' ? 'color:#c62828;font-weight:700;' : ''}">
                             <i class="fas fa-shopping-cart"></i> Ver producto
                         </a>
+                        ${getSupplierAvailabilityLabel(supplierInfo)}
+                        ${supplierInfo?.supplyMessage ? `<div style="margin-top:4px;font-size:11px;color:${supplierInfo.supplyStatus === 'unavailable' ? '#c62828' : '#757575'};">${supplierInfo.supplyMessage}</div>` : ''}
                     ` : '<span class="no-supplier">-</span>'}
                 </td>
                 <td>
