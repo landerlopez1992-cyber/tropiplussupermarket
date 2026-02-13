@@ -4250,8 +4250,39 @@ async function saveNewProduct() {
                 }
             }
 
+            // Subir imagen extraída desde URL y asociarla al producto
             if (extractedImageUrl) {
+                console.log('📷 Procesando imagen extraída desde URL:', extractedImageUrl);
                 imageId = await createCatalogImageFromUrl(extractedImageUrl, name, createdProductId);
+                
+                // Si se creó la imagen, asegurarse de que esté asociada al producto
+                if (imageId && createdProductId && !reusedExistingProduct) {
+                    try {
+                        // Obtener el producto recién creado para actualizar con la imagen
+                        const currentProduct = await squareApiCall(`/v2/catalog/object/${createdProductId}`, 'GET');
+                        if (currentProduct?.object) {
+                            const updateObject = {
+                                type: 'ITEM',
+                                id: createdProductId,
+                                version: currentProduct.object.version,
+                                item_data: {
+                                    ...currentProduct.object.item_data,
+                                    image_ids: [imageId] // Asociar la imagen al producto
+                                }
+                            };
+                            
+                            await squareApiCall('/v2/catalog/object', 'PUT', {
+                                idempotency_key: `img_assoc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                                object: updateObject
+                            });
+                            
+                            console.log('✅ Imagen asociada al producto correctamente:', imageId);
+                        }
+                    } catch (imgError) {
+                        console.warn('⚠️ Error asociando imagen al producto (no crítico):', imgError);
+                        // No es crítico, el producto se creó correctamente
+                    }
+                }
             }
             
             // Si hay cantidad inicial, actualizar inventario.
