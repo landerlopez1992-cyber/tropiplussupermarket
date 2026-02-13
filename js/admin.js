@@ -1521,8 +1521,18 @@ function initCurrencyTab() {
         console.log('💾 [Admin] Configuración de divisas guardada:', config);
     }
     
-    // Cargar configuración existente
-    const config = getCurrencyConfig();
+    // Cargar configuración existente (usar función global si existe, sino leer directamente)
+    let config;
+    if (typeof window.getCurrencyConfig === 'function') {
+        config = window.getCurrencyConfig();
+    } else {
+        try {
+            const raw = localStorage.getItem(CURRENCY_STORAGE_KEY);
+            config = raw ? JSON.parse(raw) : { exchangeRate: 500, enabled: true };
+        } catch (error) {
+            config = { exchangeRate: 500, enabled: true };
+        }
+    }
     document.getElementById('currency-exchange-rate').value = config.exchangeRate || 500;
     document.getElementById('currency-enabled').checked = config.enabled !== false;
     
@@ -1567,28 +1577,8 @@ function initCurrencyTab() {
     });
 }
 
-// Función global para obtener configuración de divisas
-function getCurrencyConfig() {
-    try {
-        const raw = localStorage.getItem(CURRENCY_STORAGE_KEY);
-        if (!raw) return { exchangeRate: 500, enabled: true };
-        return JSON.parse(raw);
-    } catch (error) {
-        console.warn('No se pudo leer configuración de divisas:', error);
-        return { exchangeRate: 500, enabled: true };
-    }
-}
-
-// Función global para convertir USD a CUP
-function convertUsdToCup(usdAmount) {
-    const config = getCurrencyConfig();
-    if (!config.enabled || !config.exchangeRate) return null;
-    return usdAmount * config.exchangeRate;
-}
-
-// Exportar funciones globalmente
-window.getCurrencyConfig = getCurrencyConfig;
-window.convertUsdToCup = convertUsdToCup;
+// Las funciones getCurrencyConfig y convertUsdToCup están definidas en square-integration.js
+// para que estén disponibles en todas las páginas, no solo en el admin
 
 function initTvTab() {
     const form = document.getElementById('tv-config-form');

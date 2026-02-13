@@ -823,6 +823,29 @@ function formatSquarePrice(price) {
   return `$${(amount / 100).toFixed(2)}`;
 }
 
+// Funciones globales para configuración de divisas
+// Estas funciones deben estar disponibles en todas las páginas
+function getCurrencyConfig() {
+  try {
+    const raw = localStorage.getItem('tropiplus_currency_config');
+    if (!raw) return { exchangeRate: 500, enabled: true };
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn('No se pudo leer configuración de divisas:', error);
+    return { exchangeRate: 500, enabled: true };
+  }
+}
+
+function convertUsdToCup(usdAmount) {
+  const config = getCurrencyConfig();
+  if (!config.enabled || !config.exchangeRate) return null;
+  return usdAmount * config.exchangeRate;
+}
+
+// Exportar funciones globalmente
+window.getCurrencyConfig = getCurrencyConfig;
+window.convertUsdToCup = convertUsdToCup;
+
 // Función global para agregar al carrito
 function addToCart(product, quantity = 1) {
   console.log('🛒 Añadiendo al carrito:', product, 'Cantidad:', quantity);
