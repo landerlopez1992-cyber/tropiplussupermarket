@@ -12,10 +12,34 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
+    // Verificar acceso privado primero
+    if (window.APP_CONFIG && window.APP_CONFIG.privateMode) {
+        // Verificar si hay conexión guardada
+        const connection = window.squareOAuth?.getConnection();
+        
+        if (connection && connection.connected) {
+            // Verificar que el Location ID coincida
+            const accessCheck = window.checkAccess(connection.locationId, connection.merchantId);
+            if (!accessCheck.allowed) {
+                showAccessDenied(accessCheck.message);
+                return;
+            }
+        }
+    }
+    
     // Verificar si hay tokens de OAuth guardados (para App Marketplace)
     const connection = window.squareOAuth?.getConnection();
     
     if (connection && connection.connected) {
+        // Verificar acceso antes de continuar
+        if (window.checkAccess) {
+            const accessCheck = window.checkAccess(connection.locationId, connection.merchantId);
+            if (!accessCheck.allowed) {
+                showAccessDenied(accessCheck.message);
+                return;
+            }
+        }
+        
         // Usar tokens de OAuth si están disponibles (App Marketplace)
         window.squareApi.initWithOAuth(connection.accessToken, connection.locationId);
         updateConnectionUI(true);
@@ -25,6 +49,18 @@ async function initApp() {
         const initialized = await window.squareApi.init();
         
         if (initialized) {
+            // Verificar acceso con Location ID del proxy
+            if (window.checkAccess && window.APP_CONFIG) {
+                const locationId = window.squareApi.getLocationId();
+                if (locationId) {
+                    const accessCheck = window.checkAccess(locationId);
+                    if (!accessCheck.allowed) {
+                        showAccessDenied(accessCheck.message);
+                        return;
+                    }
+                }
+            }
+            
             updateConnectionUI(true);
             loadInitialData();
         } else {
@@ -35,6 +71,37 @@ async function initApp() {
     
     // Event listeners
     setupEventListeners();
+}
+
+function showAccessDenied(message) {
+    const inventoryGrid = document.getElementById('inventory-grid');
+    const ordersList = document.getElementById('orders-list');
+    const productsGrid = document.getElementById('products-grid');
+    
+    const errorHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+            <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
+            <h3 style="margin: 20px 0 10px; color: var(--text-primary);">Acceso Restringido</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                ${message || 'Esta aplicación es de uso privado y no está disponible para otros comercios.'}
+            </p>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                Si eres el propietario de esta app, verifica la configuración en <code>app-config.js</code>
+            </p>
+        </div>
+    `;
+    
+    if (inventoryGrid) inventoryGrid.innerHTML = errorHTML;
+    if (ordersList) ordersList.innerHTML = errorHTML;
+    if (productsGrid) productsGrid.innerHTML = errorHTML;
+    
+    // Ocultar botón de conectar
+    const connectBtn = document.getElementById('connect-btn');
+    if (connectBtn) {
+        connectBtn.style.display = 'none';
+    }
+    
+    updateConnectionUI(false);
 }
 
 function setupEventListeners() {

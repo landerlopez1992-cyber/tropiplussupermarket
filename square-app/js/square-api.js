@@ -366,5 +366,5 @@ window.squareApi = {
     getProducts,
     createProduct,
     getCategories,
-    getLocationId: () => SQUARE_CONFIG?.locationId
+    getLocationId: () => SQUARE_CONFIG?.locationId || (oauthMode ? SQUARE_CONFIG?.locationId : null)
 };
