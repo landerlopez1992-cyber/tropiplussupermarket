@@ -4003,17 +4003,38 @@ async function saveNewProduct() {
             createdVariationId = editingVariationId;
             
         } else {
-            // Si el producto ya existe (por SKU o nombre), no crear duplicado.
-            // En ese caso se suma "Cantidad Inicial en Inventario" al inventario actual.
+            // Si el producto ya existe por identificador confiable, no crear duplicado.
+            // Reglas de coincidencia:
+            // 1) SKU exacto
+            // 2) GTIN/UPC/EAN exacto
+            // 3) Misma URL de compra (si viene de extracción por URL)
+            // NOTA: NO usamos solo el nombre, porque puede ser genérico y causar falsos positivos.
             const normalizedSku = String(sku || '').trim().toLowerCase();
-            const normalizedName = String(name || '').trim().toLowerCase();
+            const normalizedGtin = normalizeBarcodeValue(gtin);
+            const sourceUrl = String(form?.dataset?.sourceUrl || '').trim();
             const existingProductData = allProductsWithInventory.find((p) => {
                 const existingSku = String(p?.variation?.item_variation_data?.sku || '').trim().toLowerCase();
-                const existingName = String(p?.itemData?.name || '').trim().toLowerCase();
                 if (normalizedSku && existingSku) {
                     return existingSku === normalizedSku;
                 }
-                return existingName === normalizedName;
+
+                const existingVariationData = p?.variation?.item_variation_data || {};
+                const existingGtin = normalizeBarcodeValue(
+                    existingVariationData.upc || existingVariationData.gtin || existingVariationData.ean || ''
+                );
+                if (normalizedGtin && existingGtin) {
+                    return existingGtin === normalizedGtin;
+                }
+
+                if (sourceUrl) {
+                    const existingSupplierInfo = getSupplierInfo(p?.product?.id, p?.variationId);
+                    const existingPurchaseUrl = String(existingSupplierInfo?.purchaseUrl || '').trim();
+                    if (existingPurchaseUrl && existingPurchaseUrl === sourceUrl) {
+                        return true;
+                    }
+                }
+
+                return false;
             });
 
             if (existingProductData?.product?.id && existingProductData?.variationId) {
