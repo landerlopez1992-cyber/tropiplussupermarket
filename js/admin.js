@@ -1516,17 +1516,6 @@ function initCurrencyTab() {
     const resetBtn = document.getElementById('currency-reset-btn');
     if (!form) return;
     
-    function getCurrencyConfig() {
-        try {
-            const raw = localStorage.getItem(CURRENCY_STORAGE_KEY);
-            if (!raw) return { exchangeRate: 500, enabled: true };
-            return JSON.parse(raw);
-        } catch (error) {
-            console.warn('No se pudo leer configuración de divisas:', error);
-            return { exchangeRate: 500, enabled: true };
-        }
-    }
-    
     function saveCurrencyConfig(config) {
         localStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(config));
         console.log('💾 [Admin] Configuración de divisas guardada:', config);
