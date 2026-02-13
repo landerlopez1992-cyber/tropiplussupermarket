@@ -3596,31 +3596,11 @@ async function lookupBarcodeFromInternet(productData = {}) {
         }
     }
     
-    // PRIORIDAD 2: Buscar en fuentes externas
-    const response = await fetch('/api/barcode-lookup', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            name: name,
-            description: description,
-            sku: sku
-        })
-    });
-
-    if (!response.ok) {
-        let serverMessage = `Error ${response.status}: ${response.statusText}`;
-        try {
-            const errJson = await response.json();
-            serverMessage = errJson.error || serverMessage;
-        } catch (error) {
-            console.warn('No se pudo parsear error JSON de barcode lookup:', error);
-        }
-        throw new Error(serverMessage);
-    }
-
-    return response.json();
+    // PRIORIDAD 2: No hay backend disponible en GitHub Pages
+    // El código de barras debe extraerse directamente desde la URL de origen
+    // Si no se encontró en la extracción inicial, no hay forma de buscarlo automáticamente
+    // sin un backend dedicado
+    throw new Error('No se encontró código de barras. Intenta extraerlo manualmente desde la página del producto o desde Square Catalog.');
 }
 
 async function autoFillBarcodeFromCurrentFields() {
@@ -4340,17 +4320,22 @@ async function extractProductDataFromUrl(url) {
             '';
 
         // 5. GTIN/UPC/EAN directamente desde la pagina (si existe)
+        // Amazon específicamente usa varios formatos
         const directBarcode =
             doc.querySelector('meta[property="product:gtin13"]')?.content ||
             doc.querySelector('meta[property="product:gtin12"]')?.content ||
+            doc.querySelector('meta[property="product:gtin14"]')?.content ||
             doc.querySelector('meta[property="product:ean"]')?.content ||
+            doc.querySelector('meta[property="product:upc"]')?.content ||
             doc.querySelector('[itemprop="gtin13"]')?.textContent?.trim() ||
             doc.querySelector('[itemprop="gtin12"]')?.textContent?.trim() ||
             doc.querySelector('[itemprop="gtin14"]')?.textContent?.trim() ||
             doc.querySelector('[itemprop="gtin8"]')?.textContent?.trim() ||
+            doc.querySelector('[itemprop="ean"]')?.textContent?.trim() ||
+            doc.querySelector('[itemprop="upc"]')?.textContent?.trim() ||
             '';
 
-        // Buscar tambien en JSON-LD estructurado
+        // Buscar en JSON-LD estructurado (Amazon usa esto frecuentemente)
         let jsonLdBarcode = '';
         const jsonLdScripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
         for (const script of jsonLdScripts) {
@@ -4360,6 +4345,7 @@ async function extractProductDataFromUrl(url) {
                 const entries = Array.isArray(parsed) ? parsed : [parsed];
                 for (const entry of entries) {
                     if (!entry || typeof entry !== 'object') continue;
+                    // Buscar en diferentes niveles del objeto JSON-LD
                     const candidate =
                         entry.gtin13 ||
                         entry.gtin12 ||
@@ -4367,7 +4353,14 @@ async function extractProductDataFromUrl(url) {
                         entry.gtin8 ||
                         entry.gtin ||
                         entry.ean ||
-                        entry.upc;
+                        entry.upc ||
+                        entry.offers?.gtin13 ||
+                        entry.offers?.gtin12 ||
+                        entry.offers?.gtin ||
+                        entry.offers?.ean ||
+                        entry.offers?.upc ||
+                        entry.aggregateRating?.gtin13 ||
+                        entry.aggregateRating?.gtin12;
                     const normalized = normalizeBarcodeValue(candidate);
                     if (normalized) {
                         jsonLdBarcode = normalized;
@@ -4379,7 +4372,35 @@ async function extractProductDataFromUrl(url) {
             }
         }
 
-        productData.gtin = normalizeBarcodeValue(directBarcode) || jsonLdBarcode || '';
+        // Buscar en texto visible de la página (Amazon a veces muestra el código visiblemente)
+        let visibleBarcode = '';
+        if (!jsonLdBarcode && !directBarcode) {
+            // Buscar patrones de códigos de barras en el texto (12-14 dígitos)
+            const pageText = doc.body?.textContent || '';
+            const barcodePatterns = [
+                /UPC[:\s]*(\d{12})/i,
+                /EAN[:\s]*(\d{13})/i,
+                /GTIN[:\s]*(\d{12,14})/i,
+                /ISBN[:\s]*(\d{10,13})/i,
+                /ASIN[:\s]*([A-Z0-9]{10})/i, // Amazon ASIN (no es código de barras, pero puede ser útil)
+                /(\d{12,14})/g // Cualquier secuencia de 12-14 dígitos
+            ];
+            
+            for (const pattern of barcodePatterns) {
+                const matches = pageText.match(pattern);
+                if (matches) {
+                    const candidate = matches[1] || matches[0];
+                    const normalized = normalizeBarcodeValue(candidate);
+                    if (normalized && normalized.length >= 12 && normalized.length <= 14) {
+                        visibleBarcode = normalized;
+                        console.log('✅ Código encontrado en texto visible:', visibleBarcode);
+                        break;
+                    }
+                }
+            }
+        }
+
+        productData.gtin = normalizeBarcodeValue(directBarcode) || jsonLdBarcode || normalizeBarcodeValue(visibleBarcode) || '';
         
         // Limpiar y formatear los datos
         if (productData.name) {
