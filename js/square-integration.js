@@ -674,6 +674,20 @@ async function createProductCard(item) {
   
   const priceFormatted = price ? formatSquarePrice(price) : 'Precio no disponible';
   
+  // Calcular precio en CUP si está habilitado
+  let cupPriceHtml = '';
+  if (price && typeof window.getCurrencyConfig === 'function' && typeof window.convertUsdToCup === 'function') {
+    const currencyConfig = window.getCurrencyConfig();
+    if (currencyConfig.enabled && currencyConfig.exchangeRate) {
+      const usdAmount = price.amount / 100; // Convertir centavos a dólares
+      const cupAmount = window.convertUsdToCup(usdAmount);
+      if (cupAmount !== null) {
+        const cupFormatted = cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cupPriceHtml = `<div class="product-price-cup" style="font-size: 14px; color: #666; margin-top: 4px; font-weight: 500;">${cupFormatted} CUP</div>`;
+      }
+    }
+  }
+  
   productCard.innerHTML = `
     ${!isAvailable ? '<span class="product-out-of-stock-badge">AGOTADO</span>' : ''}
     <div class="product-image-container ${!isAvailable ? 'out-of-stock-overlay' : ''}">
@@ -693,6 +707,7 @@ async function createProductCard(item) {
     ${isAvailable && stockQuantity !== null ? `<div class="product-stock-info">En existencia: ${stockQuantity} unidades</div>` : ''}
     <div class="product-price-container">
       <span class="product-price-main">${priceFormatted}</span>
+      ${cupPriceHtml}
     </div>
     <div class="product-actions-row">
       <div class="quantity-control ${!isAvailable ? 'disabled' : ''}">

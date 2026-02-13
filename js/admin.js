@@ -26,6 +26,7 @@ const PROMO_STORAGE_KEY = 'tropiplus_promo_config';
 const TV_STORAGE_KEY = 'tropiplus_tv_configs';
 const QR_STORAGE_KEY = 'tropiplus_qr_configs';
 const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
+const CURRENCY_STORAGE_KEY = 'tropiplus_currency_config';
 const PUBLIC_TVS_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
 
 // Cargar datos de proveedores desde localStorage
@@ -120,6 +121,8 @@ function initAdminPage() {
     initHoursTab();
     // Inicializar pestaña TV
     initTvTab();
+    // Inicializar pestaña Divisas
+    initCurrencyTab();
 
     // Cargar productos
     loadProducts();
@@ -1507,6 +1510,96 @@ function initHoursTab() {
     
     renderDays();
 }
+
+function initCurrencyTab() {
+    const form = document.getElementById('currency-config-form');
+    const resetBtn = document.getElementById('currency-reset-btn');
+    if (!form) return;
+    
+    function getCurrencyConfig() {
+        try {
+            const raw = localStorage.getItem(CURRENCY_STORAGE_KEY);
+            if (!raw) return { exchangeRate: 500, enabled: true };
+            return JSON.parse(raw);
+        } catch (error) {
+            console.warn('No se pudo leer configuración de divisas:', error);
+            return { exchangeRate: 500, enabled: true };
+        }
+    }
+    
+    function saveCurrencyConfig(config) {
+        localStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(config));
+        console.log('💾 [Admin] Configuración de divisas guardada:', config);
+    }
+    
+    // Cargar configuración existente
+    const config = getCurrencyConfig();
+    document.getElementById('currency-exchange-rate').value = config.exchangeRate || 500;
+    document.getElementById('currency-enabled').checked = config.enabled !== false;
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas restablecer la configuración de divisas?')) {
+                const defaults = { exchangeRate: 500, enabled: true };
+                document.getElementById('currency-exchange-rate').value = defaults.exchangeRate;
+                document.getElementById('currency-enabled').checked = defaults.enabled;
+                saveCurrencyConfig(defaults);
+                if (typeof showModal === 'function') {
+                    showModal('Listo', 'Configuración de divisas restablecida.', 'success');
+                }
+            }
+        });
+    }
+    
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const exchangeRate = parseFloat(document.getElementById('currency-exchange-rate').value);
+        const enabled = document.getElementById('currency-enabled').checked;
+        
+        if (!exchangeRate || exchangeRate <= 0) {
+            if (typeof showModal === 'function') {
+                showModal('Error', 'La tasa de cambio debe ser mayor a 0.', 'error');
+            }
+            return;
+        }
+        
+        const currencyConfig = {
+            exchangeRate: exchangeRate,
+            enabled: enabled,
+            updatedAt: Date.now()
+        };
+        
+        saveCurrencyConfig(currencyConfig);
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'Configuración de divisas guardada correctamente. Los productos mostrarán precios en USD y CUP.', 'success');
+        }
+    });
+}
+
+// Función global para obtener configuración de divisas
+function getCurrencyConfig() {
+    try {
+        const raw = localStorage.getItem(CURRENCY_STORAGE_KEY);
+        if (!raw) return { exchangeRate: 500, enabled: true };
+        return JSON.parse(raw);
+    } catch (error) {
+        console.warn('No se pudo leer configuración de divisas:', error);
+        return { exchangeRate: 500, enabled: true };
+    }
+}
+
+// Función global para convertir USD a CUP
+function convertUsdToCup(usdAmount) {
+    const config = getCurrencyConfig();
+    if (!config.enabled || !config.exchangeRate) return null;
+    return usdAmount * config.exchangeRate;
+}
+
+// Exportar funciones globalmente
+window.getCurrencyConfig = getCurrencyConfig;
+window.convertUsdToCup = convertUsdToCup;
 
 function initTvTab() {
     const form = document.getElementById('tv-config-form');
