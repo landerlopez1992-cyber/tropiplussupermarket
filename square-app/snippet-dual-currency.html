@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversión de Monedas - Tropiplus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 16px;
+            background: transparent;
+        }
+        
+        .dual-currency-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            color: white;
+        }
+        
+        .currency-header {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+        
+        .currency-primary {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .currency-secondary {
+            font-size: 22px;
+            font-weight: 600;
+            opacity: 0.95;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .currency-symbol {
+            font-size: 0.8em;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="dual-currency-display" class="dual-currency-container">
+        <div class="loading">Cargando conversión...</div>
+    </div>
+
+    <script>
+        // Configuración de tasa de cambio
+        // Esta se puede obtener de localStorage o de una API
+        const EXCHANGE_RATE = 120; // 1 USD = 120 CUP (configurable)
+        const PRIMARY_CURRENCY = 'USD';
+        const SECONDARY_CURRENCY = 'CUP';
+        
+        // Función para obtener el total del checkout
+        function getCheckoutTotal() {
+            // Intentar obtener el total de diferentes formas según Square Snippets API
+            if (window.Square && window.Square.checkout) {
+                return window.Square.checkout.total || 0;
+            }
+            
+            // Alternativa: buscar en el DOM
+            const totalElement = document.querySelector('[data-testid="checkout-total"]') || 
+                                document.querySelector('.checkout-total') ||
+                                document.querySelector('[class*="total"]');
+            
+            if (totalElement) {
+                const totalText = totalElement.textContent || totalElement.innerText;
+                const match = totalText.match(/\$?([\d,]+\.?\d*)/);
+                if (match) {
+                    return parseFloat(match[1].replace(/,/g, '')) * 100; // Convertir a centavos
+                }
+            }
+            
+            return 0;
+        }
+        
+        // Función para formatear moneda
+        function formatCurrency(amount, currency) {
+            const formatted = amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            
+            if (currency === 'USD') {
+                return `$${formatted}`;
+            } else if (currency === 'CUP') {
+                return `${formatted}`;
+            }
+            
+            return formatted;
+        }
+        
+        // Función para actualizar la visualización
+        function updateDisplay() {
+            const totalCents = getCheckoutTotal();
+            const totalUSD = totalCents / 100;
+            const totalCUP = totalUSD * EXCHANGE_RATE;
+            
+            const displayEl = document.getElementById('dual-currency-display');
+            
+            if (totalUSD === 0) {
+                displayEl.innerHTML = `
+                    <div class="currency-header">Total de la Venta</div>
+                    <div class="currency-primary">
+                        <span class="currency-symbol">$</span>
+                        <span>0.00</span>
+                        <span style="font-size: 0.6em; opacity: 0.8;">USD</span>
+                    </div>
+                    <div class="currency-secondary">
+                        <span>0.00</span>
+                        <span style="font-size: 0.6em; opacity: 0.8;">CUP</span>
+                    </div>
+                `;
+                return;
+            }
+            
+            displayEl.innerHTML = `
+                <div class="currency-header">Total de la Venta</div>
+                <div class="currency-primary">
+                    <span class="currency-symbol">$</span>
+                    <span>${formatCurrency(totalUSD, 'USD')}</span>
+                    <span style="font-size: 0.6em; opacity: 0.8;">USD</span>
+                </div>
+                <div class="currency-secondary">
+                    <span>${formatCurrency(totalCUP, 'CUP')}</span>
+                    <span style="font-size: 0.6em; opacity: 0.8;">CUP</span>
+                </div>
+            `;
+        }
+        
+        // Observar cambios en el total
+        function observeCheckoutChanges() {
+            // Usar MutationObserver para detectar cambios en el DOM
+            const observer = new MutationObserver(() => {
+                updateDisplay();
+            });
+            
+            // Observar el body completo (ya que no sabemos exactamente dónde está el total)
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+            
+            // También actualizar periódicamente
+            setInterval(updateDisplay, 1000);
+        }
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay();
+            observeCheckoutChanges();
+        });
+        
+        // Si el DOM ya está cargado
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateDisplay);
+        } else {
+            updateDisplay();
+            observeCheckoutChanges();
+        }
+        
+        // Escuchar eventos de Square (si están disponibles)
+        if (window.Square && window.Square.addEventListener) {
+            window.Square.addEventListener('checkout:total:changed', updateDisplay);
+        }
+    </script>
+</body>
+</html>
