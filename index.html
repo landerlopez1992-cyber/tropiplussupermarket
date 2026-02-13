@@ -246,6 +246,15 @@
             <div class="remesa-modal-body">
                 <p class="remesa-description">Envíe una remesa a su ser querido. Se aplica un 10% de comisión por el servicio.</p>
                 
+                <!-- Tasa de cambio -->
+                <div class="remesa-exchange-rate-info" id="remesa-exchange-rate-info" style="background: #f0f7ff; border-left: 4px solid #42b649; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-exchange-alt" style="color: #42b649;"></i>
+                        <span style="font-weight: 600; color: #1f318a;">Tasa de cambio:</span>
+                        <span id="remesa-exchange-rate-display" style="font-weight: 700; color: #42b649;">1 USD = 500 CUP</span>
+                    </div>
+                </div>
+                
                 <div class="remesa-form-group">
                     <label for="remesa-recipient-name" class="remesa-label">Nombre y Apellidos de quien recogerá:</label>
                     <input type="text" id="remesa-recipient-name" class="remesa-input" placeholder="Nombre completo" required>
@@ -284,6 +293,11 @@
                     <div class="remesa-calculation-row remesa-total">
                         <span><strong>Total a pagar:</strong></span>
                         <span id="remesa-total-amount"><strong>$0.00</strong></span>
+                    </div>
+                    <!-- Mostrar cantidad en CUP si se selecciona CUP -->
+                    <div class="remesa-calculation-row remesa-cup-delivery" id="remesa-cup-delivery-row" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 2px solid rgba(255,255,255,0.2);">
+                        <span style="font-weight: 600; color: #4caf50;">Se entregará en CUP:</span>
+                        <span id="remesa-cup-amount" style="font-weight: 700; color: #4caf50; font-size: 18px;">0.00 CUP</span>
                     </div>
                 </div>
             </div>

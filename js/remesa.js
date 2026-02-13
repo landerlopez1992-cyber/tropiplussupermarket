@@ -15,10 +15,24 @@ function initRemesaSystem() {
 
     if (!remesaBtn || !remesaModal) return;
 
+    // Actualizar tasa de cambio al abrir el modal
+    const updateExchangeRateDisplay = () => {
+        const exchangeRateDisplay = document.getElementById('remesa-exchange-rate-display');
+        if (exchangeRateDisplay && typeof window.getCurrencyConfig === 'function') {
+            const currencyConfig = window.getCurrencyConfig();
+            if (currencyConfig.enabled && currencyConfig.exchangeRate) {
+                exchangeRateDisplay.textContent = `1 USD = ${currencyConfig.exchangeRate.toLocaleString('es-CU')} CUP`;
+            } else {
+                exchangeRateDisplay.textContent = '1 USD = 500 CUP';
+            }
+        }
+    };
+
     // Abrir modal
     remesaBtn.addEventListener('click', () => {
         remesaModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        updateExchangeRateDisplay();
     });
 
     // Cerrar modal
@@ -69,25 +83,55 @@ function updateRemesaCalculation() {
     const feeAmountSpan = document.getElementById('remesa-fee-amount');
     const totalAmountSpan = document.getElementById('remesa-total-amount');
     const currencySymbol = document.getElementById('remesa-currency-symbol');
+    const cupDeliveryRow = document.getElementById('remesa-cup-delivery-row');
+    const cupAmountSpan = document.getElementById('remesa-cup-amount');
 
     if (!amountInput || !currencySelect) return;
 
     const amount = parseFloat(amountInput.value) || 0;
     const currency = currencySelect.value;
-    const symbol = currency === 'USD' ? '$' : '₱';
     
-    // Calcular fee (10%)
+    // IMPORTANTE: La cantidad siempre se ingresa en USD, independientemente de la moneda de entrega
+    // El total a pagar siempre es en USD (con comisión del 10%)
     const fee = amount * 0.10;
-    const total = amount + fee;
+    const total = amount + fee; // Total a pagar con Square (siempre en USD)
 
+    // Mostrar cálculos en USD (siempre se paga en USD)
     if (baseAmountSpan) {
-        baseAmountSpan.textContent = `${symbol}${amount.toFixed(2)}`;
+        baseAmountSpan.textContent = `$${amount.toFixed(2)}`;
     }
     if (feeAmountSpan) {
-        feeAmountSpan.textContent = `${symbol}${fee.toFixed(2)}`;
+        feeAmountSpan.textContent = `$${fee.toFixed(2)}`;
     }
     if (totalAmountSpan) {
-        totalAmountSpan.innerHTML = `<strong>${symbol}${total.toFixed(2)}</strong>`;
+        totalAmountSpan.innerHTML = `<strong>$${total.toFixed(2)}</strong>`;
+    }
+
+    // Si se selecciona CUP como moneda de entrega, mostrar cuánto se entregará en CUP
+    if (currency === 'CUP' && amount > 0) {
+        // Obtener tasa de cambio
+        let exchangeRate = 500; // Default
+        if (typeof window.getCurrencyConfig === 'function') {
+            const currencyConfig = window.getCurrencyConfig();
+            if (currencyConfig.enabled && currencyConfig.exchangeRate) {
+                exchangeRate = currencyConfig.exchangeRate;
+            }
+        }
+        
+        // Calcular: cantidad en USD × tasa de cambio = cantidad en CUP
+        const cupAmount = amount * exchangeRate;
+        
+        if (cupDeliveryRow) {
+            cupDeliveryRow.style.display = 'flex';
+        }
+        if (cupAmountSpan) {
+            cupAmountSpan.textContent = `${cupAmount.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CUP`;
+        }
+    } else {
+        // Ocultar si no es CUP o no hay cantidad
+        if (cupDeliveryRow) {
+            cupDeliveryRow.style.display = 'none';
+        }
     }
 }
 
