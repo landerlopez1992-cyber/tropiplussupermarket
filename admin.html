@@ -903,6 +903,42 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- Sección de Gestión de Remesas -->
+                <div style="margin-top: 40px; border-top: 2px solid var(--gray-border); padding-top: 30px;">
+                    <div style="margin-bottom: 25px; text-align: center;">
+                        <h2 style="margin-bottom: 12px; font-size: 24px;">
+                            <i class="fas fa-money-bill-wave"></i> Gestión de Remesas
+                        </h2>
+                        <p style="color: var(--gray-text); margin-bottom: 0; font-size: 14px;">
+                            Administra las remesas creadas desde la web. Verifica y entrega remesas usando el código de confirmación.
+                        </p>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <label style="font-weight: 600; color: var(--dark-blue-nav);">Filtrar por estado:</label>
+                            <select id="remesas-filter-status" style="padding: 8px 12px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px; cursor: pointer;">
+                                <option value="">Todas</option>
+                                <option value="pending">Pendientes</option>
+                                <option value="delivered">Entregadas</option>
+                                <option value="cancelled">Canceladas</option>
+                            </select>
+                            <button id="remesas-refresh-btn" class="btn-primary" style="margin-left: auto;">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Remesas -->
+                    <div id="remesas-list-container" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+                            <p>Cargando remesas...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Subtab de TV -->

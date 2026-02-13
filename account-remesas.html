@@ -3,25 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Cuenta - Tropiplus Supermarket</title>
+    <title>Mis Remesas - Tropiplus Supermarket</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Header Principal con Logo y Búsqueda -->
+    <!-- Header Principal -->
     <header class="main-header-section">
         <div class="container">
             <div class="header-top-row">
-                <!-- Logo -->
                 <div class="logo-section-main">
                     <a href="index.html" class="main-logo-link">
                         <img src="images/logo.png" alt="Tropiplus Supermarket" class="main-logo-image">
                         <span class="main-logo-text">Tropiplus Supermarket</span>
                     </a>
                 </div>
-
-                <!-- Búsqueda y Navegación -->
                 <div class="header-search-nav">
                     <button class="categories-main-btn">
                         Categorías <i class="fas fa-chevron-down"></i>
@@ -36,8 +33,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- Usuario y Carrito -->
                 <div class="header-user-section">
                     <div class="user-account-link" id="user-account-link">
                         <i class="fas fa-user"></i>
@@ -52,7 +47,7 @@
         </div>
     </header>
 
-    <!-- Barra de Navegación Azul Oscuro -->
+    <!-- Barra de Navegación -->
     <div class="nav-bar-dark-blue">
         <div class="container">
             <div class="nav-bar-inner">
@@ -90,22 +85,15 @@
         </div>
     </div>
 
-    <!-- Barra de Categorías Amarilla -->
-    <div class="categories-yellow-bar">
-        <div class="container">
-            <div class="categories-scroll-wrapper" id="categories-scroll">
-                <!-- Categorías se cargan dinámicamente desde Square -->
-            </div>
-        </div>
-    </div>
-
     <!-- Breadcrumbs -->
     <div class="breadcrumbs-section">
         <div class="container">
             <div class="breadcrumbs">
                 <a href="index.html">Inicio</a>
                 <i class="fas fa-chevron-right"></i>
-                <span>Mi Cuenta</span>
+                <a href="account.html">Mi Cuenta</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Mis remesas</span>
             </div>
         </div>
     </div>
@@ -118,31 +106,31 @@
                 <aside class="account-sidebar">
                     <h2 class="account-sidebar-title">Mi Cuenta</h2>
                     <nav class="account-nav">
-                        <a href="account.html" class="account-nav-link active" id="nav-datos">
+                        <a href="account.html" class="account-nav-link">
                             <i class="fas fa-user"></i> Mis datos
                         </a>
-                        <a href="account-orders.html" class="account-nav-link" id="nav-ordenes">
+                        <a href="account-orders.html" class="account-nav-link">
                             <i class="fas fa-shopping-bag"></i> Mis órdenes
                         </a>
-                        <a href="products.html" class="account-nav-link" id="nav-comprar">
+                        <a href="products.html" class="account-nav-link">
                             <i class="fas fa-redo"></i> Comprar de nuevo
                         </a>
-                        <a href="account-recipients.html" class="account-nav-link" id="nav-destinatarios">
+                        <a href="account-recipients.html" class="account-nav-link">
                             <i class="fas fa-address-book"></i> Mis destinatarios
                         </a>
-                        <a href="account-remesas.html" class="account-nav-link" id="nav-remesas">
+                        <a href="account-remesas.html" class="account-nav-link active">
                             <i class="fas fa-money-bill-wave"></i> Mis remesas
                         </a>
-                        <a href="account-wishlist.html" class="account-nav-link" id="nav-deseos">
+                        <a href="account-wishlist.html" class="account-nav-link">
                             <i class="fas fa-heart"></i> Mi lista de deseos
                         </a>
-                        <a href="account-giftcards.html" class="account-nav-link" id="nav-giftcards">
+                        <a href="account-giftcards.html" class="account-nav-link">
                             <i class="fas fa-gift"></i> Tarjetas de regalo
                         </a>
-                        <a href="account-password.html" class="account-nav-link" id="nav-password">
+                        <a href="account-password.html" class="account-nav-link">
                             <i class="fas fa-lock"></i> Cambiar contraseña
                         </a>
-                        <a href="#" class="account-nav-link" id="nav-logout" onclick="logout(); return false;">
+                        <a href="#" class="account-nav-link" onclick="logout(); return false;">
                             <i class="fas fa-sign-out-alt"></i> Salir
                         </a>
                     </nav>
@@ -151,129 +139,29 @@
                 <!-- Contenido Principal -->
                 <div class="account-content">
                     <div class="account-header">
-                        <h1 class="account-title">Mis datos</h1>
-                        <div class="account-actions">
-                            <a href="account-password.html" class="account-action-btn">
-                                <i class="fas fa-lock"></i> Cambiar contraseña
-                            </a>
-                            <button class="account-action-btn" id="btn-modify">
-                                <i class="fas fa-edit"></i> Modificar
-                            </button>
-                        </div>
+                        <h1 class="account-title">Mis remesas</h1>
                     </div>
 
-                    <div class="account-form-container" id="account-form-container">
-                        <form id="account-form" class="account-form">
-                            <div class="form-group">
-                                <label for="account-name" class="form-label">Su nombre *</label>
-                                <input 
-                                    type="text" 
-                                    id="account-name" 
-                                    name="name" 
-                                    class="form-input" 
-                                    required
-                                    readonly
-                                >
+                    <div class="remesas-tabs" style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--gray-border);">
+                        <button class="order-tab active" data-tab="all" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 500; color: var(--gray-text);">
+                            Todas
+                        </button>
+                        <button class="order-tab" data-tab="pending" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 500; color: var(--gray-text);">
+                            Enviadas
+                        </button>
+                        <button class="order-tab" data-tab="delivered" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 500; color: var(--gray-text);">
+                            Cobradas
+                        </button>
+                    </div>
+
+                    <div id="remesas-list" class="orders-list">
+                        <!-- Las remesas se cargan dinámicamente -->
+                        <div class="orders-empty">
+                            <div class="orders-empty-icon">
+                                <i class="fas fa-money-bill-wave"></i>
                             </div>
-
-                            <div class="form-group">
-                                <label for="account-email" class="form-label">Correo electrónico</label>
-                                <input 
-                                    type="email" 
-                                    id="account-email" 
-                                    name="email" 
-                                    class="form-input" 
-                                    readonly
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="account-address" class="form-label">Su dirección *</label>
-                                <input 
-                                    type="text" 
-                                    id="account-address" 
-                                    name="address" 
-                                    class="form-input" 
-                                    required
-                                    readonly
-                                >
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="account-country" class="form-label">País *</label>
-                                    <input 
-                                        type="text" 
-                                        id="account-country" 
-                                        name="country" 
-                                        class="form-input" 
-                                        required
-                                        readonly
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="account-state" class="form-label">Provincia / Estado *</label>
-                                    <input 
-                                        type="text" 
-                                        id="account-state" 
-                                        name="state" 
-                                        class="form-input" 
-                                        required
-                                        readonly
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="account-city" class="form-label">Ciudad *</label>
-                                    <input 
-                                        type="text" 
-                                        id="account-city" 
-                                        name="city" 
-                                        class="form-input" 
-                                        required
-                                        readonly
-                                    >
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="account-postal" class="form-label">Código postal *</label>
-                                    <input 
-                                        type="text" 
-                                        id="account-postal" 
-                                        name="postal_code" 
-                                        class="form-input" 
-                                        required
-                                        readonly
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="account-phone" class="form-label">Teléfono</label>
-                                <input 
-                                    type="tel" 
-                                    id="account-phone" 
-                                    name="phone" 
-                                    class="form-input" 
-                                    readonly
-                                >
-                            </div>
-
-                            <div id="account-error" class="auth-error-message" style="display: none;"></div>
-                            <div id="account-success" class="auth-success-message" style="display: none;"></div>
-
-                            <div class="account-form-actions" id="account-form-actions" style="display: none;">
-                                <button type="submit" class="auth-submit-btn">
-                                    Guardar Cambios
-                                </button>
-                                <button type="button" class="auth-link-btn" id="btn-cancel">
-                                    Cancelar
-                                </button>
-                            </div>
-                        </form>
+                            <h3>Cargando remesas...</h3>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -303,6 +191,7 @@
                     <a href="account.html" class="footer-link">Mi cuenta</a>
                     <a href="account-orders.html" class="footer-link">Mis órdenes</a>
                     <a href="account-recipients.html" class="footer-link">Mis destinatarios</a>
+                    <a href="account-remesas.html" class="footer-link">Mis remesas</a>
                     <a href="cart.html" class="footer-link">Mi carro de compras</a>
                     <a href="account-wishlist.html" class="footer-link">Mi lista de deseos</a>
                     <a href="#" class="footer-link" onclick="if(typeof logout === 'function') { logout(); return false; }">Salir</a>
@@ -330,7 +219,7 @@
         </div>
     </footer>
 
-    <!-- Sidebars (Menu, Categories, Cart) -->
+    <!-- Sidebars -->
     <div class="main-menu-overlay" id="main-menu-overlay"></div>
     <aside class="main-menu-sidebar" id="main-menu-sidebar">
         <div class="main-menu-header">
@@ -427,7 +316,6 @@
             </div>
         </div>
     </aside>
-
     <div class="categories-sidebar-overlay" id="categories-overlay"></div>
     <aside class="categories-sidebar-panel" id="categories-sidebar-panel">
         <div class="categories-panel-header">
@@ -440,15 +328,10 @@
             </button>
         </div>
         <div class="categories-panel-container">
-            <div class="categories-panel-body" id="categories-list">
-                <!-- Categorías principales se cargan dinámicamente desde Square -->
-            </div>
-            <div class="subcategories-panel-body" id="subcategories-list">
-                <!-- Subcategorías se cargan dinámicamente cuando se selecciona una categoría -->
-            </div>
+            <div class="categories-panel-body" id="categories-list"></div>
+            <div class="subcategories-panel-body" id="subcategories-list"></div>
         </div>
     </aside>
-
     <div class="cart-sidebar-overlay" id="cart-overlay"></div>
     <aside class="cart-sidebar-panel" id="cart-sidebar">
         <div class="cart-panel-header">
@@ -460,7 +343,6 @@
         <div class="cart-panel-body" id="cart-content">
             <div class="cart-store-section">
                 <h4 class="cart-store-title">Tienda</h4>
-                <!-- Items del carrito -->
             </div>
         </div>
         <div class="cart-panel-footer">
@@ -495,6 +377,7 @@
     <script src="js/modal.js"></script>
     <script src="js/remesa.js"></script>
     <script src="js/giftcard.js"></script>
-    <script src="js/account.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/account-remesas.js"></script>
 </body>
 </html>

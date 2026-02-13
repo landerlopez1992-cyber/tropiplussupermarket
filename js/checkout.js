@@ -794,19 +794,80 @@ async function processPayment(paymentMethod, paymentToken, customerId) {
 
         console.log('✅ Orden creada exitosamente:', order.id);
 
+        // Detectar y guardar remesas en Supabase
+        const cart = getCart();
+        const remesas = cart.filter(item => item.type === 'remesa' && item.remesaData);
+        const confirmationCodes = [];
+        
+        if (remesas.length > 0 && typeof window.saveRemesaToSupabase === 'function') {
+            const user = getCurrentUser();
+            const currencyConfig = typeof window.getCurrencyConfig === 'function' ? window.getCurrencyConfig() : { exchangeRate: 500, enabled: true };
+            
+            for (const remesaItem of remesas) {
+                try {
+                    const remesaData = {
+                        orderId: order.id,
+                        senderCustomerId: user?.id || null,
+                        senderName: user ? [user.given_name, user.family_name].filter(Boolean).join(' ').trim() || user.name || user.email : 'Usuario',
+                        senderEmail: user?.email || null,
+                        recipientName: remesaItem.remesaData.recipientName,
+                        recipientId: remesaItem.remesaData.recipientId || null,
+                        amount: remesaItem.remesaData.amount,
+                        currency: remesaItem.remesaData.currency || 'USD',
+                        fee: remesaItem.remesaData.fee,
+                        total: remesaItem.remesaData.total,
+                        exchangeRate: currencyConfig.enabled ? currencyConfig.exchangeRate : null
+                    };
+                    
+                    const savedRemesa = await window.saveRemesaToSupabase(remesaData);
+                    if (savedRemesa && savedRemesa.confirmation_code) {
+                        confirmationCodes.push(savedRemesa.confirmation_code);
+                        console.log('✅ Remesa guardada con código:', savedRemesa.confirmation_code);
+                    }
+                } catch (error) {
+                    console.error('❌ Error guardando remesa:', error);
+                    // No bloquear el flujo si falla guardar la remesa
+                }
+            }
+        }
+
         // Si es pago en efectivo, mostrar modal de 24 horas
         if (paymentMethod === 'CASH') {
             showCashPickupModal(order.id);
         }
 
-        // Mostrar mensaje de éxito
+        // Mostrar mensaje de éxito (con códigos de confirmación si hay remesas)
         const paymentMethodText = paymentMethod === 'CARD' ? 'con tarjeta' : 'en efectivo (al recoger)';
+        let remesaConfirmationHtml = '';
+        
+        if (confirmationCodes.length > 0) {
+            remesaConfirmationHtml = `
+                <div style="background: #f0f7ff; border-left: 4px solid #42b649; padding: 16px; border-radius: 4px; margin: 16px 0;">
+                    <h4 style="margin-top: 0; color: #1f318a; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-key" style="color: #42b649;"></i>
+                        Código(s) de Confirmación de Remesa:
+                    </h4>
+                    ${confirmationCodes.map(code => `
+                        <div style="background: white; padding: 12px; border-radius: 4px; margin: 8px 0; border: 2px solid #42b649;">
+                            <strong style="font-size: 20px; color: #42b649; letter-spacing: 2px;">${code}</strong>
+                        </div>
+                    `).join('')}
+                    <p style="margin-bottom: 0; color: #1f318a; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Importante:</strong> Proporciona este código al destinatario para que pueda recoger la remesa. 
+                        También puedes verlo en <a href="account-remesas.html" style="color: #42b649; font-weight: bold;">Mis Remesas</a>.
+                    </p>
+                </div>
+            `;
+        }
+        
         statusContainer.innerHTML = `
             <div class="payment-success">
                 <i class="fas fa-check-circle"></i>
                 <h3>¡Pedido confirmado exitosamente!</h3>
                 <p><strong>Número de orden: ${order.id}</strong></p>
                 <p>Pago procesado ${paymentMethodText}.</p>
+                ${remesaConfirmationHtml}
                 <p>Tu pedido ha sido creado y aparecerá en nuestro sistema.</p>
                 <p>Recogerás tu compra en:</p>
                 <p><strong>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>

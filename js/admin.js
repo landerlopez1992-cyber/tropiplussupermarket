@@ -123,6 +123,8 @@ function initAdminPage() {
     initTvTab();
     // Inicializar pestaña Divisas
     initCurrencyTab();
+    // Inicializar gestión de remesas
+    initRemesasManagement();
 
     // Cargar productos
     loadProducts();
@@ -1576,6 +1578,369 @@ function initCurrencyTab() {
         }
     });
 }
+
+// ============================================
+// GESTIÓN DE REMESAS EN ADMIN
+// ============================================
+
+function initRemesasManagement() {
+    const filterStatus = document.getElementById('remesas-filter-status');
+    const refreshBtn = document.getElementById('remesas-refresh-btn');
+    
+    // Cargar remesas cuando se abre la pestaña de Divisas
+    const currencyTabBtn = document.querySelector('.admin-internal-btn[data-subtab="currency"]');
+    if (currencyTabBtn) {
+        currencyTabBtn.addEventListener('click', () => {
+            setTimeout(() => {
+                loadRemesas();
+            }, 100);
+        });
+    }
+    
+    // Filtro por estado
+    if (filterStatus) {
+        filterStatus.addEventListener('change', () => {
+            loadRemesas(filterStatus.value || null);
+        });
+    }
+    
+    // Botón de actualizar
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadRemesas(filterStatus?.value || null);
+        });
+    }
+    
+    // Cargar remesas inicialmente si la pestaña está activa
+    if (document.getElementById('currency-content')?.classList.contains('active')) {
+        loadRemesas();
+    }
+}
+
+async function loadRemesas(statusFilter = null) {
+    const container = document.getElementById('remesas-list-container');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+            <p>Cargando remesas...</p>
+        </div>
+    `;
+    
+    try {
+        if (typeof window.getAllRemesasFromSupabase !== 'function') {
+            throw new Error('Función getAllRemesasFromSupabase no disponible. Verifica que supabase-config.js esté cargado.');
+        }
+        
+        const remesas = await window.getAllRemesasFromSupabase(statusFilter);
+        renderRemesasList(remesas);
+    } catch (error) {
+        console.error('❌ [Admin] Error cargando remesas:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--red-badge);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 15px;"></i>
+                <p><strong>Error cargando remesas</strong></p>
+                <p style="font-size: 14px; margin-top: 8px;">${error.message || 'Error desconocido'}</p>
+                <button onclick="loadRemesas()" class="btn-primary" style="margin-top: 16px;">
+                    <i class="fas fa-sync-alt"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+function renderRemesasList(remesas) {
+    const container = document.getElementById('remesas-list-container');
+    if (!container) return;
+    
+    if (!remesas || remesas.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i>
+                <p>No hay remesas para mostrar.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const remesasHtml = remesas.map(remesa => {
+        const statusColors = {
+            pending: '#ff9800',
+            delivered: '#4caf50',
+            cancelled: '#9e9e9e'
+        };
+        
+        const statusLabels = {
+            pending: 'Pendiente',
+            delivered: 'Entregada',
+            cancelled: 'Cancelada'
+        };
+        
+        const statusColor = statusColors[remesa.status] || '#616161';
+        const statusLabel = statusLabels[remesa.status] || remesa.status;
+        
+        const createdDate = new Date(remesa.created_at).toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const deliveredDate = remesa.delivered_at 
+            ? new Date(remesa.delivered_at).toLocaleString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+            : null;
+        
+        return `
+            <div style="border: 2px solid var(--gray-border); border-radius: 8px; padding: 20px; margin-bottom: 16px; background: white;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <h3 style="margin: 0; color: var(--dark-blue-nav); font-size: 18px;">
+                                Remesa #${remesa.confirmation_code}
+                            </h3>
+                            <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 12px;">
+                                ${statusLabel}
+                            </span>
+                        </div>
+                        <p style="margin: 0; color: var(--gray-text); font-size: 13px;">
+                            <i class="fas fa-calendar"></i> Creada: ${createdDate}
+                        </p>
+                        ${deliveredDate ? `
+                            <p style="margin: 4px 0 0 0; color: var(--gray-text); font-size: 13px;">
+                                <i class="fas fa-check-circle"></i> Entregada: ${deliveredDate}
+                            </p>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div style="background: #f5f5f5; padding: 12px; border-radius: 6px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--gray-text); text-transform: uppercase;">
+                            Remitente
+                        </h4>
+                        <p style="margin: 0; font-weight: 600; color: var(--dark-blue-nav);">${remesa.sender_name || 'N/A'}</p>
+                        ${remesa.sender_email ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: var(--gray-text);">${remesa.sender_email}</p>` : ''}
+                    </div>
+                    
+                    <div style="background: #f5f5f5; padding: 12px; border-radius: 6px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--gray-text); text-transform: uppercase;">
+                            Destinatario
+                        </h4>
+                        <p style="margin: 0; font-weight: 600; color: var(--dark-blue-nav);">${remesa.recipient_name || 'N/A'}</p>
+                        ${remesa.recipient_id ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: var(--gray-text);">CI: ${remesa.recipient_id}</p>` : ''}
+                    </div>
+                </div>
+                
+                <div style="background: #f0f7ff; border-left: 4px solid #42b649; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <p style="margin: 0; font-size: 13px; color: var(--gray-text);">Cantidad a entregar:</p>
+                            <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: var(--dark-blue-nav);">
+                                ${remesa.currency === 'USD' ? '$' : '₱'}${parseFloat(remesa.amount_usd).toFixed(2)} ${remesa.currency}
+                            </p>
+                            ${remesa.amount_cup ? `
+                                <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 600; color: #4caf50;">
+                                    ${parseFloat(remesa.amount_cup).toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CUP
+                                </p>
+                            ` : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="margin: 0; font-size: 13px; color: var(--gray-text);">Total pagado:</p>
+                            <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 700; color: #42b649;">
+                                $${parseFloat(remesa.total_paid).toFixed(2)} USD
+                            </p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--gray-text);">
+                                (Incluye comisión 10%)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    ${remesa.status === 'pending' ? `
+                        <button onclick="openDeliverRemesaModal('${remesa.id}', '${remesa.confirmation_code}')" 
+                                class="btn-primary" 
+                                style="background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle"></i> Entregar Remesa
+                        </button>
+                        <button onclick="cancelRemesa('${remesa.id}')" 
+                                class="btn-secondary" 
+                                style="background: #d93025; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-times-circle"></i> Cancelar
+                        </button>
+                    ` : ''}
+                    <div style="flex: 1; text-align: right; padding: 10px 0;">
+                        <p style="margin: 0; font-size: 12px; color: var(--gray-text);">
+                            <strong>Código de confirmación:</strong>
+                        </p>
+                        <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 700; color: #42b649; letter-spacing: 2px;">
+                            ${remesa.confirmation_code}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = remesasHtml;
+}
+
+function openDeliverRemesaModal(remesaId, confirmationCode) {
+    // Crear modal si no existe
+    let modal = document.getElementById('deliver-remesa-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'deliver-remesa-modal';
+        modal.className = 'supplier-modal';
+        modal.innerHTML = `
+            <div class="supplier-modal-content" style="max-width: 500px;">
+                <h2 style="margin-top: 0; margin-bottom: 18px; font-size: 20px;">
+                    <i class="fas fa-key"></i> Entregar Remesa
+                </h2>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px; margin-bottom: 20px;">
+                    <p style="margin: 0; font-size: 13px; color: #856404;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Importante:</strong> Solicita al destinatario el código de confirmación para validar la entrega.
+                    </p>
+                </div>
+                <form id="deliver-remesa-form">
+                    <input type="hidden" id="deliver-remesa-id">
+                    <div class="supplier-form-group">
+                        <label for="deliver-remesa-code">Código de Confirmación *</label>
+                        <input type="text" id="deliver-remesa-code" 
+                               placeholder="Ej: REM-123456" 
+                               required 
+                               style="text-transform: uppercase; letter-spacing: 2px; font-weight: 700; font-size: 18px; text-align: center;"
+                               maxlength="10">
+                        <small style="color: var(--gray-text); display:block; margin-top:6px; font-size:12px;">
+                            El destinatario debe proporcionar este código para recibir la remesa.
+                        </small>
+                    </div>
+                    <div class="supplier-modal-footer">
+                        <button type="button" class="btn-cancel" onclick="closeDeliverRemesaModal()">Cancelar</button>
+                        <button type="submit" class="btn-save" style="background: #4caf50;">
+                            <i class="fas fa-check-circle"></i> Confirmar Entrega
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Event listener para el formulario
+        const form = document.getElementById('deliver-remesa-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('deliver-remesa-code').value.trim().toUpperCase();
+            const remesaId = document.getElementById('deliver-remesa-id').value;
+            
+            if (!code) {
+                if (typeof showModal === 'function') {
+                    showModal('Error', 'Debes ingresar el código de confirmación.', 'error');
+                }
+                return;
+            }
+            
+            await deliverRemesa(remesaId, code);
+        });
+        
+        // Cerrar al hacer clic fuera
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeDeliverRemesaModal();
+            }
+        });
+    }
+    
+    // Llenar datos
+    document.getElementById('deliver-remesa-id').value = remesaId;
+    document.getElementById('deliver-remesa-code').value = '';
+    document.getElementById('deliver-remesa-code').placeholder = `Ej: ${confirmationCode}`;
+    
+    // Mostrar modal
+    modal.classList.add('active');
+    // Focus en el input
+    setTimeout(() => {
+        document.getElementById('deliver-remesa-code').focus();
+    }, 100);
+}
+
+function closeDeliverRemesaModal() {
+    const modal = document.getElementById('deliver-remesa-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function deliverRemesa(remesaId, confirmationCode) {
+    try {
+        if (typeof window.deliverRemesaFromSupabase !== 'function') {
+            throw new Error('Función deliverRemesaFromSupabase no disponible.');
+        }
+        
+        const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        const deliveredBy = user ? [user.given_name, user.family_name].filter(Boolean).join(' ').trim() || user.name || user.email : 'Admin';
+        
+        await window.deliverRemesaFromSupabase(confirmationCode, deliveredBy);
+        
+        closeDeliverRemesaModal();
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'Remesa entregada correctamente.', 'success');
+        }
+        
+        // Recargar lista
+        const filterStatus = document.getElementById('remesas-filter-status');
+        loadRemesas(filterStatus?.value || null);
+    } catch (error) {
+        console.error('❌ [Admin] Error entregando remesa:', error);
+        if (typeof showModal === 'function') {
+            showModal('Error', error.message || 'No se pudo entregar la remesa. Verifica el código de confirmación.', 'error');
+        }
+    }
+}
+
+async function cancelRemesa(remesaId) {
+    if (!confirm('¿Estás seguro de que deseas cancelar esta remesa?')) {
+        return;
+    }
+    
+    try {
+        if (typeof window.cancelRemesaFromSupabase !== 'function') {
+            throw new Error('Función cancelRemesaFromSupabase no disponible.');
+        }
+        
+        await window.cancelRemesaFromSupabase(remesaId);
+        
+        if (typeof showModal === 'function') {
+            showModal('Éxito', 'Remesa cancelada correctamente.', 'success');
+        }
+        
+        // Recargar lista
+        const filterStatus = document.getElementById('remesas-filter-status');
+        loadRemesas(filterStatus?.value || null);
+    } catch (error) {
+        console.error('❌ [Admin] Error cancelando remesa:', error);
+        if (typeof showModal === 'function') {
+            showModal('Error', error.message || 'No se pudo cancelar la remesa.', 'error');
+        }
+    }
+}
+
+// Exportar funciones globalmente
+window.loadRemesas = loadRemesas;
+window.openDeliverRemesaModal = openDeliverRemesaModal;
+window.closeDeliverRemesaModal = closeDeliverRemesaModal;
+window.deliverRemesa = deliverRemesa;
+window.cancelRemesa = cancelRemesa;
 
 // Las funciones getCurrencyConfig y convertUsdToCup están definidas en square-integration.js
 // para que estén disponibles en todas las páginas, no solo en el admin

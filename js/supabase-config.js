@@ -202,7 +202,312 @@ async function deleteTvConfigFromSupabase(tvId) {
     }
 }
 
+// ============================================
+// FUNCIONES PARA GESTIÓN DE REMESAS
+// ============================================
+
+// Generar código de confirmación único (formato: REM-XXXXXX)
+function generateConfirmationCode() {
+    const randomNum = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
+    return `REM-${randomNum}`;
+}
+
+// Guardar remesa en Supabase después del pago exitoso
+async function saveRemesaToSupabase(remesaData) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Supabase] Anon key no configurada. No se puede guardar remesa.');
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        // Generar código de confirmación único
+        let confirmationCode = generateConfirmationCode();
+        
+        // Verificar que el código no exista (reintentar si es necesario)
+        let attempts = 0;
+        while (attempts < 5) {
+            const existing = await checkConfirmationCodeExists(confirmationCode);
+            if (!existing) break;
+            confirmationCode = generateConfirmationCode();
+            attempts++;
+        }
+        
+        // Calcular cantidad en CUP si la moneda es CUP
+        let amountCup = null;
+        if (remesaData.currency === 'CUP' && remesaData.exchangeRate) {
+            amountCup = remesaData.amount * remesaData.exchangeRate;
+        }
+        
+        const remesaPayload = {
+            order_id: remesaData.orderId,
+            confirmation_code: confirmationCode,
+            sender_customer_id: remesaData.senderCustomerId || null,
+            sender_name: remesaData.senderName,
+            sender_email: remesaData.senderEmail || null,
+            recipient_name: remesaData.recipientName,
+            recipient_id: remesaData.recipientId || null,
+            amount_usd: remesaData.amount,
+            amount_cup: amountCup,
+            currency: remesaData.currency || 'USD',
+            fee: remesaData.fee,
+            total_paid: remesaData.total,
+            exchange_rate: remesaData.exchangeRate || null,
+            status: 'pending'
+        };
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas`,
+            {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(remesaPayload)
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error guardando remesa:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const saved = await response.json();
+        console.log('✅ [Supabase] Remesa guardada:', saved[0]?.confirmation_code);
+        return saved[0] || saved; // Retornar el objeto de remesa con el código de confirmación
+    } catch (error) {
+        console.error('❌ [Supabase] Error guardando remesa:', error);
+        throw error;
+    }
+}
+
+// Verificar si un código de confirmación ya existe
+async function checkConfirmationCodeExists(code) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas?confirmation_code=eq.${encodeURIComponent(code)}&select=id`,
+            {
+                method: 'GET',
+                headers: headers
+            }
+        );
+        
+        if (!response.ok) return false;
+        
+        const results = await response.json();
+        return results && results.length > 0;
+    } catch (error) {
+        console.warn('⚠️ [Supabase] Error verificando código:', error);
+        return false;
+    }
+}
+
+// Obtener todas las remesas (para admin)
+async function getAllRemesasFromSupabase(status = null) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        let url = `${SUPABASE_CONFIG.url}/rest/v1/remesas?select=*&order=created_at.desc`;
+        if (status) {
+            url += `&status=eq.${status}`;
+        }
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const remesas = await response.json();
+        console.log('📡 [Supabase] Remesas cargadas:', remesas.length);
+        return remesas;
+    } catch (error) {
+        console.error('❌ [Supabase] Error cargando remesas:', error);
+        throw error;
+    }
+}
+
+// Obtener remesas de un usuario específico
+async function getUserRemesasFromSupabase(customerId) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas?sender_customer_id=eq.${encodeURIComponent(customerId)}&select=*&order=created_at.desc`,
+            {
+                method: 'GET',
+                headers: headers
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const remesas = await response.json();
+        return remesas;
+    } catch (error) {
+        console.error('❌ [Supabase] Error cargando remesas del usuario:', error);
+        throw error;
+    }
+}
+
+// Validar código de confirmación y entregar remesa
+async function deliverRemesaFromSupabase(confirmationCode, deliveredBy) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        // Primero, obtener la remesa para verificar el código
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const getResponse = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas?confirmation_code=eq.${encodeURIComponent(confirmationCode)}&select=*`,
+            {
+                method: 'GET',
+                headers: headers
+            }
+        );
+        
+        if (!getResponse.ok) {
+            throw new Error('Error verificando código de confirmación');
+        }
+        
+        const remesas = await getResponse.json();
+        if (!remesas || remesas.length === 0) {
+            throw new Error('Código de confirmación no válido');
+        }
+        
+        const remesa = remesas[0];
+        
+        // Verificar que la remesa esté pendiente
+        if (remesa.status !== 'pending') {
+            throw new Error(`Esta remesa ya fue ${remesa.status === 'delivered' ? 'entregada' : 'cancelada'}`);
+        }
+        
+        // Actualizar estado a "delivered"
+        const updatePayload = {
+            status: 'delivered',
+            delivered_at: new Date().toISOString(),
+            delivered_by: deliveredBy || null
+        };
+        
+        const updateResponse = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas?id=eq.${remesa.id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    ...headers,
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(updatePayload)
+            }
+        );
+        
+        if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            throw new Error(`HTTP ${updateResponse.status}: ${errorText}`);
+        }
+        
+        const updated = await updateResponse.json();
+        console.log('✅ [Supabase] Remesa entregada:', updated[0]?.confirmation_code);
+        return updated[0] || updated;
+    } catch (error) {
+        console.error('❌ [Supabase] Error entregando remesa:', error);
+        throw error;
+    }
+}
+
+// Cancelar remesa
+async function cancelRemesaFromSupabase(remesaId, cancelledBy) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Prefer': 'return=representation'
+        };
+        
+        const updatePayload = {
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString()
+        };
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/remesas?id=eq.${remesaId}`,
+            {
+                method: 'PATCH',
+                headers: headers,
+                body: JSON.stringify(updatePayload)
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const updated = await response.json();
+        console.log('✅ [Supabase] Remesa cancelada:', updated[0]?.id);
+        return updated[0] || updated;
+    } catch (error) {
+        console.error('❌ [Supabase] Error cancelando remesa:', error);
+        throw error;
+    }
+}
+
 // Exportar funciones globalmente
 window.getTvConfigsFromSupabase = getTvConfigsFromSupabase;
 window.saveTvConfigsToSupabase = saveTvConfigsToSupabase;
 window.deleteTvConfigFromSupabase = deleteTvConfigFromSupabase;
+window.saveRemesaToSupabase = saveRemesaToSupabase;
+window.getAllRemesasFromSupabase = getAllRemesasFromSupabase;
+window.getUserRemesasFromSupabase = getUserRemesasFromSupabase;
+window.deliverRemesaFromSupabase = deliverRemesaFromSupabase;
+window.cancelRemesaFromSupabase = cancelRemesaFromSupabase;
+window.generateConfirmationCode = generateConfirmationCode;
