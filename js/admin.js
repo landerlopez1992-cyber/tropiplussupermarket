@@ -124,7 +124,7 @@ async function initAdminPage() {
     // Inicializar navegación interna de Admin
     const internalBtns = document.querySelectorAll('.admin-internal-btn');
     internalBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const subtabName = btn.dataset.subtab;
             switchSubTab(subtabName);
             if (subtabName === 'suppliers') {
