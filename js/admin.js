@@ -1222,7 +1222,7 @@ function renderTvList() {
 function loadTvIntoForm(tvId) {
     const tv = getTvConfigs().find(item => item.id === tvId);
     if (!tv) return;
-
+    
     console.log('📋 [Admin] Cargando TV en formulario:', tv);
     document.getElementById('tv-id').value = tv.id || '';
     document.getElementById('tv-name').value = tv.name || '';
@@ -2212,17 +2212,17 @@ function initTvTab() {
                 }
                 
                 // Luego eliminar de localStorage
-                const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
+            const tvConfigs = getTvConfigs().filter(item => item.id !== tvId);
                 localStorage.setItem(TV_STORAGE_KEY, JSON.stringify(tvConfigs));
                 
                 // Recargar desde Supabase para sincronizar
                 await hydrateTvConfigsFromSupabase();
-                renderTvList();
+            renderTvList();
                 refreshPublicTvSyncStatus();
                 
-                if (typeof showModal === 'function') {
-                    showModal('Listo', 'TV eliminado correctamente.', 'success');
-                }
+            if (typeof showModal === 'function') {
+                showModal('Listo', 'TV eliminado correctamente.', 'success');
+            }
             } catch (error) {
                 console.error('❌ [Admin] Error eliminando TV:', error);
                 if (typeof showModal === 'function') {
@@ -2321,7 +2321,7 @@ function initTvTab() {
 
         const mixedTransitionSeconds = mode === 'mixed' ? Math.max(5, Math.min(120, parseInt(document.getElementById('tv-mixed-transition-seconds')?.value || '12', 10))) : undefined;
         const screenOrientation = getTvConfigs().find(t => t.id === id)?.screenOrientation || 'landscape';
-        
+
         const tvPayload = {
             id,
             name,
@@ -2358,17 +2358,17 @@ function initTvTab() {
         try {
             await saveTvConfigs(tvConfigs);
             await hydrateTvConfigsFromSupabase();
-            console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
-            console.log('💾 [Admin] Ticker config:', {
-                enabled: tvPayload.tickerEnabled,
-                speed: tvPayload.tickerSpeed,
-                fontSize: tvPayload.tickerFontSize,
-                textColor: tvPayload.tickerTextColor,
-                bgColor: tvPayload.tickerBgColor
-            });
-            renderTvList();
+        console.log('💾 [Admin] TV guardado con payload completo:', JSON.stringify(tvPayload, null, 2));
+        console.log('💾 [Admin] Ticker config:', {
+            enabled: tvPayload.tickerEnabled,
+            speed: tvPayload.tickerSpeed,
+            fontSize: tvPayload.tickerFontSize,
+            textColor: tvPayload.tickerTextColor,
+            bgColor: tvPayload.tickerBgColor
+        });
+        renderTvList();
             refreshPublicTvSyncStatus();
-            resetTvForm();
+        resetTvForm();
         } catch (_error) {
             // Error ya reportado en saveTvConfigs
         }
@@ -3061,9 +3061,16 @@ function saveGlobalSupplier() {
 
 function renderGlobalSuppliersList() {
     const listContainer = document.getElementById('global-suppliers-list');
-    if (!listContainer) return;
+    if (!listContainer) {
+        console.warn('⚠️ Contenedor de proveedores no encontrado');
+        return;
+    }
 
+    // Asegurar que los datos estén cargados
+    loadSuppliersData();
+    
     const suppliers = getGlobalSuppliersList();
+    console.log('📦 Proveedores encontrados:', suppliers.length, suppliers);
 
     if (suppliers.length === 0) {
         listContainer.innerHTML = `
@@ -4131,29 +4138,47 @@ async function extractProductDataFromUrl(url) {
         statusDiv.style.color = '#1976d2';
         statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extrayendo datos de la URL...';
         
-        // Usar un proxy para evitar problemas de CORS
-        // Intentar obtener el HTML de la URL
-        const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-        console.log('🔗 Llamando a proxy:', proxyUrl);
+        // Intentar usar proxy si está disponible (solo funciona en servidor local o Vercel)
+        // Si no está disponible, usar CORS proxy público como fallback
+        let response;
+        let html;
         
-        const response = await fetch(proxyUrl);
-        console.log('📥 Respuesta del proxy:', response.status, response.statusText);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Error en respuesta:', errorText);
-            let errorMessage = 'No se pudo acceder a la URL';
-            try {
-                const errorJson = JSON.parse(errorText);
-                errorMessage = errorJson.error || errorMessage;
-            } catch (e) {
-                errorMessage = `Error ${response.status}: ${response.statusText}`;
+        try {
+            const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+            console.log('🔗 Intentando proxy local:', proxyUrl);
+            response = await fetch(proxyUrl);
+            
+            if (!response.ok) {
+                throw new Error(`Proxy local no disponible (${response.status})`);
             }
-            throw new Error(errorMessage);
+            
+            html = await response.text();
+            console.log('✅ HTML recibido desde proxy local, longitud:', html.length);
+        } catch (proxyError) {
+            console.warn('⚠️ Proxy local no disponible, usando CORS proxy público:', proxyError);
+            
+            // Fallback: usar un CORS proxy público (limitado pero funcional)
+            const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            console.log('🔗 Usando CORS proxy público:', corsProxyUrl);
+            
+            response = await fetch(corsProxyUrl);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error en CORS proxy:', errorText);
+                let errorMessage = 'No se pudo acceder a la URL. El sitio puede bloquear el acceso externo.';
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error || errorMessage;
+                } catch (e) {
+                    errorMessage = `Error ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+            
+            html = await response.text();
+            console.log('✅ HTML recibido desde CORS proxy, longitud:', html.length);
         }
-        
-        const html = await response.text();
-        console.log('✅ HTML recibido, longitud:', html.length);
         
         // Crear un parser de HTML temporal
         const parser = new DOMParser();
