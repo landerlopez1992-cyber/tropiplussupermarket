@@ -629,6 +629,165 @@ async function updateDeliveryOrderStatus(orderId, newStatus) {
     }
 }
 
+// ============================================
+// FUNCIONES PARA GESTIÓN DE PROVEEDORES
+// ============================================
+
+// Obtener todos los proveedores desde Supabase
+async function getSuppliersFromSupabase() {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            headers['apikey'] = anonKey;
+            headers['Authorization'] = `Bearer ${anonKey}`;
+        }
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/suppliers?select=*&order=created_at.desc`,
+            {
+                method: 'GET',
+                headers: headers
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error cargando proveedores:', response.status, errorText);
+            
+            // Si la tabla no existe, retornar array vacío
+            if (response.status === 404 || errorText.includes('42P01') || errorText.includes('does not exist')) {
+                console.warn('⚠️ [Supabase] Tabla suppliers no existe. Ejecuta el SQL de migración.');
+                return [];
+            }
+            
+            return [];
+        }
+        
+        const suppliers = await response.json();
+        console.log('📡 [Supabase] Proveedores cargados:', suppliers.length);
+        
+        // Convertir formato de BD a formato esperado por la app
+        return suppliers.map(supplier => ({
+            id: supplier.id,
+            name: supplier.name,
+            address: supplier.address || '',
+            url: supplier.url || '',
+            notes: supplier.notes || '',
+            createdAt: supplier.created_at,
+            updatedAt: supplier.updated_at
+        }));
+    } catch (error) {
+        console.error('❌ [Supabase] Error cargando proveedores:', error);
+        return [];
+    }
+}
+
+// Guardar proveedor en Supabase
+async function saveSupplierToSupabase(supplierData) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Supabase] Anon key no configurada. No se puede guardar proveedor.');
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const payload = {
+            name: supplierData.name,
+            address: supplierData.address || null,
+            url: supplierData.url || null,
+            notes: supplierData.notes || null
+        };
+        
+        let response;
+        if (supplierData.id) {
+            // Actualizar proveedor existente
+            response = await fetch(
+                `${SUPABASE_CONFIG.url}/rest/v1/suppliers?id=eq.${supplierData.id}`,
+                {
+                    method: 'PATCH',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                }
+            );
+        } else {
+            // Crear nuevo proveedor
+            response = await fetch(
+                `${SUPABASE_CONFIG.url}/rest/v1/suppliers`,
+                {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                }
+            );
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error guardando proveedor:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const saved = await response.json();
+        const result = Array.isArray(saved) ? saved[0] : saved;
+        console.log('✅ [Supabase] Proveedor guardado:', result.id);
+        return result;
+    } catch (error) {
+        console.error('❌ [Supabase] Error guardando proveedor:', error);
+        throw error;
+    }
+}
+
+// Eliminar proveedor de Supabase
+async function deleteSupplierFromSupabase(supplierId) {
+    try {
+        const anonKey = SUPABASE_CONFIG.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Supabase] Anon key no configurada. No se puede eliminar proveedor.');
+            throw new Error('AUTH_REQUIRED: Configura la anon key en supabase-config.js');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+        };
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/suppliers?id=eq.${supplierId}`,
+            {
+                method: 'DELETE',
+                headers: headers
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Supabase] Error eliminando proveedor:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        console.log('✅ [Supabase] Proveedor eliminado:', supplierId);
+        return true;
+    } catch (error) {
+        console.error('❌ [Supabase] Error eliminando proveedor:', error);
+        throw error;
+    }
+}
+
 window.saveDeliveryOrderToSupabase = saveDeliveryOrderToSupabase;
 window.getDeliveryOrdersFromSupabase = getDeliveryOrdersFromSupabase;
 window.updateDeliveryOrderStatus = updateDeliveryOrderStatus;
@@ -637,3 +796,6 @@ window.getUserRemesasFromSupabase = getUserRemesasFromSupabase;
 window.deliverRemesaFromSupabase = deliverRemesaFromSupabase;
 window.cancelRemesaFromSupabase = cancelRemesaFromSupabase;
 window.generateConfirmationCode = generateConfirmationCode;
+window.getSuppliersFromSupabase = getSuppliersFromSupabase;
+window.saveSupplierToSupabase = saveSupplierToSupabase;
+window.deleteSupplierFromSupabase = deleteSupplierFromSupabase;

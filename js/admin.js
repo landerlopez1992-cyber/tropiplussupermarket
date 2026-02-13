@@ -29,8 +29,38 @@ const HOURS_STORAGE_KEY = 'tropiplus_hours_config';
 const CURRENCY_STORAGE_KEY = 'tropiplus_currency_config';
 const PUBLIC_TVS_URL = 'https://landerlopez1992-cyber.github.io/tropiplussupermarket/tvs-public.json';
 
-// Cargar datos de proveedores desde localStorage
-function loadSuppliersData() {
+// Cargar datos de proveedores desde Supabase (con fallback a localStorage)
+async function loadSuppliersData() {
+    // Intentar cargar desde Supabase primero
+    if (typeof window.getSuppliersFromSupabase === 'function') {
+        try {
+            const supabaseSuppliers = await window.getSuppliersFromSupabase();
+            if (supabaseSuppliers && supabaseSuppliers.length > 0) {
+                // Convertir array de Supabase a objeto para compatibilidad
+                globalSuppliers = {};
+                supabaseSuppliers.forEach(supplier => {
+                    globalSuppliers[supplier.id] = {
+                        id: supplier.id,
+                        name: supplier.name,
+                        address: supplier.address || '',
+                        url: supplier.url || '',
+                        notes: supplier.notes || '',
+                        createdAt: supplier.createdAt,
+                        updatedAt: supplier.updatedAt
+                    };
+                });
+                
+                // Sincronizar localStorage como cache
+                localStorage.setItem('tropiplus_global_suppliers', JSON.stringify(globalSuppliers));
+                console.log('✅ Proveedores cargados desde Supabase:', Object.keys(globalSuppliers).length);
+                return;
+            }
+        } catch (error) {
+            console.warn('⚠️ Error cargando proveedores desde Supabase, usando localStorage:', error);
+        }
+    }
+    
+    // Fallback: cargar desde localStorage
     const stored = localStorage.getItem('tropiplus_suppliers');
     if (stored) {
         try {
@@ -41,11 +71,12 @@ function loadSuppliersData() {
         }
     }
     
-    // Cargar proveedores globales
+    // Cargar proveedores globales desde localStorage
     const globalStored = localStorage.getItem('tropiplus_global_suppliers');
     if (globalStored) {
         try {
             globalSuppliers = JSON.parse(globalStored);
+            console.log('✅ Proveedores cargados desde localStorage (fallback):', Object.keys(globalSuppliers).length);
         } catch (e) {
             console.error('Error cargando proveedores globales:', e);
             globalSuppliers = {};
@@ -53,14 +84,33 @@ function loadSuppliersData() {
     }
 }
 
-// Guardar datos de proveedores en localStorage
-function saveSuppliersData() {
+// Guardar datos de proveedores (en Supabase y localStorage como cache)
+async function saveSuppliersData() {
+    // Guardar en localStorage como cache
     localStorage.setItem('tropiplus_suppliers', JSON.stringify(suppliersData));
     localStorage.setItem('tropiplus_global_suppliers', JSON.stringify(globalSuppliers));
+    
+    // Intentar guardar proveedores globales en Supabase
+    if (typeof window.saveSupplierToSupabase === 'function') {
+        try {
+            // Guardar cada proveedor en Supabase
+            const suppliersList = getGlobalSuppliersList();
+            for (const supplier of suppliersList) {
+                try {
+                    await window.saveSupplierToSupabase(supplier);
+                } catch (error) {
+                    console.warn('⚠️ Error guardando proveedor en Supabase:', supplier.id, error);
+                }
+            }
+            console.log('✅ Proveedores sincronizados con Supabase');
+        } catch (error) {
+            console.warn('⚠️ Error sincronizando proveedores con Supabase:', error);
+        }
+    }
 }
 
-function initAdminPage() {
-    loadSuppliersData();
+async function initAdminPage() {
+    await loadSuppliersData();
     
     // Inicializar tabs principales (solo Admin, Home es un enlace)
     const tabs = document.querySelectorAll('.admin-tab[data-tab]');
@@ -78,7 +128,7 @@ function initAdminPage() {
             const subtabName = btn.dataset.subtab;
             switchSubTab(subtabName);
             if (subtabName === 'suppliers') {
-                renderGlobalSuppliersList();
+                await renderGlobalSuppliersList();
             }
         });
     });
@@ -2991,13 +3041,13 @@ function initSupplierModal() {
     // Cargar lista de proveedores globales al cambiar de tab
     const suppliersTab = document.querySelector('.admin-tab[data-tab="suppliers"]');
     if (suppliersTab) {
-        suppliersTab.addEventListener('click', () => {
-            renderGlobalSuppliersList();
+        suppliersTab.addEventListener('click', async () => {
+            await renderGlobalSuppliersList();
         });
     }
 }
 
-function saveGlobalSupplier() {
+async function saveGlobalSupplier() {
     const form = document.getElementById('global-supplier-form');
     const editingId = form.dataset.editingId;
     const name = document.getElementById('global-supplier-name').value.trim();
@@ -3021,53 +3071,85 @@ function saveGlobalSupplier() {
         notes: notes
     };
 
-    if (editingId && globalSuppliers[editingId]) {
-        // Actualizar proveedor existente
-        globalSuppliers[editingId] = {
-            ...globalSuppliers[editingId],
-            ...supplierData,
-            updatedAt: new Date().toISOString()
-        };
-        saveSuppliersData();
-        renderGlobalSuppliersList();
-        loadGlobalSuppliersDropdown();
-        
-        // Limpiar formulario
-        form.reset();
-        delete form.dataset.editingId;
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.textContent = 'Guardar Proveedor';
-        }
+    try {
+        if (editingId && globalSuppliers[editingId]) {
+            // Actualizar proveedor existente
+            supplierData.id = editingId;
+            
+            // Guardar en Supabase primero
+            if (typeof window.saveSupplierToSupabase === 'function') {
+                await window.saveSupplierToSupabase(supplierData);
+            }
+            
+            // Actualizar en memoria local
+            globalSuppliers[editingId] = {
+                ...globalSuppliers[editingId],
+                ...supplierData,
+                updatedAt: new Date().toISOString()
+            };
+            await saveSuppliersData();
+            await renderGlobalSuppliersList();
+            loadGlobalSuppliersDropdown();
+            
+            // Limpiar formulario
+            form.reset();
+            delete form.dataset.editingId;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Guardar Proveedor';
+            }
 
-        if (typeof showModal === 'function') {
-            showModal('Éxito', 'Proveedor actualizado correctamente.', 'success');
-        }
-    } else {
-        // Crear nuevo proveedor
-        supplierData.createdAt = new Date().toISOString();
-        addGlobalSupplier(supplierData);
-        form.reset();
-        renderGlobalSuppliersList();
-        loadGlobalSuppliersDropdown();
-
-        if (typeof showModal === 'function') {
-            showModal('Éxito', 'Proveedor guardado correctamente. Ahora puedes seleccionarlo al asignar proveedores a productos.', 'success');
+            if (typeof showModal === 'function') {
+                showModal('Éxito', 'Proveedor actualizado correctamente.', 'success');
+            }
         } else {
-            alert('Proveedor guardado correctamente.');
+            // Crear nuevo proveedor
+            supplierData.createdAt = new Date().toISOString();
+            
+            // Guardar en Supabase primero
+            let savedSupplier = null;
+            if (typeof window.saveSupplierToSupabase === 'function') {
+                savedSupplier = await window.saveSupplierToSupabase(supplierData);
+            }
+            
+            // Si Supabase retornó un ID, usarlo; si no, generar uno local
+            const supplierId = savedSupplier?.id || `supplier_${Date.now()}`;
+            globalSuppliers[supplierId] = {
+                ...supplierData,
+                id: supplierId,
+                createdAt: savedSupplier?.created_at || supplierData.createdAt,
+                updatedAt: savedSupplier?.updated_at || new Date().toISOString()
+            };
+            
+            await saveSuppliersData();
+            await renderGlobalSuppliersList();
+            loadGlobalSuppliersDropdown();
+
+            if (typeof showModal === 'function') {
+                showModal('Éxito', 'Proveedor guardado correctamente. Ahora puedes seleccionarlo al asignar proveedores a productos.', 'success');
+            } else {
+                alert('Proveedor guardado correctamente.');
+            }
+        }
+    } catch (error) {
+        console.error('Error guardando proveedor:', error);
+        if (typeof showModal === 'function') {
+            showModal('Error', `Error al guardar proveedor: ${error.message}`, 'error');
+        } else {
+            alert(`Error al guardar proveedor: ${error.message}`);
         }
     }
 }
 
-function renderGlobalSuppliersList() {
+async function renderGlobalSuppliersList() {
     const listContainer = document.getElementById('global-suppliers-list');
     if (!listContainer) {
         console.warn('⚠️ Contenedor de proveedores no encontrado');
         return;
     }
 
-    // Asegurar que los datos estén cargados
-    loadSuppliersData();
+    // Asegurar que los datos estén cargados (ahora es async)
+    await loadSuppliersData();
     
     const suppliers = getGlobalSuppliersList();
     console.log('📦 Proveedores encontrados:', suppliers.length, suppliers);
@@ -3108,14 +3190,27 @@ function renderGlobalSuppliersList() {
     `;
 }
 
-function deleteGlobalSupplier(supplierId) {
+async function deleteGlobalSupplier(supplierId) {
     if (confirm('¿Estás seguro de que deseas eliminar este proveedor?')) {
-        delete globalSuppliers[supplierId];
-        saveSuppliersData();
-        renderGlobalSuppliersList();
-        
-        if (typeof showModal === 'function') {
-            showModal('Éxito', 'Proveedor eliminado correctamente.', 'success');
+        try {
+            // Eliminar de Supabase primero
+            if (typeof window.deleteSupplierFromSupabase === 'function') {
+                await window.deleteSupplierFromSupabase(supplierId);
+            }
+            
+            // Eliminar de memoria local
+            delete globalSuppliers[supplierId];
+            await saveSuppliersData();
+            await renderGlobalSuppliersList();
+            
+            if (typeof showModal === 'function') {
+                showModal('Éxito', 'Proveedor eliminado correctamente.', 'success');
+            }
+        } catch (error) {
+            console.error('Error eliminando proveedor:', error);
+            if (typeof showModal === 'function') {
+                showModal('Error', `Error al eliminar proveedor: ${error.message}`, 'error');
+            }
         }
     }
 }
@@ -3329,16 +3424,37 @@ function getGlobalSuppliersList() {
     }));
 }
 
-// Función para agregar proveedor global
-function addGlobalSupplier(supplierData) {
-    const supplierId = `supplier_${Date.now()}`;
-    globalSuppliers[supplierId] = {
-        ...supplierData,
-        id: supplierId,
-        createdAt: new Date().toISOString()
-    };
-    saveSuppliersData();
-    return supplierId;
+// Función para agregar proveedor global (ahora guarda en Supabase también)
+async function addGlobalSupplier(supplierData) {
+    try {
+        // Guardar en Supabase primero
+        let savedSupplier = null;
+        if (typeof window.saveSupplierToSupabase === 'function') {
+            savedSupplier = await window.saveSupplierToSupabase(supplierData);
+        }
+        
+        // Si Supabase retornó un ID, usarlo; si no, generar uno local
+        const supplierId = savedSupplier?.id || `supplier_${Date.now()}`;
+        globalSuppliers[supplierId] = {
+            ...supplierData,
+            id: supplierId,
+            createdAt: savedSupplier?.created_at || supplierData.createdAt || new Date().toISOString(),
+            updatedAt: savedSupplier?.updated_at || new Date().toISOString()
+        };
+        await saveSuppliersData();
+        return supplierId;
+    } catch (error) {
+        console.error('Error agregando proveedor:', error);
+        // Fallback: guardar solo localmente si Supabase falla
+        const supplierId = `supplier_${Date.now()}`;
+        globalSuppliers[supplierId] = {
+            ...supplierData,
+            id: supplierId,
+            createdAt: new Date().toISOString()
+        };
+        await saveSuppliersData();
+        return supplierId;
+    }
 }
 
 function normalizeBarcodeValue(rawValue) {
