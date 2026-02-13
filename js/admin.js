@@ -3845,21 +3845,124 @@ async function uploadImageToSquare(imageFile) {
 }
 
 async function createCatalogImageFromUrl(imageUrl, productName, productObjectId) {
-    if (!imageUrl) return null;
+    if (!imageUrl) {
+        console.warn('⚠️ No hay URL de imagen para subir');
+        return null;
+    }
+    
     try {
-        // Este endpoint es interceptado por server-proxy.js para convertir la solicitud
-        // a multipart/form-data válido para CreateCatalogImage.
-        const imageResponse = await squareApiCall('/v2/catalog/images', 'POST', {
-            idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            object_id: productObjectId,
-            image_url: imageUrl,
-            image_name: `Imagen ${productName || 'Producto'}`
-        });
+        console.log('📷 Subiendo imagen a Square desde URL:', imageUrl);
+        
+        // Intentar usar el proxy local si está disponible (para desarrollo)
+        // Si no, intentar directamente con Square API usando el formato correcto
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        let imageResponse = null;
+        
+        if (isLocalhost) {
+            // En desarrollo local, usar el proxy que maneja multipart/form-data
+            try {
+                const proxyResponse = await fetch('/api/square-proxy/v2/catalog/images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                        object_id: productObjectId,
+                        image_url: imageUrl,
+                        image_name: `Imagen ${productName || 'Producto'}`
+                    })
+                });
+                
+                if (proxyResponse.ok) {
+                    imageResponse = await proxyResponse.json();
+                    console.log('✅ Imagen subida vía proxy local:', imageResponse);
+                }
+            } catch (proxyError) {
+                console.warn('⚠️ Proxy local no disponible, intentando método directo:', proxyError);
+            }
+        }
+        
+        // Si el proxy no funcionó o estamos en producción, usar método directo
+        // Square permite crear imágenes con URL externa directamente
+        if (!imageResponse) {
+            // Crear el objeto IMAGE en Square usando la URL externa
+            const imageObject = {
+                type: 'IMAGE',
+                id: `#img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                image_data: {
+                    name: `Imagen ${productName || 'Producto'}`,
+                    url: imageUrl
+                }
+            };
+            
+            const catalogObject = {
+                type: 'IMAGE',
+                id: `#img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                image_data: {
+                    name: `Imagen ${productName || 'Producto'}`,
+                    url: imageUrl
+                }
+            };
+            
+            // Crear la imagen en Square
+            imageResponse = await squareApiCall('/v2/catalog/object', 'POST', {
+                idempotency_key: `img_key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                object: catalogObject
+            });
+            
+            console.log('✅ Respuesta de Square para imagen:', imageResponse);
+        }
 
-        const createdImageId = imageResponse?.image?.id || imageResponse?.catalog_object?.id;
-        return createdImageId || null;
+        // Extraer el ID de la imagen creada
+        const createdImageId = imageResponse?.catalog_object?.id || 
+                              imageResponse?.image?.id || 
+                              imageResponse?.id;
+        
+        if (createdImageId) {
+            console.log('✅ Imagen creada en Square con ID:', createdImageId);
+            
+            // Asociar la imagen al producto actualizando el producto
+            if (productObjectId && createdImageId) {
+                try {
+                    // Obtener el producto actual para mantener la versión
+                    const currentProduct = await squareApiCall(`/v2/catalog/object/${productObjectId}`, 'GET');
+                    if (currentProduct?.object) {
+                        const updateObject = {
+                            type: 'ITEM',
+                            id: productObjectId,
+                            version: currentProduct.object.version,
+                            item_data: {
+                                ...currentProduct.object.item_data,
+                                image_ids: [
+                                    ...(currentProduct.object.item_data?.image_ids || []),
+                                    createdImageId
+                                ]
+                            }
+                        };
+                        
+                        await squareApiCall('/v2/catalog/object', 'PUT', {
+                            idempotency_key: `img_assoc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                            object: updateObject
+                        });
+                        
+                        console.log('✅ Imagen asociada al producto:', productObjectId);
+                    }
+                } catch (assocError) {
+                    console.warn('⚠️ No se pudo asociar imagen al producto automáticamente:', assocError);
+                    // No es crítico, la imagen se creó, solo falta asociarla
+                }
+            }
+            
+            return createdImageId;
+        }
+        
+        console.warn('⚠️ No se pudo obtener ID de imagen de la respuesta:', imageResponse);
+        return null;
     } catch (error) {
-        console.warn('No se pudo crear imagen en Square con URL externa:', error?.message || error);
+        console.error('❌ Error subiendo imagen a Square:', error);
+        console.error('   URL:', imageUrl);
+        console.error('   Producto:', productName);
         return null;
     }
 }
