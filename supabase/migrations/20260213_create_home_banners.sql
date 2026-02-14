@@ -29,6 +29,25 @@ ON public.home_banners FOR ALL
 TO authenticated
 USING (TRUE) WITH CHECK (TRUE);
 
+-- Política adicional para permitir operaciones con anon key (para admin web)
+DROP POLICY IF EXISTS "Public can insert banners" ON public.home_banners;
+CREATE POLICY "Public can insert banners"
+ON public.home_banners FOR INSERT
+TO public
+WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Public can update banners" ON public.home_banners;
+CREATE POLICY "Public can update banners"
+ON public.home_banners FOR UPDATE
+TO public
+USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Public can delete banners" ON public.home_banners;
+CREATE POLICY "Public can delete banners"
+ON public.home_banners FOR DELETE
+TO public
+USING (TRUE);
+
 -- Trigger para actualizar updated_at
 CREATE OR REPLACE FUNCTION public.set_home_banners_updated_at()
 RETURNS TRIGGER AS $$

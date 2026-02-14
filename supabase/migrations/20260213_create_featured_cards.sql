@@ -29,6 +29,25 @@ ON public.featured_cards FOR ALL
 TO authenticated
 USING (TRUE) WITH CHECK (TRUE);
 
+-- Política adicional para permitir operaciones con anon key (para admin web)
+DROP POLICY IF EXISTS "Public can insert featured cards" ON public.featured_cards;
+CREATE POLICY "Public can insert featured cards"
+ON public.featured_cards FOR INSERT
+TO public
+WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Public can update featured cards" ON public.featured_cards;
+CREATE POLICY "Public can update featured cards"
+ON public.featured_cards FOR UPDATE
+TO public
+USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Public can delete featured cards" ON public.featured_cards;
+CREATE POLICY "Public can delete featured cards"
+ON public.featured_cards FOR DELETE
+TO public
+USING (TRUE);
+
 -- Trigger para actualizar updated_at
 CREATE OR REPLACE FUNCTION public.set_featured_cards_updated_at()
 RETURNS TRIGGER AS $$

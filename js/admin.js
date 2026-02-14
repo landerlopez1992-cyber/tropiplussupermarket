@@ -6002,8 +6002,9 @@ async function getFeaturedCardsFromStorage() {
         // Intentar obtener de Supabase
         const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
         if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            // En el admin, mostrar TODAS las tarjetas (activas e inactivas)
             const response = await fetch(
-                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&active=eq.true&order=display_order.asc`,
+                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&order=display_order.asc`,
                 {
                     method: 'GET',
                     headers: {
@@ -6021,11 +6022,11 @@ async function getFeaturedCardsFromStorage() {
         
         // Fallback a localStorage
         const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
-        return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
+        return localCards ? JSON.parse(localCards) : [];
     } catch (error) {
         console.warn('Error obteniendo tarjetas, usando localStorage:', error);
         const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
-        return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
+        return localCards ? JSON.parse(localCards) : [];
     }
 }
 
