@@ -3853,23 +3853,27 @@ async function lookupGtinFromExternalApi(productName) {
         // Extraer todos los productos posibles de diferentes formatos de respuesta
         let products = [];
         
-        // Formato 1: data.products[] (array de productos)
-        if (Array.isArray(data.products) && data.products.length > 0) {
+        // Formato 1: data.results[] (formato de "Barcodes Data" API)
+        if (Array.isArray(data.results) && data.results.length > 0) {
+            products = data.results;
+        }
+        // Formato 2: data.products[] (array de productos)
+        else if (Array.isArray(data.products) && data.products.length > 0) {
             products = data.products;
         }
-        // Formato 2: data.data[] (array de productos)
+        // Formato 3: data.data[] (array de productos)
         else if (Array.isArray(data.data) && data.data.length > 0) {
             products = data.data;
         }
-        // Formato 3: data.result[] (array de productos)
+        // Formato 4: data.result[] (array de productos)
         else if (Array.isArray(data.result) && data.result.length > 0) {
             products = data.result;
         }
-        // Formato 4: objeto único (no array)
+        // Formato 5: objeto único (no array)
         else if (data.barcode || data.gtin || data.upc || data.ean) {
             products = [data];
         }
-        // Formato 5: data.items[]
+        // Formato 6: data.items[]
         else if (Array.isArray(data.items) && data.items.length > 0) {
             products = data.items;
         }
@@ -3907,20 +3911,47 @@ async function lookupGtinFromExternalApi(productName) {
                 product.description || 
                 '';
             
-            const gtin = normalizeBarcodeValue(
+            // Extraer barcode/GTIN - "Barcodes Data" API usa "barcode"
+            const rawBarcode = 
                 product.barcode || 
                 product.gtin || 
                 product.upc || 
                 product.ean ||
-                product.code
-            );
+                product.code;
             
-            const similarity = calculateSimilarity(productName, productNameFromApi);
+            const gtin = normalizeBarcodeValue(rawBarcode);
+            
+            // Calcular similitud mejorada
+            let similarity = calculateSimilarity(productName, productNameFromApi);
+            
+            // Bonus por coincidencias específicas
+            const searchLower = productName.toLowerCase();
+            const apiNameLower = productNameFromApi.toLowerCase();
+            
+            // Bonus por marca (ej: "Goya")
+            if (product.manufacturer) {
+                const manufacturerLower = product.manufacturer.toLowerCase();
+                if (searchLower.includes(manufacturerLower) || apiNameLower.includes(manufacturerLower)) {
+                    similarity += 0.1; // Bonus de 10%
+                }
+            }
+            
+            // Bonus por palabras clave importantes
+            const importantWords = ['comino', 'cumin', 'adobo', 'seasoning'];
+            importantWords.forEach(word => {
+                if (searchLower.includes(word) && apiNameLower.includes(word)) {
+                    similarity += 0.05; // Bonus de 5% por palabra clave
+                }
+            });
+            
+            // Limitar similitud a máximo 1.0
+            similarity = Math.min(similarity, 1.0);
             
             return {
                 product,
                 gtin,
                 name: productNameFromApi,
+                manufacturer: product.manufacturer || '',
                 similarity
             };
         }).filter(item => item.gtin); // Solo productos con GTIN válido
@@ -3934,16 +3965,28 @@ async function lookupGtinFromExternalApi(productName) {
         productsWithScore.sort((a, b) => b.similarity - a.similarity);
         
         const bestMatch = productsWithScore[0];
+        const secondBest = productsWithScore[1];
+        
         console.log(`✅ Mejor coincidencia encontrada (similitud: ${(bestMatch.similarity * 100).toFixed(1)}%):`, {
             nombre_buscado: productName,
             nombre_encontrado: bestMatch.name,
-            gtin: bestMatch.gtin
+            fabricante: bestMatch.manufacturer || 'N/A',
+            gtin: bestMatch.gtin,
+            barcode_original: bestMatch.product.barcode || 'N/A'
         });
+        
+        // Mostrar también el segundo mejor si existe y es muy cercano
+        if (secondBest && secondBest.similarity > 0.7) {
+            console.log(`📊 Segunda opción (similitud: ${(secondBest.similarity * 100).toFixed(1)}%):`, {
+                nombre: secondBest.name,
+                gtin: secondBest.gtin
+            });
+        }
         
         // Si la similitud es muy baja (< 0.3), puede que no sea el producto correcto
         if (bestMatch.similarity < 0.3) {
             console.warn(`⚠️ Similitud baja (${(bestMatch.similarity * 100).toFixed(1)}%). El GTIN puede no ser correcto.`);
-            // Aún así retornamos el mejor match, pero con advertencia
+            console.warn(`💡 Sugerencia: Verifica manualmente si el GTIN "${bestMatch.gtin}" corresponde a "${bestMatch.name}"`);
         }
         
         return bestMatch.gtin;
