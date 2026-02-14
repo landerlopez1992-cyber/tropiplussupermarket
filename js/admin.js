@@ -3776,16 +3776,17 @@ async function lookupBarcodeInSquare(productName) {
 }
 
 // Configuración para APIs externas de GTIN (RapidAPI)
-// Configura tu API key de RapidAPI aquí si quieres usar "Big Product Data" u otra API
+// Configura tu API key de RapidAPI aquí para usar "Barcodes Data" API
 const RAPIDAPI_CONFIG = {
     enabled: false, // Cambiar a true para habilitar
-    apiKey: '', // Tu API key de RapidAPI
-    host: 'big-product-data.p.rapidapi.com', // Host de "Big Product Data"
-    // Alternativas: 'barcode-lookup.p.rapidapi.com', 'upc-database.p.rapidapi.com'
+    apiKey: '', // Tu API key de RapidAPI (ej: '43db5773a3msh2a82d305d0dbf5ap16f958jsna677a7d7e263')
+    host: 'barcodes-data.p.rapidapi.com', // Host de "Barcodes Data" API
+    baseUrl: 'https://barcodes-data.p.rapidapi.com/' // URL base de la API
 };
 
 /**
- * Busca GTIN/UPC/EAN usando una API externa de RapidAPI
+ * Busca GTIN/UPC/EAN usando "Barcodes Data" API de RapidAPI
+ * Esta API permite buscar por nombre de producto o por código de barras
  * @param {string} productName - Nombre del producto
  * @returns {Promise<string|null>} - GTIN encontrado o null
  */
@@ -3795,20 +3796,22 @@ async function lookupGtinFromExternalApi(productName) {
         return null;
     }
 
+    if (!productName || !productName.trim()) {
+        return null;
+    }
+
     try {
-        console.log('🔍 Buscando GTIN en API externa (RapidAPI):', productName);
+        console.log('🔍 Buscando GTIN en Barcodes Data API (RapidAPI):', productName);
         
-        // Intentar con "Big Product Data" API
-        // Endpoint: Product data search by GTIN (pero necesitamos buscar por nombre)
-        // Nota: "Big Product Data" principalmente busca por GTIN, no por nombre
-        // Para buscar por nombre, necesitaríamos otro endpoint o API diferente
+        // Endpoint: GET /?query={search_term}
+        // El parámetro query puede ser un código de barras o un término de búsqueda (nombre de producto)
+        const queryParams = new URLSearchParams({
+            query: productName.trim()
+        });
         
-        // Alternativa: Usar "Barcode Lookup" API si está disponible
-        // Por ahora, retornamos null ya que "Big Product Data" no tiene búsqueda por nombre
+        const apiUrl = `${RAPIDAPI_CONFIG.baseUrl}?${queryParams.toString()}`;
         
-        // Si tienes otra API de RapidAPI que busque por nombre, agrega el código aquí:
-        /*
-        const response = await fetch(`https://${RAPIDAPI_CONFIG.host}/search?query=${encodeURIComponent(productName)}`, {
+        const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
                 'X-RapidAPI-Key': RAPIDAPI_CONFIG.apiKey,
@@ -3816,19 +3819,59 @@ async function lookupGtinFromExternalApi(productName) {
             }
         });
         
-        if (response.ok) {
-            const data = await response.json();
-            // Extraer GTIN de la respuesta según la estructura de la API
-            const gtin = data.gtin || data.upc || data.ean || data.barcode;
-            if (gtin) {
-                return normalizeBarcodeValue(gtin);
-            }
+        if (!response.ok) {
+            console.warn(`⚠️ Barcodes Data API respondió con error ${response.status}`);
+            return null;
         }
-        */
         
+        const data = await response.json();
+        
+        // La estructura de respuesta puede variar, intentar múltiples formatos comunes
+        let gtin = null;
+        
+        // Formato 1: data.barcode, data.gtin, data.upc, data.ean
+        if (data.barcode) {
+            gtin = normalizeBarcodeValue(data.barcode);
+        } else if (data.gtin) {
+            gtin = normalizeBarcodeValue(data.gtin);
+        } else if (data.upc) {
+            gtin = normalizeBarcodeValue(data.upc);
+        } else if (data.ean) {
+            gtin = normalizeBarcodeValue(data.ean);
+        }
+        
+        // Formato 2: data.products[] (array de productos)
+        if (!gtin && Array.isArray(data.products) && data.products.length > 0) {
+            const firstProduct = data.products[0];
+            gtin = normalizeBarcodeValue(
+                firstProduct.barcode || 
+                firstProduct.gtin || 
+                firstProduct.upc || 
+                firstProduct.ean
+            );
+        }
+        
+        // Formato 3: data.data o data.result
+        if (!gtin && data.data) {
+            const productData = Array.isArray(data.data) ? data.data[0] : data.data;
+            gtin = normalizeBarcodeValue(
+                productData?.barcode || 
+                productData?.gtin || 
+                productData?.upc || 
+                productData?.ean
+            );
+        }
+        
+        if (gtin) {
+            console.log('✅ GTIN encontrado vía Barcodes Data API:', gtin);
+            return gtin;
+        }
+        
+        console.warn('⚠️ Barcodes Data API no retornó GTIN válido en la respuesta');
         return null;
+        
     } catch (error) {
-        console.warn('⚠️ Error buscando GTIN en API externa:', error);
+        console.warn('⚠️ Error buscando GTIN en Barcodes Data API:', error);
         return null;
     }
 }
