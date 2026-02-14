@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initMainMenu();
     initUserAccount();
     initPromotionTicker();
+    initPromotionalBanners();
+    initFeaturedCards();
 });
 
 function getPromotionConfig() {
@@ -53,6 +55,12 @@ function getPromotionConfig() {
 }
 
 function initPromotionTicker() {
+    // NO mostrar ticker en admin.html
+    if (window.location.pathname.includes('admin.html') || window.location.pathname.includes('/admin')) {
+        console.log('⚠️ [Tropiplus] Ticker promocional deshabilitado en admin');
+        return;
+    }
+    
     console.log('🎯 Inicializando barra promocional...');
     
     // Esperar a que el DOM esté completamente cargado
@@ -110,10 +118,11 @@ function createPromotionBar() {
     const track = document.createElement('div');
     track.className = 'promo-ticker-track';
 
-    // Crear solo DOS copias del texto para que se repita suavemente
+    // Crear múltiples copias del texto para que se repita suavemente
     // Separador entre repeticiones
     const separator = '   •   ';
-    const textContent = `${config.text}${separator}${config.text}${separator}`;
+    // Repetir el texto 3 veces para crear un loop continuo sin duplicar visiblemente
+    const textContent = `${config.text}${separator}`.repeat(3);
 
     const createItem = () => {
         if (config.linkEnabled && config.url) {
@@ -235,35 +244,12 @@ function initUserAccount() {
 }
 
 function initAdminTab() {
-    // Verificar si el usuario es administrador
-    if (typeof isUserAdmin === 'function' && isUserAdmin()) {
-        const navLinksMain = document.querySelector('.nav-links-main');
-        if (navLinksMain) {
-            // Verificar si ya existe el enlace de administrar
-            const existingAdminLink = navLinksMain.querySelector('.nav-link-item[href="admin.html"]');
-            if (!existingAdminLink) {
-                // Crear enlace de administrar
-                const adminLink = document.createElement('a');
-                adminLink.href = 'admin.html';
-                adminLink.className = 'nav-link-item';
-                adminLink.innerHTML = '<i class="fas fa-cog"></i> Admin';
-                
-                // Insertar después de "Todos los productos"
-                const allProductsLink = navLinksMain.querySelector('a[href="products.html"]');
-                if (allProductsLink) {
-                    allProductsLink.insertAdjacentElement('afterend', adminLink);
-                } else {
-                    // Si no existe, insertar al principio
-                    navLinksMain.insertBefore(adminLink, navLinksMain.firstChild);
-                }
-            }
-        }
-    } else {
-        // Remover enlace de administrar si el usuario no es admin
-        const adminLink = document.querySelector('.nav-link-item[href="admin.html"]');
-        if (adminLink) {
-            adminLink.remove();
-        }
+    // Ya no agregamos el enlace de Admin en el nav
+    // El enlace de Admin ahora está en el perfil (account.html)
+    // Solo removemos si existe en el nav
+    const adminLink = document.querySelector('.nav-link-item[href="admin.html"]');
+    if (adminLink) {
+        adminLink.remove();
     }
 }
 
@@ -491,6 +477,276 @@ function initCarousels() {
             });
         });
     }
+}
+
+// ============================================
+// FUNCIONES PARA BANNERS PROMOCIONALES
+// ============================================
+
+async function initPromotionalBanners() {
+    // Solo cargar banners en index.html
+    if (!window.location.pathname.includes('index.html') && window.location.pathname !== '/' && !window.location.pathname.endsWith('/')) {
+        return;
+    }
+    
+    try {
+        const banners = await getBannersFromStorage();
+        
+        if (banners.length === 0) {
+            console.log('⚠️ [Banners] No hay banners configurados');
+            return;
+        }
+        
+        // Ordenar banners por display_order
+        const sortedBanners = [...banners].sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+        
+        renderPromotionalBanners(sortedBanners);
+        startBannerRotation(sortedBanners);
+    } catch (error) {
+        console.error('❌ [Banners] Error cargando banners:', error);
+    }
+}
+
+async function getBannersFromStorage() {
+    try {
+        // Intentar obtener de Supabase
+        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            const response = await fetch(
+                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/home_banners?select=*&active=eq.true&order=display_order.asc`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`
+                    }
+                }
+            );
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ [Banners] Banners cargados desde Supabase:', data.length);
+                return data;
+            }
+        }
+        
+        // Fallback a localStorage
+        const localBanners = localStorage.getItem('tropiplus_banners');
+        if (localBanners) {
+            const parsed = JSON.parse(localBanners);
+            console.log('✅ [Banners] Banners cargados desde localStorage:', parsed.length);
+            return parsed.filter(b => b.active !== false);
+        }
+        
+        return [];
+    } catch (error) {
+        console.warn('⚠️ [Banners] Error obteniendo banners, usando localStorage:', error);
+        const localBanners = localStorage.getItem('tropiplus_banners');
+        return localBanners ? JSON.parse(localBanners).filter(b => b.active !== false) : [];
+    }
+}
+
+function renderPromotionalBanners(banners) {
+    const bannersRow = document.querySelector('.banners-row');
+    if (!bannersRow) {
+        console.warn('⚠️ [Banners] No se encontró .banners-row');
+        return;
+    }
+    
+    // Limpiar banners existentes (excepto el contenedor)
+    bannersRow.innerHTML = '';
+    
+    if (banners.length === 0) {
+        return;
+    }
+    
+    // Crear banners dinámicamente
+    banners.forEach((banner, index) => {
+        const bannerCard = document.createElement('div');
+        bannerCard.className = 'promo-banner-card';
+        bannerCard.dataset.bannerIndex = index;
+        
+        // Si tiene URL de redirección, hacer el banner clickeable
+        if (banner.redirect_url) {
+            bannerCard.style.cursor = 'pointer';
+            bannerCard.addEventListener('click', () => {
+                window.open(banner.redirect_url, '_blank');
+            });
+        }
+        
+        // Crear imagen o contenido del banner
+        if (banner.image_url) {
+            const img = document.createElement('img');
+            img.src = banner.image_url;
+            img.alt = `Banner ${index + 1}`;
+            img.className = 'promo-banner-image';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '12px';
+            img.onerror = function() {
+                this.style.display = 'none';
+                bannerCard.innerHTML = `
+                    <div class="banner-inner-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h3 class="banner-title">Banner ${index + 1}</h3>
+                        <p class="banner-text">Imagen no disponible</p>
+                    </div>
+                `;
+            };
+            bannerCard.appendChild(img);
+        } else {
+            // Fallback si no hay imagen
+            bannerCard.innerHTML = `
+                <div class="banner-inner-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="banner-title">Banner ${index + 1}</h3>
+                    <p class="banner-text">Sin imagen</p>
+                </div>
+            `;
+        }
+        
+        bannersRow.appendChild(bannerCard);
+    });
+    
+    console.log(`✅ [Banners] ${banners.length} banner(es) renderizado(s)`);
+}
+
+function startBannerRotation(banners) {
+    if (banners.length <= 1) {
+        return; // No hay necesidad de rotar si hay 1 o menos banners
+    }
+    
+    // Obtener intervalo de transición
+    const savedInterval = localStorage.getItem('tropiplus_banner_transition_interval');
+    const intervalSeconds = savedInterval ? parseInt(savedInterval) : 5;
+    const intervalMs = intervalSeconds * 1000;
+    
+    console.log(`✅ [Banners] Rotación configurada (intervalo: ${intervalSeconds}s)`);
+}
+
+// ============================================
+// FUNCIONES PARA TARJETAS DESTACADAS
+// ============================================
+
+async function initFeaturedCards() {
+    // Solo cargar tarjetas en index.html
+    if (!window.location.pathname.includes('index.html') && window.location.pathname !== '/' && !window.location.pathname.endsWith('/')) {
+        return;
+    }
+    
+    try {
+        const cards = await getFeaturedCardsFromHomeStorage();
+        
+        if (cards.length === 0) {
+            console.log('⚠️ [Featured Cards] No hay tarjetas configuradas');
+            return;
+        }
+        
+        // Ordenar tarjetas por display_order
+        const sortedCards = [...cards].sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+        
+        renderFeaturedCards(sortedCards);
+    } catch (error) {
+        console.error('❌ [Featured Cards] Error cargando tarjetas:', error);
+    }
+}
+
+async function getFeaturedCardsFromHomeStorage() {
+    try {
+        // Intentar obtener de Supabase
+        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            const response = await fetch(
+                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&active=eq.true&order=display_order.asc`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`
+                    }
+                }
+            );
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ [Featured Cards] Tarjetas cargadas desde Supabase:', data.length);
+                return data;
+            }
+        }
+        
+        // Fallback a localStorage
+        const localCards = localStorage.getItem('tropiplus_featured_cards');
+        if (localCards) {
+            const parsed = JSON.parse(localCards);
+            console.log('✅ [Featured Cards] Tarjetas cargadas desde localStorage:', parsed.length);
+            return parsed.filter(c => c.active !== false);
+        }
+        
+        return [];
+    } catch (error) {
+        console.warn('⚠️ [Featured Cards] Error obteniendo tarjetas, usando localStorage:', error);
+        const localCards = localStorage.getItem('tropiplus_featured_cards');
+        return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
+    }
+}
+
+function renderFeaturedCards(cards) {
+    const carouselTrack = document.getElementById('best-sellers-carousel');
+    if (!carouselTrack) {
+        console.warn('⚠️ [Featured Cards] No se encontró #best-sellers-carousel');
+        return;
+    }
+    
+    // Limpiar contenido existente
+    carouselTrack.innerHTML = '';
+    
+    if (cards.length === 0) {
+        return;
+    }
+    
+    // Crear tarjetas dinámicamente
+    cards.forEach((card, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'product-card-item';
+        cardElement.style.cursor = card.redirect_url ? 'pointer' : 'default';
+        
+        if (card.redirect_url) {
+            cardElement.addEventListener('click', () => {
+                window.open(card.redirect_url, '_blank');
+            });
+        }
+        
+        cardElement.innerHTML = `
+            <div class="product-image-container">
+                <img src="${card.image_url}" alt="Producto destacado ${index + 1}" 
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23e0e0e0\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'14\\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'"
+                     style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div class="product-info">
+                <div class="product-price-container">
+                    <span class="product-price-main">Producto Destacado</span>
+                </div>
+                <div class="product-actions-row">
+                    <div class="quantity-selector">
+                        <button class="qty-btn minus">-</button>
+                        <input type="number" class="qty-input" value="1" min="1" readonly>
+                        <button class="qty-btn plus">+</button>
+                    </div>
+                    <button class="add-to-cart-btn" style="opacity: 0.5; cursor: not-allowed;" disabled>
+                        <i class="fas fa-shopping-cart"></i>
+                    </button>
+                    <button class="favorite-btn">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        carouselTrack.appendChild(cardElement);
+    });
+    
+    console.log(`✅ [Featured Cards] ${cards.length} tarjeta(s) renderizada(s)`);
 }
 
 function initCategoriesScroll() {

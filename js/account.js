@@ -5,11 +5,27 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof isUserLoggedIn === 'function' && isUserLoggedIn()) {
         loadUserData();
         initAccountForm();
+        initAdminLink();
     } else {
         // Redirigir a login si no está autenticado
         window.location.href = 'login.html';
     }
 });
+
+function initAdminLink() {
+    // Mostrar enlace de Admin solo si el usuario es administrador
+    if (typeof isUserAdmin === 'function' && isUserAdmin()) {
+        const adminLink = document.getElementById('nav-admin');
+        if (adminLink) {
+            adminLink.style.display = 'block';
+        }
+    } else {
+        const adminLink = document.getElementById('nav-admin');
+        if (adminLink) {
+            adminLink.style.display = 'none';
+        }
+    }
+}
 
 function loadUserData() {
     const user = getCurrentUser();

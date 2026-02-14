@@ -2758,6 +2758,8 @@ function switchSubTab(subtabName) {
         initDeliveryTab();
     } else if (subtabName === 'currency') {
         initRemesasManagement();
+    } else if (subtabName === 'settings') {
+        initSettingsTab();
     }
 }
 
@@ -5624,6 +5626,869 @@ async function toggleTvScreenOrientation(tvId) {
         }
     }
 }
+
+// ============================================
+// FUNCIONES PARA PESTAÑA DE AJUSTES
+// ============================================
+
+const BANNERS_STORAGE_KEY = 'tropiplus_banners';
+const BANNER_TRANSITION_STORAGE_KEY = 'tropiplus_banner_transition_interval';
+const MAINTENANCE_MODE_STORAGE_KEY = 'tropiplus_maintenance_mode';
+const FEATURED_CARDS_STORAGE_KEY = 'tropiplus_featured_cards';
+
+function initSettingsTab() {
+    console.log('⚙️ Inicializando pestaña de Ajustes...');
+    
+    // Cargar y renderizar tarjetas destacadas
+    renderFeaturedCardsList();
+    
+    // Cargar y renderizar banners
+    renderBannersList();
+    
+    // Configurar formulario de transición
+    const transitionForm = document.getElementById('banner-transition-form');
+    if (transitionForm) {
+        const savedInterval = localStorage.getItem(BANNER_TRANSITION_STORAGE_KEY);
+        if (savedInterval) {
+            document.getElementById('banner-transition-interval').value = savedInterval;
+        }
+        
+        transitionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const interval = parseInt(document.getElementById('banner-transition-interval').value);
+            if (interval >= 2 && interval <= 60) {
+                localStorage.setItem(BANNER_TRANSITION_STORAGE_KEY, interval.toString());
+                await saveBannerTransitionToSupabase(interval);
+                showModal('Éxito', `Intervalo de transición guardado: ${interval} segundos`, 'success');
+            } else {
+                showModal('Error', 'El intervalo debe estar entre 2 y 60 segundos', 'error');
+            }
+        });
+    }
+    
+    // Configurar formulario de mantenimiento
+    const maintenanceForm = document.getElementById('maintenance-mode-form');
+    if (maintenanceForm) {
+        const savedMaintenance = localStorage.getItem(MAINTENANCE_MODE_STORAGE_KEY);
+        const isEnabled = savedMaintenance === 'true';
+        document.getElementById('maintenance-enabled').checked = isEnabled;
+        
+        maintenanceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const enabled = document.getElementById('maintenance-enabled').checked;
+            localStorage.setItem(MAINTENANCE_MODE_STORAGE_KEY, enabled.toString());
+            await saveMaintenanceModeToSupabase(enabled);
+            showModal('Éxito', `Modo mantenimiento ${enabled ? 'activado' : 'desactivado'}`, 'success');
+        });
+    }
+    
+    // Botón para agregar banner
+    const addBannerBtn = document.getElementById('btn-add-banner');
+    if (addBannerBtn) {
+        addBannerBtn.addEventListener('click', () => {
+            openBannerModal();
+        });
+    }
+    
+    // Botón para agregar tarjeta destacada
+    const addFeaturedCardBtn = document.getElementById('btn-add-featured-card');
+    if (addFeaturedCardBtn) {
+        addFeaturedCardBtn.addEventListener('click', () => {
+            openFeaturedCardModal();
+        });
+    }
+}
+
+// ============================================
+// FUNCIONES PARA TARJETAS DESTACADAS
+// ============================================
+
+async function renderFeaturedCardsList() {
+    const container = document.getElementById('featured-cards-list-container');
+    if (!container) return;
+    
+    try {
+        const cards = await getFeaturedCardsFromStorage();
+        
+        if (cards.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+                    <i class="fas fa-image" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                    <p style="font-size: 16px; margin: 0;">No hay tarjetas configuradas</p>
+                    <p style="font-size: 14px; margin-top: 8px; opacity: 0.7;">Agrega una tarjeta para mostrarla en el home</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordenar tarjetas por display_order
+        const sortedCards = [...cards].sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+        
+        container.innerHTML = sortedCards.map((card, index) => {
+            const imagePreview = card.image_url ? 
+                `<img src="${card.image_url}" alt="Tarjeta ${index + 1}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">` :
+                `<div style="width: 100%; height: 100%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: #999;">Sin imagen</div>`;
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 15px; border: 2px solid var(--gray-border); border-radius: 8px; margin-bottom: 12px; background: #f9f9f9;">
+                    <div style="width: 120px; height: 120px; border-radius: 6px; overflow: hidden; background: #e0e0e0; flex-shrink: 0; border: 2px solid var(--gray-border);">
+                        ${imagePreview}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <p style="margin: 0 0 5px 0; font-weight: 600; font-size: 14px; color: var(--dark-blue);">
+                            Tarjeta ${index + 1}
+                        </p>
+                        ${card.redirect_url ? `
+                            <p style="margin: 0 0 3px 0; font-size: 12px; color: var(--green-categories); word-break: break-all;">
+                                <strong>URL:</strong> ${card.redirect_url.substring(0, 50)}${card.redirect_url.length > 50 ? '...' : ''}
+                            </p>
+                        ` : `
+                            <p style="margin: 0 0 3px 0; font-size: 12px; color: var(--gray-text);">
+                                <strong>URL:</strong> <em>Sin redirección</em>
+                            </p>
+                        `}
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: var(--gray-text);">
+                            Orden: ${card.display_order || index + 1}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                        <button onclick="editFeaturedCard('${card.id}')" class="btn-primary" style="padding: 8px 12px; font-size: 12px;">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button onclick="deleteFeaturedCard('${card.id}')" class="btn-delete" style="padding: 8px 12px; font-size: 12px;">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error cargando tarjetas:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--red-error);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                <p>Error cargando tarjetas: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+async function openFeaturedCardModal(cardId = null) {
+    const card = cardId ? await getFeaturedCardById(cardId) : null;
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.className = 'supplier-modal';
+    modal.id = 'featured-card-modal';
+    modal.style.display = 'flex';
+    
+    const redirectUrlValue = card ? (card.redirect_url || '') : '';
+    const displayOrderValue = card ? (card.display_order || 1) : 1;
+    const cardIdValue = card ? card.id : '';
+    const existingImageUrl = card ? (card.image_url || '') : '';
+    
+    modal.innerHTML = `
+        <div class="supplier-modal-content" style="max-width: 600px;">
+            <h2 style="margin-top: 0; margin-bottom: 18px; font-size: 20px;">
+                <i class="fas fa-image"></i> ${cardId ? 'Editar' : 'Agregar'} Tarjeta Destacada
+            </h2>
+            <form id="featured-card-form">
+                <div class="supplier-form-group">
+                    <label for="featured-card-image">Imagen de la Tarjeta *</label>
+                    <input type="file" id="featured-card-image" accept="image/*" ${cardId && existingImageUrl ? '' : 'required'}
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    ${existingImageUrl ? `
+                        <div style="margin-top: 10px;">
+                            <p style="font-size: 12px; color: var(--gray-text); margin-bottom: 5px;">Imagen actual:</p>
+                            <img src="${existingImageUrl}" alt="Imagen actual" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 2px solid var(--gray-border);">
+                        </div>
+                    ` : ''}
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Selecciona una imagen desde tu galería
+                    </small>
+                </div>
+                
+                <div class="supplier-form-group">
+                    <label for="featured-card-redirect-url">URL de Redirección (Opcional)</label>
+                    <input type="url" id="featured-card-redirect-url" 
+                           placeholder="https://ejemplo.com/destino" 
+                           value="${redirectUrlValue}"
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Si se especifica, al hacer clic en la tarjeta redirigirá a esta URL
+                    </small>
+                </div>
+                
+                <div class="supplier-form-group">
+                    <label for="featured-card-display-order">Orden de Visualización *</label>
+                    <input type="number" id="featured-card-display-order" required min="1" 
+                           value="${displayOrderValue}"
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Número que determina el orden en que se mostrarán las tarjetas (menor = primero)
+                    </small>
+                </div>
+                
+                ${cardIdValue ? `<input type="hidden" id="featured-card-id" value="${cardIdValue}">` : ''}
+                ${existingImageUrl ? `<input type="hidden" id="featured-card-existing-image" value="${existingImageUrl}">` : ''}
+                
+                <div class="supplier-modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeFeaturedCardModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> ${cardId ? 'Actualizar' : 'Guardar'} Tarjeta
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Configurar formulario
+    const form = document.getElementById('featured-card-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const imageInput = document.getElementById('featured-card-image');
+        const redirectUrl = document.getElementById('featured-card-redirect-url').value.trim();
+        const displayOrder = parseInt(document.getElementById('featured-card-display-order').value) || 1;
+        const existingImageUrl = document.getElementById('featured-card-existing-image')?.value || '';
+        
+        let imageUrl = existingImageUrl;
+        
+        // Si hay una nueva imagen seleccionada, convertirla a base64
+        if (imageInput.files && imageInput.files[0]) {
+            const file = imageInput.files[0];
+            imageUrl = await convertFileToBase64(file);
+        }
+        
+        if (!imageUrl) {
+            showModal('Error', 'La imagen es requerida', 'error');
+            return;
+        }
+        
+        await saveFeaturedCard(imageUrl, displayOrder, cardId, redirectUrl || null);
+        closeFeaturedCardModal();
+    });
+}
+
+function convertFileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function closeFeaturedCardModal() {
+    const modal = document.getElementById('featured-card-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function getFeaturedCardById(cardId) {
+    try {
+        const cards = await getFeaturedCardsFromStorage();
+        return cards.find(c => c.id === cardId) || null;
+    } catch (error) {
+        console.error('Error obteniendo tarjeta:', error);
+        return null;
+    }
+}
+
+async function saveFeaturedCard(imageUrl, displayOrder, cardId = null, redirectUrl = null) {
+    try {
+        const cardData = {
+            id: cardId || `featured_card_${Date.now()}`,
+            image_url: imageUrl,
+            display_order: displayOrder,
+            redirect_url: redirectUrl,
+            active: true
+        };
+        
+        await saveFeaturedCardToStorage(cardData);
+        await renderFeaturedCardsList();
+        showModal('Éxito', 'Tarjeta guardada correctamente', 'success');
+    } catch (error) {
+        console.error('Error guardando tarjeta:', error);
+        showModal('Error', `Error al guardar tarjeta: ${error.message}`, 'error');
+    }
+}
+
+async function deleteFeaturedCard(cardId) {
+    if (!confirm('¿Estás seguro de eliminar esta tarjeta?')) return;
+    
+    try {
+        await deleteFeaturedCardFromStorage(cardId);
+        await renderFeaturedCardsList();
+        showModal('Éxito', 'Tarjeta eliminada correctamente', 'success');
+    } catch (error) {
+        console.error('Error eliminando tarjeta:', error);
+        showModal('Error', `Error al eliminar tarjeta: ${error.message}`, 'error');
+    }
+}
+
+async function getFeaturedCardsFromStorage() {
+    try {
+        // Intentar obtener de Supabase
+        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
+            const response = await fetch(
+                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&active=eq.true&order=display_order.asc`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`
+                    }
+                }
+            );
+            
+            if (response.ok) {
+                return await response.json();
+            }
+        }
+        
+        // Fallback a localStorage
+        const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
+        return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
+    } catch (error) {
+        console.warn('Error obteniendo tarjetas, usando localStorage:', error);
+        const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
+        return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
+    }
+}
+
+async function saveFeaturedCardToStorage(cardData) {
+    try {
+        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Featured Cards] Anon key no configurada. Guardando solo en localStorage.');
+            // Guardar en localStorage como fallback
+            const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
+            const existingIndex = localCards.findIndex(c => c.id === cardData.id);
+            if (existingIndex >= 0) {
+                localCards[existingIndex] = cardData;
+            } else {
+                localCards.push(cardData);
+            }
+            localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
+            return;
+        }
+        
+        // PRIMERO guardar en Supabase (BD principal)
+        const response = await fetch(
+            `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                },
+                body: JSON.stringify({
+                    id: cardData.id,
+                    image_url: cardData.image_url,
+                    display_order: cardData.display_order,
+                    redirect_url: cardData.redirect_url || null,
+                    active: cardData.active !== false
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Featured Cards] Error guardando en Supabase:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const saved = await response.json();
+        console.log('✅ [Featured Cards] Tarjeta guardada en Supabase:', saved);
+        
+        // También guardar en localStorage como cache
+        const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
+        const existingIndex = localCards.findIndex(c => c.id === cardData.id);
+        if (existingIndex >= 0) {
+            localCards[existingIndex] = cardData;
+        } else {
+            localCards.push(cardData);
+        }
+        localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
+    } catch (error) {
+        console.error('❌ [Featured Cards] Error guardando tarjeta en Supabase:', error);
+        // Guardar en localStorage como fallback
+        const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
+        const existingIndex = localCards.findIndex(c => c.id === cardData.id);
+        if (existingIndex >= 0) {
+            localCards[existingIndex] = cardData;
+        } else {
+            localCards.push(cardData);
+        }
+        localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
+        throw error; // Re-lanzar para que el usuario sepa que hubo un error
+    }
+}
+
+async function deleteFeaturedCardFromStorage(cardId) {
+    try {
+        // Eliminar de localStorage
+        const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
+        const filtered = localCards.filter(c => c.id !== cardId);
+        localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(filtered));
+        
+        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            return;
+        }
+        
+        const response = await fetch(
+            `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?id=eq.${cardId}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                }
+            }
+        );
+        
+        if (!response.ok && response.status !== 404) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (error) {
+        console.warn('Error eliminando tarjeta de Supabase:', error);
+        // Ya eliminado de localStorage como fallback
+    }
+}
+
+// Hacer funciones disponibles globalmente
+window.editFeaturedCard = openFeaturedCardModal;
+window.deleteFeaturedCard = deleteFeaturedCard;
+window.closeFeaturedCardModal = closeFeaturedCardModal;
+
+async function renderBannersList() {
+    const container = document.getElementById('banners-list-container');
+    if (!container) return;
+    
+    try {
+        const banners = await getBannersFromSupabase();
+        
+        if (banners.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--gray-text);">
+                    <i class="fas fa-image" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                    <p style="font-size: 16px; margin: 0;">No hay banners configurados</p>
+                    <p style="font-size: 14px; margin-top: 8px; opacity: 0.7;">Agrega un banner para mostrarlo en el home</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordenar banners por display_order
+        const sortedBanners = [...banners].sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+        
+        container.innerHTML = sortedBanners.map((banner, index) => `
+            <div style="display: flex; align-items: center; gap: 15px; padding: 15px; border: 2px solid var(--gray-border); border-radius: 8px; margin-bottom: 12px; background: #f9f9f9;">
+                <div style="width: 120px; height: 80px; border-radius: 6px; overflow: hidden; background: #e0e0e0; flex-shrink: 0; border: 2px solid var(--gray-border);">
+                    <img src="${banner.image_url}" alt="Banner ${index + 1}" 
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'120\\' height=\\'80\\'%3E%3Crect fill=\\'%23e0e0e0\\' width=\\'120\\' height=\\'80\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'12\\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'"
+                         style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <p style="margin: 0 0 5px 0; font-weight: 600; font-size: 14px; color: var(--dark-blue);">
+                        Banner ${index + 1}
+                    </p>
+                    <p style="margin: 0 0 3px 0; font-size: 12px; color: var(--gray-text); word-break: break-all;">
+                        <strong>Imagen:</strong> ${banner.image_url.substring(0, 50)}${banner.image_url.length > 50 ? '...' : ''}
+                    </p>
+                    ${banner.redirect_url ? `
+                        <p style="margin: 0 0 3px 0; font-size: 12px; color: var(--green-categories); word-break: break-all;">
+                            <strong>URL:</strong> ${banner.redirect_url.substring(0, 50)}${banner.redirect_url.length > 50 ? '...' : ''}
+                        </p>
+                    ` : `
+                        <p style="margin: 0 0 3px 0; font-size: 12px; color: var(--gray-text);">
+                            <strong>URL:</strong> <em>Sin redirección</em>
+                        </p>
+                    `}
+                    <p style="margin: 5px 0 0 0; font-size: 11px; color: var(--gray-text);">
+                        Orden: ${banner.display_order || index + 1}
+                    </p>
+                </div>
+                <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                    <button onclick="editBanner('${banner.id}')" class="btn-primary" style="padding: 8px 12px; font-size: 12px;">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button onclick="deleteBanner('${banner.id}')" class="btn-delete" style="padding: 8px 12px; font-size: 12px;">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error cargando banners:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--red-error);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                <p>Error cargando banners: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+async function openBannerModal(bannerId = null) {
+    const banner = bannerId ? await getBannerById(bannerId) : null;
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.className = 'supplier-modal';
+    modal.id = 'banner-modal';
+    modal.style.display = 'flex';
+    
+    const redirectUrlValue = banner ? (banner.redirect_url || '') : '';
+    const displayOrderValue = banner ? (banner.display_order || 1) : 1;
+    const bannerIdValue = banner ? banner.id : '';
+    const existingImageUrl = banner ? (banner.image_url || '') : '';
+    
+    modal.innerHTML = `
+        <div class="supplier-modal-content" style="max-width: 600px;">
+            <h2 style="margin-top: 0; margin-bottom: 18px; font-size: 20px;">
+                <i class="fas fa-image"></i> ${bannerId ? 'Editar' : 'Agregar'} Banner
+            </h2>
+            <form id="banner-form">
+                <div class="supplier-form-group">
+                    <label for="banner-image">Imagen del Banner *</label>
+                    <input type="file" id="banner-image" accept="image/*" ${bannerId && existingImageUrl ? '' : 'required'}
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    ${existingImageUrl ? `
+                        <div style="margin-top: 10px;">
+                            <p style="font-size: 12px; color: var(--gray-text); margin-bottom: 5px;">Imagen actual:</p>
+                            <img src="${existingImageUrl}" alt="Imagen actual" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 2px solid var(--gray-border);">
+                        </div>
+                    ` : ''}
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Selecciona una imagen desde tu galería
+                    </small>
+                </div>
+                
+                <div class="supplier-form-group">
+                    <label for="banner-redirect-url">URL de Redirección (Opcional)</label>
+                    <input type="url" id="banner-redirect-url" 
+                           placeholder="https://ejemplo.com/destino" 
+                           value="${redirectUrlValue}"
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Si se especifica, al hacer clic en el banner redirigirá a esta URL
+                    </small>
+                </div>
+                
+                <div class="supplier-form-group">
+                    <label for="banner-display-order">Orden de Visualización *</label>
+                    <input type="number" id="banner-display-order" required min="1" 
+                           value="${displayOrderValue}"
+                           style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                    <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
+                        Número que determina el orden en que se mostrarán los banners (menor = primero)
+                    </small>
+                </div>
+                
+                ${bannerIdValue ? `<input type="hidden" id="banner-id" value="${bannerIdValue}">` : ''}
+                ${existingImageUrl ? `<input type="hidden" id="banner-existing-image" value="${existingImageUrl}">` : ''}
+                
+                <div class="supplier-modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeBannerModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> ${bannerId ? 'Actualizar' : 'Guardar'} Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Configurar formulario
+    const form = document.getElementById('banner-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const imageInput = document.getElementById('banner-image');
+        const redirectUrl = document.getElementById('banner-redirect-url').value.trim();
+        const displayOrder = parseInt(document.getElementById('banner-display-order').value) || 1;
+        const existingImageUrl = document.getElementById('banner-existing-image')?.value || '';
+        
+        let imageUrl = existingImageUrl;
+        
+        // Si hay una nueva imagen seleccionada, convertirla a base64
+        if (imageInput.files && imageInput.files[0]) {
+            const file = imageInput.files[0];
+            imageUrl = await convertFileToBase64(file);
+        }
+        
+        if (!imageUrl) {
+            showModal('Error', 'La imagen es requerida', 'error');
+            return;
+        }
+        
+        await saveBanner(imageUrl, displayOrder, bannerId, redirectUrl || null);
+        closeBannerModal();
+    });
+}
+
+function closeBannerModal() {
+    const modal = document.getElementById('banner-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function getBannerById(bannerId) {
+    try {
+        const banners = await getBannersFromSupabase();
+        return banners.find(b => b.id === bannerId) || null;
+    } catch (error) {
+        console.error('Error obteniendo banner:', error);
+        return null;
+    }
+}
+
+async function saveBanner(imageUrl, displayOrder, bannerId = null, redirectUrl = null) {
+    try {
+        const bannerData = {
+            id: bannerId || `banner_${Date.now()}`,
+            image_url: imageUrl,
+            display_order: displayOrder,
+            redirect_url: redirectUrl,
+            active: true
+        };
+        
+        await saveBannerToSupabase(bannerData);
+        await renderBannersList();
+        showModal('Éxito', 'Banner guardado correctamente', 'success');
+    } catch (error) {
+        console.error('Error guardando banner:', error);
+        showModal('Error', `Error al guardar banner: ${error.message}`, 'error');
+    }
+}
+
+async function deleteBanner(bannerId) {
+    if (!confirm('¿Estás seguro de eliminar este banner?')) return;
+    
+    try {
+        await deleteBannerFromSupabase(bannerId);
+        await renderBannersList();
+        showModal('Éxito', 'Banner eliminado correctamente', 'success');
+    } catch (error) {
+        console.error('Error eliminando banner:', error);
+        showModal('Error', `Error al eliminar banner: ${error.message}`, 'error');
+    }
+}
+
+// Funciones para Supabase (banners, transición, mantenimiento)
+async function getBannersFromSupabase() {
+    try {
+        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            // Fallback a localStorage
+            const localBanners = localStorage.getItem(BANNERS_STORAGE_KEY);
+            return localBanners ? JSON.parse(localBanners) : [];
+        }
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/home_banners?select=*&order=display_order.asc`,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                return [];
+            }
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.warn('Error obteniendo banners de Supabase, usando localStorage:', error);
+        const localBanners = localStorage.getItem(BANNERS_STORAGE_KEY);
+        return localBanners ? JSON.parse(localBanners) : [];
+    }
+}
+
+async function saveBannerToSupabase(bannerData) {
+    try {
+        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            console.warn('⚠️ [Banners] Anon key no configurada. Guardando solo en localStorage.');
+            // Guardar en localStorage como fallback
+            const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
+            const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
+            if (existingIndex >= 0) {
+                localBanners[existingIndex] = bannerData;
+            } else {
+                localBanners.push(bannerData);
+            }
+            localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
+            return;
+        }
+        
+        // PRIMERO guardar en Supabase (BD principal)
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/home_banners`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                },
+                body: JSON.stringify({
+                    id: bannerData.id,
+                    image_url: bannerData.image_url,
+                    display_order: bannerData.display_order,
+                    redirect_url: bannerData.redirect_url || null,
+                    active: bannerData.active !== false
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [Banners] Error guardando en Supabase:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const saved = await response.json();
+        console.log('✅ [Banners] Banner guardado en Supabase:', saved);
+        
+        // También guardar en localStorage como cache
+        const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
+        const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
+        if (existingIndex >= 0) {
+            localBanners[existingIndex] = bannerData;
+        } else {
+            localBanners.push(bannerData);
+        }
+        localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
+    } catch (error) {
+        console.error('❌ [Banners] Error guardando banner en Supabase:', error);
+        // Guardar en localStorage como fallback
+        const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
+        const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
+        if (existingIndex >= 0) {
+            localBanners[existingIndex] = bannerData;
+        } else {
+            localBanners.push(bannerData);
+        }
+        localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
+        throw error; // Re-lanzar para que el usuario sepa que hubo un error
+    }
+}
+
+async function deleteBannerFromSupabase(bannerId) {
+    try {
+        // Eliminar de localStorage
+        const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
+        const filtered = localBanners.filter(b => b.id !== bannerId);
+        localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(filtered));
+        
+        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            return;
+        }
+        
+        const response = await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/home_banners?id=eq.${bannerId}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                }
+            }
+        );
+        
+        if (!response.ok && response.status !== 404) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (error) {
+        console.warn('Error eliminando banner de Supabase:', error);
+        // Ya eliminado de localStorage como fallback
+    }
+}
+
+async function saveBannerTransitionToSupabase(interval) {
+    try {
+        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            return;
+        }
+        
+        await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/site_settings`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                },
+                body: JSON.stringify({
+                    key: 'banner_transition_interval',
+                    value: interval.toString()
+                })
+            }
+        );
+    } catch (error) {
+        console.warn('Error guardando intervalo en Supabase:', error);
+    }
+}
+
+async function saveMaintenanceModeToSupabase(enabled) {
+    try {
+        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
+        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
+            return;
+        }
+        
+        await fetch(
+            `${SUPABASE_CONFIG.url}/rest/v1/site_settings`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`
+                },
+                body: JSON.stringify({
+                    key: 'maintenance_mode',
+                    value: enabled.toString()
+                })
+            }
+        );
+    } catch (error) {
+        console.warn('Error guardando modo mantenimiento en Supabase:', error);
+    }
+}
+
+// Hacer funciones disponibles globalmente
+window.editBanner = openBannerModal;
+window.deleteBanner = deleteBanner;
+window.closeBannerModal = closeBannerModal;
 
 // Hacer función disponible globalmente
 window.openSupplierModal = openSupplierModal;

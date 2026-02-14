@@ -402,6 +402,9 @@
             <button class="admin-internal-btn" data-subtab="delivery">
                 <i class="fas fa-truck"></i> Delivery
             </button>
+            <button class="admin-internal-btn" data-subtab="settings">
+                <i class="fas fa-cog"></i> Ajustes
+            </button>
         </div>
 
         <!-- Contenido de Admin -->
@@ -1133,6 +1136,92 @@
                         <p>Cargando órdenes de delivery...</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Subtab de Ajustes -->
+            <div id="settings-content" class="admin-subcontent">
+            <div style="margin-bottom: 25px; text-align: center;">
+                <h2 style="margin-bottom: 12px; font-size: 24px;">
+                    <i class="fas fa-cog"></i> Ajustes del Sistema
+                </h2>
+                <p style="color: var(--gray-text); margin-bottom: 0; font-size: 14px;">
+                    Configura banners del home, intervalo de transición y modo mantenimiento.
+                </p>
+            </div>
+
+            <!-- Gestión de Tarjetas de Productos Destacados -->
+            <div class="global-supplier-form-container" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px;">
+                <h3 style="margin-bottom: 18px; font-size: 18px;">Gestión de Tarjetas de Productos Destacados</h3>
+                <p style="color: var(--gray-text); margin-bottom: 18px; font-size: 14px;">
+                    Administra las tarjetas de productos que se muestran en la sección "Más vendidos" del home.
+                </p>
+                <div id="featured-cards-list-container">
+                    <p style="text-align: center; padding: 20px; color: var(--gray-text);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px; display: block;"></i>
+                        Cargando tarjetas...
+                    </p>
+                </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--gray-border);">
+                    <button type="button" id="btn-add-featured-card" class="btn-save" style="width: 100%;">
+                        <i class="fas fa-plus"></i> Agregar Nueva Tarjeta
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gestión de Banners -->
+            <div class="global-supplier-form-container" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px;">
+                <h3 style="margin-bottom: 18px; font-size: 18px;">Gestión de Banners del Home</h3>
+                <div id="banners-list-container">
+                    <p style="text-align: center; padding: 20px; color: var(--gray-text);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px; display: block;"></i>
+                        Cargando banners...
+                    </p>
+                </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--gray-border);">
+                    <button type="button" id="btn-add-banner" class="btn-save" style="width: 100%;">
+                        <i class="fas fa-plus"></i> Agregar Nuevo Banner
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuración de Transición -->
+            <div class="global-supplier-form-container" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px;">
+                <h3 style="margin-bottom: 18px; font-size: 18px;">Intervalo de Transición de Banners</h3>
+                <form id="banner-transition-form">
+                    <div class="supplier-form-group">
+                        <label for="banner-transition-interval">Tiempo entre banners (segundos) *</label>
+                        <input type="number" id="banner-transition-interval" min="2" max="60" value="5" required style="width: 100%; padding: 10px; border: 2px solid var(--gray-border); border-radius: 6px; font-size: 14px;">
+                        <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">Tiempo que cada banner se muestra antes de cambiar al siguiente (mínimo 2 segundos)</small>
+                    </div>
+                    <div class="supplier-modal-footer">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save"></i> Guardar Intervalo
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modo Mantenimiento -->
+            <div class="global-supplier-form-container" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin-bottom: 18px; font-size: 18px;">Modo Mantenimiento</h3>
+                <form id="maintenance-mode-form">
+                    <div class="supplier-form-group">
+                        <label for="maintenance-enabled">Activar modo mantenimiento</label>
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                            <input type="checkbox" id="maintenance-enabled" style="width:auto; transform:scale(1.1);">
+                            <span>Mostrar pantalla de mantenimiento en el home</span>
+                        </label>
+                        <small style="color: var(--gray-text); display: block; margin-top: 8px; font-size: 12px;">
+                            Cuando está activo, se muestra un modal de mantenimiento en la página principal. Los usuarios con rol de admin pueden hacer login para desactivarlo.
+                        </small>
+                    </div>
+                    <div class="supplier-modal-footer">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save"></i> Guardar Configuración
+                        </button>
+                    </div>
+                </form>
+            </div>
             </div>
         </div>
     </div>
