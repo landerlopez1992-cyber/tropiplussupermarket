@@ -946,6 +946,8 @@ function initDeliveryMethodSelector() {
             pickupSection.style.display = 'none';
             deliverySection.style.display = 'block';
             if (recipientSelect) recipientSelect.setAttribute('required', 'required');
+            // Cargar direcciones inmediatamente
+            console.log('📦 Cargando direcciones para delivery...');
             await loadDeliveryRecipients();
         }
     });
@@ -973,37 +975,60 @@ function initDeliveryMethodSelector() {
 // Cargar direcciones del usuario para delivery
 async function loadDeliveryRecipients() {
     const recipientSelect = document.getElementById('delivery-recipient-select');
-    if (!recipientSelect) return;
+    if (!recipientSelect) {
+        console.warn('⚠️ Selector de destinatarios no encontrado');
+        return;
+    }
+    
+    // Mostrar loading
+    recipientSelect.innerHTML = '<option value="">Cargando direcciones...</option>';
+    recipientSelect.disabled = true;
     
     try {
         const user = getCurrentUser();
         if (!user || !user.id) {
             recipientSelect.innerHTML = '<option value="">Debe iniciar sesión para usar delivery</option>';
+            recipientSelect.disabled = false;
+            return;
+        }
+        
+        console.log('👤 Usuario encontrado:', user.id);
+        
+        // Verificar que la función esté disponible
+        if (typeof getRecipientsFromSquare !== 'function') {
+            console.error('❌ getRecipientsFromSquare no está disponible');
+            recipientSelect.innerHTML = '<option value="">Error: función no disponible. Recargue la página.</option>';
+            recipientSelect.disabled = false;
             return;
         }
         
         // Obtener destinatarios desde Square
-        if (typeof getRecipientsFromSquare === 'function') {
-            const recipients = await getRecipientsFromSquare(user.id);
-            
-            recipientSelect.innerHTML = '<option value="">Seleccione una dirección...</option>';
-            
-            if (recipients && recipients.length > 0) {
-                recipients.forEach((recipient, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `${recipient.name} - ${formatRecipientAddress(recipient.address)}`;
-                    recipientSelect.appendChild(option);
-                });
-            } else {
-                recipientSelect.innerHTML += '<option value="" disabled>No tiene direcciones guardadas. Agregue una dirección primero.</option>';
-            }
+        console.log('📞 Llamando a getRecipientsFromSquare...');
+        const recipients = await getRecipientsFromSquare(user.id);
+        console.log('✅ Destinatarios recibidos:', recipients);
+        
+        recipientSelect.innerHTML = '<option value="">Seleccione una dirección...</option>';
+        
+        if (recipients && Array.isArray(recipients) && recipients.length > 0) {
+            console.log(`📋 Agregando ${recipients.length} direcciones al selector`);
+            recipients.forEach((recipient, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const addressText = formatRecipientAddress(recipient.address);
+                option.textContent = `${recipient.name || 'Destinatario'} - ${addressText}`;
+                recipientSelect.appendChild(option);
+            });
+            console.log('✅ Direcciones agregadas al selector');
         } else {
-            recipientSelect.innerHTML = '<option value="">Error: función no disponible</option>';
+            console.warn('⚠️ No se encontraron direcciones guardadas');
+            recipientSelect.innerHTML += '<option value="" disabled>No tiene direcciones guardadas. Agregue una dirección primero.</option>';
         }
+        
+        recipientSelect.disabled = false;
     } catch (error) {
-        console.error('Error cargando destinatarios:', error);
-        recipientSelect.innerHTML = '<option value="">Error al cargar direcciones</option>';
+        console.error('❌ Error cargando destinatarios:', error);
+        recipientSelect.innerHTML = '<option value="">Error al cargar direcciones. Intente recargar la página.</option>';
+        recipientSelect.disabled = false;
     }
 }
 
