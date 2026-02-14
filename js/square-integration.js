@@ -162,7 +162,7 @@ async function loadSquareProducts() {
     
     if (products.length === 0) {
       console.warn('⚠️ [Tropiplus] No se encontraron productos en Square');
-      // Mostrar mensaje en la página
+      // Mostrar mensaje en la página solo si estamos en index.html
       const bestSellersCarousel = document.getElementById('best-sellers-carousel');
       const recommendationsCarousel = document.getElementById('recommendations-carousel');
       if (bestSellersCarousel) {
@@ -197,8 +197,15 @@ async function loadSquareProducts() {
     console.error('❌ [Tropiplus] Stack:', error.stack);
     
     // Mostrar mensaje de error en la página
+    // Solo intentar cargar carouseles si estamos en index.html
     const bestSellersCarousel = document.getElementById('best-sellers-carousel');
     const recommendationsCarousel = document.getElementById('recommendations-carousel');
+    
+    // Si no estamos en index.html, no hay carouseles, salir silenciosamente
+    if (!bestSellersCarousel && !recommendationsCarousel) {
+      console.log('ℹ️ [Tropiplus] No se encontraron carouseles (no estamos en index.html)');
+      return;
+    }
     const errorHtml = `<div class="no-products-message" style="color: red; padding: 20px; text-align: center;">
       <h3>⚠️ Error cargando productos</h3>
       <p><strong>Mensaje:</strong> ${error.message}</p>
@@ -549,7 +556,10 @@ async function renderInterestCategories(categories) {
 async function renderBestSellers(products) {
   const carousel = document.getElementById('best-sellers-carousel');
   if (!carousel) {
-    console.warn('⚠️ No se encontró el elemento #best-sellers-carousel');
+    // No mostrar warning si no estamos en index.html
+    if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/')) {
+      console.warn('⚠️ No se encontró el elemento #best-sellers-carousel');
+    }
     return;
   }
   
@@ -587,7 +597,10 @@ async function renderBestSellers(products) {
 async function renderRecommendations(products) {
   const carousel = document.getElementById('recommendations-carousel');
   if (!carousel) {
-    console.warn('⚠️ No se encontró el elemento #recommendations-carousel');
+    // No mostrar warning si no estamos en index.html
+    if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/')) {
+      console.warn('⚠️ No se encontró el elemento #recommendations-carousel');
+    }
     return;
   }
   

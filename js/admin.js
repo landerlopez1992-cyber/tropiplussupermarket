@@ -5873,10 +5873,19 @@ async function openFeaturedCardModal(cardId = null) {
 
 function convertFileToBase64(file) {
     return new Promise((resolve, reject) => {
+        // Validar tamaño máximo del archivo (5MB)
+        const maxFileSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxFileSize) {
+            reject(new Error(`El archivo es demasiado grande. Tamaño máximo: 5MB. Tamaño actual: ${(file.size / 1024 / 1024).toFixed(2)}MB`));
+            return;
+        }
+        
         // Comprimir imagen antes de convertir a base64
-        const maxWidth = 1200;
-        const maxHeight = 800;
-        const quality = 0.7; // Calidad de compresión (0.7 = 70%)
+        // Reducir tamaño para evitar "quota exceeded" en Supabase
+        const maxWidth = 800;  // Reducido de 1200
+        const maxHeight = 600; // Reducido de 800
+        const quality = 0.5;   // Reducido de 0.7 a 0.5 (50% calidad)
+        const maxBase64Size = 500 * 1024; // 500KB máximo en base64
         
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -5901,16 +5910,40 @@ function convertFileToBase64(file) {
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
+                
+                // Mejorar calidad de renderizado
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // Convertir a base64 con compresión
-                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                // Intentar comprimir con diferentes calidades hasta que quepa
+                let compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                let currentQuality = quality;
+                
+                // Si el base64 es muy grande, reducir calidad progresivamente
+                while (compressedBase64.length > maxBase64Size && currentQuality > 0.1) {
+                    currentQuality -= 0.1;
+                    compressedBase64 = canvas.toDataURL('image/jpeg', currentQuality);
+                }
+                
+                // Si aún es muy grande después de reducir calidad, reducir dimensiones
+                if (compressedBase64.length > maxBase64Size) {
+                    width = Math.floor(width * 0.8);
+                    height = Math.floor(height * 0.8);
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
+                }
+                
+                console.log(`📸 [Imagen] Comprimida: ${(compressedBase64.length / 1024).toFixed(2)}KB (${width}x${height}, calidad: ${(currentQuality * 100).toFixed(0)}%)`);
                 resolve(compressedBase64);
             };
-            img.onerror = reject;
+            img.onerror = () => reject(new Error('Error al cargar la imagen'));
             img.src = e.target.result;
         };
-        reader.onerror = reject;
+        reader.onerror = () => reject(new Error('Error al leer el archivo'));
         reader.readAsDataURL(file);
     });
 }
