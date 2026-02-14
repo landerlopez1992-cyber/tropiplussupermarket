@@ -118,11 +118,8 @@ function createPromotionBar() {
     const track = document.createElement('div');
     track.className = 'promo-ticker-track';
 
-    // Crear múltiples copias del texto para que se repita suavemente
-    // Separador entre repeticiones
-    const separator = '   •   ';
-    // Repetir el texto 3 veces para crear un loop continuo sin duplicar visiblemente
-    const textContent = `${config.text}${separator}`.repeat(3);
+    // Usar solo el texto original, sin duplicar
+    const textContent = config.text;
 
     const createItem = () => {
         if (config.linkEnabled && config.url) {
@@ -143,7 +140,7 @@ function createPromotionBar() {
         return span;
     };
 
-    // Solo crear UNA copia del item para que pase completo y luego se repita
+    // Crear solo UNA copia del texto
     track.appendChild(createItem());
     bar.appendChild(track);
     

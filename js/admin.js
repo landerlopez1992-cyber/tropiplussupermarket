@@ -5873,8 +5873,43 @@ async function openFeaturedCardModal(cardId = null) {
 
 function convertFileToBase64(file) {
     return new Promise((resolve, reject) => {
+        // Comprimir imagen antes de convertir a base64
+        const maxWidth = 1200;
+        const maxHeight = 800;
+        const quality = 0.7; // Calidad de compresión (0.7 = 70%)
+        
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // Calcular nuevas dimensiones manteniendo proporción
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    } else {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+                }
+                
+                // Crear canvas para redimensionar
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convertir a base64 con compresión
+                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                resolve(compressedBase64);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
