@@ -3778,15 +3778,38 @@ async function lookupBarcodeInSquare(productName) {
 // Configuración para APIs externas de GTIN (RapidAPI)
 // Configura tu API key de RapidAPI aquí para usar "Barcodes Data" API
 const RAPIDAPI_CONFIG = {
-    enabled: false, // Cambiar a true para habilitar
-    apiKey: '', // Tu API key de RapidAPI (ej: '43db5773a3msh2a82d305d0dbf5ap16f958jsna677a7d7e263')
+    enabled: true, // Habilitado con credenciales del usuario
+    apiKey: '43db5773a3msh2a82d305d0dbf5ap16f958jsna677a7d7e263', // API key de RapidAPI
     host: 'barcodes-data.p.rapidapi.com', // Host de "Barcodes Data" API
     baseUrl: 'https://barcodes-data.p.rapidapi.com/' // URL base de la API
 };
 
 /**
+ * Calcula la similitud entre dos strings (0-1, donde 1 es idéntico)
+ * Usa algoritmo de Levenshtein simplificado
+ */
+function calculateSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+    const s1 = str1.toLowerCase().trim();
+    const s2 = str2.toLowerCase().trim();
+    if (s1 === s2) return 1;
+    
+    // Si uno contiene al otro, alta similitud
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+    
+    // Contar palabras comunes
+    const words1 = s1.split(/\s+/);
+    const words2 = s2.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w));
+    const totalWords = Math.max(words1.length, words2.length);
+    
+    return commonWords.length / totalWords;
+}
+
+/**
  * Busca GTIN/UPC/EAN usando "Barcodes Data" API de RapidAPI
  * Esta API permite buscar por nombre de producto o por código de barras
+ * Si hay múltiples resultados, selecciona el más relevante basándose en el nombre
  * @param {string} productName - Nombre del producto
  * @returns {Promise<string|null>} - GTIN encontrado o null
  */
@@ -3825,50 +3848,105 @@ async function lookupGtinFromExternalApi(productName) {
         }
         
         const data = await response.json();
+        console.log('📦 Respuesta completa de Barcodes Data API:', data);
         
-        // La estructura de respuesta puede variar, intentar múltiples formatos comunes
-        let gtin = null;
+        // Extraer todos los productos posibles de diferentes formatos de respuesta
+        let products = [];
         
-        // Formato 1: data.barcode, data.gtin, data.upc, data.ean
-        if (data.barcode) {
-            gtin = normalizeBarcodeValue(data.barcode);
-        } else if (data.gtin) {
-            gtin = normalizeBarcodeValue(data.gtin);
-        } else if (data.upc) {
-            gtin = normalizeBarcodeValue(data.upc);
-        } else if (data.ean) {
-            gtin = normalizeBarcodeValue(data.ean);
+        // Formato 1: data.products[] (array de productos)
+        if (Array.isArray(data.products) && data.products.length > 0) {
+            products = data.products;
+        }
+        // Formato 2: data.data[] (array de productos)
+        else if (Array.isArray(data.data) && data.data.length > 0) {
+            products = data.data;
+        }
+        // Formato 3: data.result[] (array de productos)
+        else if (Array.isArray(data.result) && data.result.length > 0) {
+            products = data.result;
+        }
+        // Formato 4: objeto único (no array)
+        else if (data.barcode || data.gtin || data.upc || data.ean) {
+            products = [data];
+        }
+        // Formato 5: data.items[]
+        else if (Array.isArray(data.items) && data.items.length > 0) {
+            products = data.items;
         }
         
-        // Formato 2: data.products[] (array de productos)
-        if (!gtin && Array.isArray(data.products) && data.products.length > 0) {
-            const firstProduct = data.products[0];
-            gtin = normalizeBarcodeValue(
-                firstProduct.barcode || 
-                firstProduct.gtin || 
-                firstProduct.upc || 
-                firstProduct.ean
+        if (products.length === 0) {
+            console.warn('⚠️ Barcodes Data API no retornó productos en la respuesta');
+            return null;
+        }
+        
+        console.log(`📊 Se encontraron ${products.length} producto(s) en la respuesta`);
+        
+        // Si hay solo un producto, retornarlo directamente
+        if (products.length === 1) {
+            const product = products[0];
+            const gtin = normalizeBarcodeValue(
+                product.barcode || 
+                product.gtin || 
+                product.upc || 
+                product.ean ||
+                product.code
             );
+            if (gtin) {
+                console.log('✅ GTIN encontrado (único resultado):', gtin);
+                return gtin;
+            }
         }
         
-        // Formato 3: data.data o data.result
-        if (!gtin && data.data) {
-            const productData = Array.isArray(data.data) ? data.data[0] : data.data;
-            gtin = normalizeBarcodeValue(
-                productData?.barcode || 
-                productData?.gtin || 
-                productData?.upc || 
-                productData?.ean
+        // Si hay múltiples productos, seleccionar el más relevante
+        // Calcular similitud entre el nombre buscado y cada producto encontrado
+        const productsWithScore = products.map(product => {
+            const productNameFromApi = 
+                product.name || 
+                product.title || 
+                product.product_name || 
+                product.description || 
+                '';
+            
+            const gtin = normalizeBarcodeValue(
+                product.barcode || 
+                product.gtin || 
+                product.upc || 
+                product.ean ||
+                product.code
             );
+            
+            const similarity = calculateSimilarity(productName, productNameFromApi);
+            
+            return {
+                product,
+                gtin,
+                name: productNameFromApi,
+                similarity
+            };
+        }).filter(item => item.gtin); // Solo productos con GTIN válido
+        
+        if (productsWithScore.length === 0) {
+            console.warn('⚠️ Ningún producto tiene GTIN válido');
+            return null;
         }
         
-        if (gtin) {
-            console.log('✅ GTIN encontrado vía Barcodes Data API:', gtin);
-            return gtin;
+        // Ordenar por similitud (mayor a menor)
+        productsWithScore.sort((a, b) => b.similarity - a.similarity);
+        
+        const bestMatch = productsWithScore[0];
+        console.log(`✅ Mejor coincidencia encontrada (similitud: ${(bestMatch.similarity * 100).toFixed(1)}%):`, {
+            nombre_buscado: productName,
+            nombre_encontrado: bestMatch.name,
+            gtin: bestMatch.gtin
+        });
+        
+        // Si la similitud es muy baja (< 0.3), puede que no sea el producto correcto
+        if (bestMatch.similarity < 0.3) {
+            console.warn(`⚠️ Similitud baja (${(bestMatch.similarity * 100).toFixed(1)}%). El GTIN puede no ser correcto.`);
+            // Aún así retornamos el mejor match, pero con advertencia
         }
         
-        console.warn('⚠️ Barcodes Data API no retornó GTIN válido en la respuesta');
-        return null;
+        return bestMatch.gtin;
         
     } catch (error) {
         console.warn('⚠️ Error buscando GTIN en Barcodes Data API:', error);
