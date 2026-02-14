@@ -283,14 +283,19 @@ img {
 
 .user-account-link {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: center;
     text-decoration: none;
     color: var(--white);
-    font-size: 10px; /* Más pequeño: 10px */
-    gap: 2px; /* Más compacto */
+    font-size: 12px;
+    font-weight: 700;
+    gap: 8px;
     cursor: pointer;
     transition: color 0.2s ease;
+    min-width: 120px;
+    max-width: 190px;
+    white-space: nowrap;
 }
 
 .user-account-link:hover {
@@ -298,7 +303,23 @@ img {
 }
 
 .user-account-link i {
-    font-size: 20px; /* Reducido de 24px a 20px */
+    font-size: 18px;
+}
+
+#user-account-text {
+    display: inline-block;
+    max-width: 145px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-account-link.user-logged-in::after {
+    content: "\f078";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 11px;
+    opacity: 0.9;
 }
 
 .cart-icon-wrapper {

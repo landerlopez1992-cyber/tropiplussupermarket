@@ -213,24 +213,40 @@ function createPromotionBar() {
 function initUserAccount() {
     const userAccountLink = document.getElementById('user-account-link');
     const userAccountText = document.getElementById('user-account-text');
+    const buildHeaderUserName = (user) => {
+        if (!user) return 'Usuario';
+        const givenName = String(user.given_name || '').trim();
+        const familyName = String(user.family_name || '').trim();
+        if (givenName && familyName) {
+            return `${givenName} ${familyName.charAt(0)}.`;
+        }
+        if (givenName) return givenName;
+        if (user.email) {
+            return String(user.email).split('@')[0];
+        }
+        return 'Usuario';
+    };
     
     if (userAccountLink && userAccountText) {
         // Verificar si el usuario está logueado
         if (typeof isUserLoggedIn === 'function' && isUserLoggedIn()) {
             const user = getCurrentUser();
             if (user) {
-                const userName = user.given_name || user.email || 'Usuario';
+                const userName = buildHeaderUserName(user);
                 userAccountText.textContent = userName;
                 userAccountLink.href = 'account.html';
+                userAccountLink.classList.add('user-logged-in');
                 console.log('✅ Usuario logueado, enlace configurado a account.html');
             } else {
                 console.warn('⚠️ Usuario logueado pero no se encontraron datos');
                 userAccountLink.href = 'login.html';
+                userAccountLink.classList.remove('user-logged-in');
             }
         } else {
             console.log('👤 Usuario no logueado, enlace a login.html');
             userAccountLink.href = 'login.html';
             userAccountText.textContent = 'Entrar Registrar';
+            userAccountLink.classList.remove('user-logged-in');
         }
     } else {
         console.error('❌ No se encontraron elementos user-account-link o user-account-text');

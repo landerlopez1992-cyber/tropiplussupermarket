@@ -39,9 +39,17 @@ function loadUserData() {
     
     // Mostrar nombre en el header
     const userAccountText = document.getElementById('user-account-text');
+    const userAccountLink = document.getElementById('user-account-link');
     if (userAccountText) {
-        const userName = user.given_name || user.email || 'Usuario';
+        const givenName = String(user.given_name || '').trim();
+        const familyName = String(user.family_name || '').trim();
+        const userName = givenName && familyName
+            ? `${givenName} ${familyName.charAt(0)}.`
+            : (givenName || (user.email ? String(user.email).split('@')[0] : 'Usuario'));
         userAccountText.textContent = userName;
+    }
+    if (userAccountLink) {
+        userAccountLink.classList.add('user-logged-in');
     }
 }
 
