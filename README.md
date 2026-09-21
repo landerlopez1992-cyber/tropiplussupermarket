@@ -1,6 +1,6 @@
-# Tropiplus Supermarket - E-commerce Web Application
+# TropiParts - E-commerce Web Application
 
-Aplicación web de e-commerce completa para Tropiplus Supermarket, integrada con Square POS API para gestión de productos, categorías, pedidos y pagos.
+Aplicación web de e-commerce completa para TropiParts, integrada con Square POS API para gestión de productos, categorías, pedidos y pagos.
 
 ## 🚀 Características
 
@@ -151,6 +151,6 @@ const SQUARE_CONFIG = {
 
 ## 📄 Licencia
 
-© 2026 Tropiplus Supermarket. Todos los derechos reservados.
+© 2026 TropiParts. Todos los derechos reservados.
 
-Land Installation Service LLC dba Tropiplus Supermarket
+Land Installation Service LLC dba TropiParts

@@ -1,4 +1,4 @@
-# Tropiplus Supermarket - Square App
+# TropiParts - Square App
 
 Aplicación simplificada para gestionar inventario, pedidos y productos de Square desde una interfaz fácil de usar.
 

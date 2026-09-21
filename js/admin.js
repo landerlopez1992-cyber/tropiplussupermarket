@@ -309,9 +309,9 @@ async function saveTvConfigs(tvConfigs) {
                 showModal('Guardado OK', 'TVs sincronizados correctamente con Supabase.', 'success');
             }
         } else {
-            console.warn('⚠️ [Admin] Función saveTvConfigsToSupabase no disponible. Asegúrate de cargar supabase-config.js');
+            console.warn('⚠️ [Admin] Firebase no cargado (firebase-config.js).');
             if (typeof showModal === 'function') {
-                showModal('Error de configuración', 'No se cargó la conexión con Supabase (supabase-config.js).', 'error');
+                showModal('Error de configuración', 'No se cargó Firebase (firebase-config.js). Revisa FIREBASE_SETUP.md', 'error');
             }
         }
     } catch (error) {
@@ -2758,6 +2758,8 @@ function switchSubTab(subtabName) {
         initDeliveryTab();
     } else if (subtabName === 'currency') {
         initRemesasManagement();
+    } else if (subtabName === 'special-orders') {
+        initAdminSpecialOrders();
     } else if (subtabName === 'settings') {
         initSettingsTab();
     }
@@ -4169,7 +4171,7 @@ async function loadLocationsForProductForm() {
         }
     } catch (error) {
         console.error('Error cargando locations:', error);
-        locationSelect.innerHTML = `<option value="${SQUARE_CONFIG.locationId}">TropiPlus Supermarket</option>`;
+        locationSelect.innerHTML = `<option value="${SQUARE_CONFIG.locationId}">TropiParts</option>`;
         locationSelect.value = SQUARE_CONFIG.locationId;
     }
 }
@@ -4888,7 +4890,7 @@ function getLocationOptionsHtml(selectedId = '') {
             return `<option value="${opt.value}" ${selected}>${opt.textContent}</option>`;
         }).join('');
     }
-    return `<option value="${SQUARE_CONFIG.locationId}">TropiPlus Supermarket</option>`;
+    return `<option value="${SQUARE_CONFIG.locationId}">TropiParts</option>`;
 }
 
 function renderBulkImportTable() {
@@ -5631,10 +5633,10 @@ async function toggleTvScreenOrientation(tvId) {
 // FUNCIONES PARA PESTAÑA DE AJUSTES
 // ============================================
 
-const BANNERS_STORAGE_KEY = 'tropiplus_banners';
-const BANNER_TRANSITION_STORAGE_KEY = 'tropiplus_banner_transition_interval';
-const MAINTENANCE_MODE_STORAGE_KEY = 'tropiplus_maintenance_mode';
-const FEATURED_CARDS_STORAGE_KEY = 'tropiplus_featured_cards';
+const BANNERS_STORAGE_KEY = 'tropiparts_banners';
+const BANNER_TRANSITION_STORAGE_KEY = 'tropiparts_banner_transition_interval';
+const MAINTENANCE_MODE_STORAGE_KEY = 'tropiparts_maintenance_mode';
+const FEATURED_CARDS_STORAGE_KEY = 'tropiparts_featured_cards';
 
 function initSettingsTab() {
     console.log('⚙️ Inicializando pestaña de Ajustes...');
@@ -5999,32 +6001,13 @@ async function deleteFeaturedCard(cardId) {
 
 async function getFeaturedCardsFromStorage() {
     try {
-        // Intentar obtener de Supabase
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
-            // En el admin, mostrar TODAS las tarjetas (activas e inactivas)
-            const response = await fetch(
-                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&order=display_order.asc`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': anonKey,
-                        'Authorization': `Bearer ${anonKey}`
-                    }
-                }
-            );
-            
-            if (response.ok) {
-                return await response.json();
-            }
+        if (typeof window.getFeaturedCardsFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            return await window.getFeaturedCardsFromFirebase(false);
         }
-        
-        // Fallback a localStorage
         const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
         return localCards ? JSON.parse(localCards) : [];
     } catch (error) {
-        console.warn('Error obteniendo tarjetas, usando localStorage:', error);
+        console.warn('Error obteniendo tarjetas:', error);
         const localCards = localStorage.getItem(FEATURED_CARDS_STORAGE_KEY);
         return localCards ? JSON.parse(localCards) : [];
     }
@@ -6032,106 +6015,35 @@ async function getFeaturedCardsFromStorage() {
 
 async function saveFeaturedCardToStorage(cardData) {
     try {
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            console.warn('⚠️ [Featured Cards] Anon key no configurada. Guardando solo en localStorage.');
-            // Guardar en localStorage como fallback
-            const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
-            const existingIndex = localCards.findIndex(c => c.id === cardData.id);
-            if (existingIndex >= 0) {
-                localCards[existingIndex] = cardData;
-            } else {
-                localCards.push(cardData);
-            }
-            localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
-            return;
+        if (typeof window.saveFeaturedCardToFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.saveFeaturedCardToFirebase(cardData);
+            console.log('✅ [Featured Cards] Firebase');
         }
-        
-        // PRIMERO guardar en Supabase (BD principal)
-        const response = await fetch(
-            `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation,resolution=merge-duplicates',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                },
-                body: JSON.stringify({
-                    id: cardData.id,
-                    image_url: cardData.image_url,
-                    display_order: cardData.display_order,
-                    redirect_url: cardData.redirect_url || null,
-                    active: cardData.active !== false
-                })
-            }
-        );
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ [Featured Cards] Error guardando en Supabase:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-        const saved = await response.json();
-        console.log('✅ [Featured Cards] Tarjeta guardada en Supabase:', saved);
-        
-        // También guardar en localStorage como cache
         const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
         const existingIndex = localCards.findIndex(c => c.id === cardData.id);
-        if (existingIndex >= 0) {
-            localCards[existingIndex] = cardData;
-        } else {
-            localCards.push(cardData);
-        }
+        if (existingIndex >= 0) localCards[existingIndex] = cardData;
+        else localCards.push(cardData);
         localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
     } catch (error) {
-        console.error('❌ [Featured Cards] Error guardando tarjeta en Supabase:', error);
-        // Guardar en localStorage como fallback
+        console.error('❌ [Featured Cards]', error);
         const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
         const existingIndex = localCards.findIndex(c => c.id === cardData.id);
-        if (existingIndex >= 0) {
-            localCards[existingIndex] = cardData;
-        } else {
-            localCards.push(cardData);
-        }
+        if (existingIndex >= 0) localCards[existingIndex] = cardData;
+        else localCards.push(cardData);
         localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards));
-        throw error; // Re-lanzar para que el usuario sepa que hubo un error
+        throw error;
     }
 }
 
 async function deleteFeaturedCardFromStorage(cardId) {
     try {
-        // Eliminar de localStorage
         const localCards = JSON.parse(localStorage.getItem(FEATURED_CARDS_STORAGE_KEY) || '[]');
-        const filtered = localCards.filter(c => c.id !== cardId);
-        localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(filtered));
-        
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            return;
-        }
-        
-        const response = await fetch(
-            `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?id=eq.${cardId}`,
-            {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                }
-            }
-        );
-        
-        if (!response.ok && response.status !== 404) {
-            throw new Error(`HTTP ${response.status}`);
+        localStorage.setItem(FEATURED_CARDS_STORAGE_KEY, JSON.stringify(localCards.filter(c => c.id !== cardId)));
+        if (typeof window.deleteFeaturedCardFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.deleteFeaturedCardFromFirebase(cardId);
         }
     } catch (error) {
-        console.warn('Error eliminando tarjeta de Supabase:', error);
-        // Ya eliminado de localStorage como fallback
+        console.warn('Error eliminando tarjeta:', error);
     }
 }
 
@@ -6356,38 +6268,16 @@ async function deleteBanner(bannerId) {
     }
 }
 
-// Funciones para Supabase (banners, transición, mantenimiento)
+// Banners / settings → Firebase
 async function getBannersFromSupabase() {
     try {
-        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            // Fallback a localStorage
-            const localBanners = localStorage.getItem(BANNERS_STORAGE_KEY);
-            return localBanners ? JSON.parse(localBanners) : [];
+        if (typeof window.getHomeBannersFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            return await window.getHomeBannersFromFirebase(false);
         }
-        
-        const response = await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/home_banners?select=*&order=display_order.asc`,
-            {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                }
-            }
-        );
-        
-        if (!response.ok) {
-            if (response.status === 404) {
-                return [];
-            }
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        return await response.json();
+        const localBanners = localStorage.getItem(BANNERS_STORAGE_KEY);
+        return localBanners ? JSON.parse(localBanners) : [];
     } catch (error) {
-        console.warn('Error obteniendo banners de Supabase, usando localStorage:', error);
+        console.warn('Error banners Firebase:', error);
         const localBanners = localStorage.getItem(BANNERS_STORAGE_KEY);
         return localBanners ? JSON.parse(localBanners) : [];
     }
@@ -6395,162 +6285,55 @@ async function getBannersFromSupabase() {
 
 async function saveBannerToSupabase(bannerData) {
     try {
-        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            console.warn('⚠️ [Banners] Anon key no configurada. Guardando solo en localStorage.');
-            // Guardar en localStorage como fallback
-            const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
-            const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
-            if (existingIndex >= 0) {
-                localBanners[existingIndex] = bannerData;
-            } else {
-                localBanners.push(bannerData);
-            }
-            localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
-            return;
+        if (typeof window.saveHomeBannerToFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.saveHomeBannerToFirebase(bannerData);
+            console.log('✅ [Banners] Firebase');
         }
-        
-        // PRIMERO guardar en Supabase (BD principal)
-        const response = await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/home_banners`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation,resolution=merge-duplicates',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                },
-                body: JSON.stringify({
-                    id: bannerData.id,
-                    image_url: bannerData.image_url,
-                    display_order: bannerData.display_order,
-                    redirect_url: bannerData.redirect_url || null,
-                    active: bannerData.active !== false
-                })
-            }
-        );
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ [Banners] Error guardando en Supabase:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-        const saved = await response.json();
-        console.log('✅ [Banners] Banner guardado en Supabase:', saved);
-        
-        // También guardar en localStorage como cache
         const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
         const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
-        if (existingIndex >= 0) {
-            localBanners[existingIndex] = bannerData;
-        } else {
-            localBanners.push(bannerData);
-        }
+        if (existingIndex >= 0) localBanners[existingIndex] = bannerData;
+        else localBanners.push(bannerData);
         localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
     } catch (error) {
-        console.error('❌ [Banners] Error guardando banner en Supabase:', error);
-        // Guardar en localStorage como fallback
+        console.error('❌ [Banners]', error);
         const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
         const existingIndex = localBanners.findIndex(b => b.id === bannerData.id);
-        if (existingIndex >= 0) {
-            localBanners[existingIndex] = bannerData;
-        } else {
-            localBanners.push(bannerData);
-        }
+        if (existingIndex >= 0) localBanners[existingIndex] = bannerData;
+        else localBanners.push(bannerData);
         localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners));
-        throw error; // Re-lanzar para que el usuario sepa que hubo un error
+        throw error;
     }
 }
 
 async function deleteBannerFromSupabase(bannerId) {
     try {
-        // Eliminar de localStorage
         const localBanners = JSON.parse(localStorage.getItem(BANNERS_STORAGE_KEY) || '[]');
-        const filtered = localBanners.filter(b => b.id !== bannerId);
-        localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(filtered));
-        
-        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            return;
-        }
-        
-        const response = await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/home_banners?id=eq.${bannerId}`,
-            {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                }
-            }
-        );
-        
-        if (!response.ok && response.status !== 404) {
-            throw new Error(`HTTP ${response.status}`);
+        localStorage.setItem(BANNERS_STORAGE_KEY, JSON.stringify(localBanners.filter(b => b.id !== bannerId)));
+        if (typeof window.deleteHomeBannerFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.deleteHomeBannerFromFirebase(bannerId);
         }
     } catch (error) {
-        console.warn('Error eliminando banner de Supabase:', error);
-        // Ya eliminado de localStorage como fallback
+        console.warn('Error eliminando banner:', error);
     }
 }
 
 async function saveBannerTransitionToSupabase(interval) {
     try {
-        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            return;
+        if (typeof window.setSiteSettingToFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.setSiteSettingToFirebase('banner_transition_interval', interval);
         }
-        
-        await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/site_settings`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation,resolution=merge-duplicates',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                },
-                body: JSON.stringify({
-                    key: 'banner_transition_interval',
-                    value: interval.toString()
-                })
-            }
-        );
     } catch (error) {
-        console.warn('Error guardando intervalo en Supabase:', error);
+        console.warn('Error intervalo banners:', error);
     }
 }
 
 async function saveMaintenanceModeToSupabase(enabled) {
     try {
-        const anonKey = SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (!anonKey || anonKey === 'null' || anonKey === 'placeholder') {
-            return;
+        if (typeof window.setSiteSettingToFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            await window.setSiteSettingToFirebase('maintenance_mode', enabled);
         }
-        
-        await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/site_settings`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation,resolution=merge-duplicates',
-                    'apikey': anonKey,
-                    'Authorization': `Bearer ${anonKey}`
-                },
-                body: JSON.stringify({
-                    key: 'maintenance_mode',
-                    value: enabled.toString()
-                })
-            }
-        );
     } catch (error) {
-        console.warn('Error guardando modo mantenimiento en Supabase:', error);
+        console.warn('Error mantenimiento:', error);
     }
 }
 
@@ -6566,3 +6349,361 @@ window.closeUrlExtractorModal = closeUrlExtractorModal;
 window.openBulkUrlImportModal = openBulkUrlImportModal;
 window.closeBulkUrlImportModal = closeBulkUrlImportModal;
 window.editProduct = editProduct;
+
+/* ========== Órdenes especiales (Servicio) ========== */
+let adminSoFilter = '';
+let adminSoBound = false;
+
+function adminSoMoney(n) {
+    return '$' + (Number(n) || 0).toFixed(2);
+}
+
+function adminSoEscape(s) {
+    return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function adminSoPayBadge(method) {
+    if (method === 'CASH') {
+        return '<span class="svc-pay-badge cash"><i class="fas fa-money-bill-wave"></i> Cash</span>';
+    }
+    if (method === 'CARD') {
+        return '<span class="svc-pay-badge card"><i class="fas fa-credit-card"></i> Square</span>';
+    }
+    return '<span class="svc-pay-badge">—</span>';
+}
+
+async function refreshSpecialOrdersBadge() {
+    const badge = document.getElementById('special-orders-badge');
+    if (!badge || typeof window.loadAllSpecialOrders !== 'function') return;
+    try {
+        const orders = await window.loadAllSpecialOrders();
+        const n = orders.filter(o => window.isSpecialOrderNew?.(o)).length;
+        if (n > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent = String(n);
+        } else {
+            badge.style.display = 'none';
+        }
+    } catch (_) {
+        badge.style.display = 'none';
+    }
+}
+
+function initAdminSpecialOrders() {
+    if (!adminSoBound) {
+        adminSoBound = true;
+        document.querySelectorAll('.admin-so-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.admin-so-filter').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                adminSoFilter = btn.dataset.soStatus || '';
+                renderAdminSpecialOrders();
+            });
+        });
+        document.getElementById('admin-so-refresh')?.addEventListener('click', () => {
+            renderAdminSpecialOrders();
+            refreshSpecialOrdersBadge();
+        });
+        // Estilos mínimos filtros
+        document.querySelectorAll('.admin-so-filter').forEach(b => {
+            Object.assign(b.style, {
+                padding: '6px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: '#fff',
+                cursor: 'pointer',
+                fontSize: '13px'
+            });
+        });
+        const styleActive = () => {
+            document.querySelectorAll('.admin-so-filter').forEach(b => {
+                if (b.classList.contains('active')) {
+                    b.style.background = '#111';
+                    b.style.color = '#fff';
+                } else {
+                    b.style.background = '#fff';
+                    b.style.color = '#111';
+                }
+            });
+        };
+        styleActive();
+        document.querySelectorAll('.admin-so-filter').forEach(btn => {
+            btn.addEventListener('click', styleActive);
+        });
+    }
+    renderAdminSpecialOrders();
+}
+
+async function renderAdminSpecialOrders() {
+    const list = document.getElementById('admin-special-orders-list');
+    if (!list) return;
+    list.innerHTML = '<p style="text-align:center;color:var(--gray-text);padding:24px;"><i class="fas fa-spinner fa-spin"></i> Cargando…</p>';
+    try {
+        let orders = await window.loadAllSpecialOrders();
+        const repaired = [];
+        for (const o of orders) {
+            const img = (o.product_image || o.image || '').trim();
+            if ((!img || !(o.product_price > 0)) && o.product_url && typeof window.backfillSpecialOrderMedia === 'function') {
+                repaired.push(window.backfillSpecialOrderMedia(o));
+            }
+        }
+        if (repaired.length) {
+            await Promise.all(repaired);
+            orders = await window.loadAllSpecialOrders();
+        }
+        if (adminSoFilter) {
+            orders = orders.filter(o => (o.status || 'processing') === adminSoFilter);
+        }
+        if (!orders.length) {
+            list.innerHTML = '<p style="text-align:center;color:var(--gray-text);padding:24px;">No hay órdenes.</p>';
+            await refreshSpecialOrdersBadge();
+            return;
+        }
+        list.innerHTML = orders.map(o => {
+            o = window.normalizeSpecialOrder?.(o) || o;
+            const isNew = window.isSpecialOrderNew?.(o);
+            const itemTotal = o.total_amount != null ? o.total_amount : (o.product_price || 0) * (o.quantity || 1);
+            const status = o.status || 'processing';
+            const lb = o.shipping_lb != null ? o.shipping_lb : '';
+            const extra = o.shipping_extra || 0;
+            const shipCost = (o.shipping_cost > 0)
+                ? o.shipping_cost
+                : (window.calcShippingCost?.(lb, extra) || 0);
+            const grandTotal = Math.round((Number(itemTotal) + Number(shipCost || 0)) * 100) / 100;
+            const canDeliver = status === 'shipped' && o.shipping_paid === true;
+            const showShipFields = status === 'shipped' || status === 'received';
+            const img = (o.product_image || o.image || o.image_url || '').trim();
+            const wInfo = window.getWarrantyInfo?.(o) || {};
+            const purchaseLabel = window.formatDateShort?.(o.purchase_date || o.created_at) || '—';
+
+            return `
+            <div class="admin-order-card ${isNew ? 'is-new' : ''}" data-id="${adminSoEscape(o.id)}">
+                ${isNew ? '<span class="new-dot" title="Nueva"></span>' : ''}
+                ${img
+                    ? `<img src="${adminSoEscape(img)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+                    : '<div style="width:80px;height:80px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;"><i class="fas fa-box"></i></div>'}
+                <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                        <strong>${adminSoEscape(o.product_name || 'Producto')}</strong>
+                        <span class="svc-status svc-status-${adminSoEscape(status)}">${adminSoEscape(window.specialStatusLabel?.(status) || status)}</span>
+                    </div>
+                    ${(o.customer_name || o.customer_phone) ? `
+                    <div style="font-size:13px;color:#444;margin-top:4px;">
+                        <i class="fas fa-user"></i> ${adminSoEscape(o.customer_name || '')} · ${adminSoEscape(window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '')}
+                    </div>` : ''}
+                    <div style="font-size:13px;color:#666;margin-top:4px;">
+                        Artículo: ${adminSoMoney(itemTotal)} · Cant. ${o.quantity || 1} · ${adminSoPayBadge(o.payment_method)}
+                    </div>
+                    ${o.warranty_label ? `
+                    <div style="font-size:13px;margin-top:4px;padding:6px 8px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
+                        <i class="fas fa-shield-alt"></i> Garantía: <strong>${adminSoEscape(o.warranty_label)}</strong>
+                        · Compra: ${adminSoEscape(purchaseLabel)}
+                        ${wInfo.lifetime ? ' · De por vida' : ` · Resta: <strong>${adminSoEscape(wInfo.remaining_label || '—')}</strong>${wInfo.expired ? ' <span style="color:#c62828;">(vencida)</span>' : ''}`}
+                    </div>` : ''}
+                    ${shipCost > 0 ? `<div style="font-size:13px;color:#666;">Envío: ${adminSoMoney(shipCost)}${o.shipping_paid ? ' · cobrado' : ' · pendiente'}</div>` : ''}
+                    ${shipCost > 0 ? `<div style="font-size:14px;font-weight:700;margin-top:2px;">Total: ${adminSoMoney(grandTotal)}</div>` : ''}
+                    ${o.notes ? `<div style="font-size:13px;color:#666;">${adminSoEscape(o.notes)}</div>` : ''}
+                    ${o.product_url ? `<div style="font-size:12px;"><a href="${adminSoEscape(o.product_url)}" target="_blank" rel="noopener">Ver producto</a></div>` : ''}
+                    <div style="font-size:12px;color:#888;margin-top:4px;">Creado: ${adminSoEscape((o.created_at || '').slice(0, 16).replace('T', ' '))} · ${adminSoEscape(o.created_by || '')}</div>
+
+                    ${showShipFields ? `
+                    <div class="admin-order-ship">
+                        <div>
+                            <label style="font-size:11px;font-weight:700;display:block;">Peso (lb)</label>
+                            <input type="number" min="0" step="0.1" class="admin-so-lb" data-id="${adminSoEscape(o.id)}" value="${lb !== '' && lb != null ? lb : ''}" placeholder="lb" ${o.shipping_paid ? 'readonly' : ''} style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;font-weight:700;display:block;">Extra $</label>
+                            <input type="number" min="0" step="0.01" class="admin-so-extra" data-id="${adminSoEscape(o.id)}" value="${extra || 0}" ${o.shipping_paid ? 'readonly' : ''} style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;font-weight:700;display:block;">Envío (= lb×$5 + extra)</label>
+                            <div class="admin-so-ship-cost" data-id="${adminSoEscape(o.id)}" style="font-weight:700;padding:6px 0;">${adminSoMoney(shipCost)}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label style="font-size:11px;font-weight:700;display:block;">Garantía</label>
+                        <select class="admin-so-warranty" data-id="${adminSoEscape(o.id)}" ${o.shipping_paid ? 'disabled' : ''} style="width:100%;max-width:280px;padding:8px;border:1px solid #ddd;border-radius:4px;margin-top:4px;">
+                            <option value="">— Seleccionar —</option>
+                            ${(window.WARRANTY_OPTIONS || []).map(opt => {
+                                const cur = o.warranty_lifetime || o.warranty_years === 'lifetime' ? 'lifetime' : String(o.warranty_years || '');
+                                return `<option value="${opt.value}" ${cur === String(opt.value) ? 'selected' : ''}>${opt.label}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-top:8px;font-size:13px;">
+                        Envío: ${o.shipping_paid
+                            ? `<span style="color:#15803d;">Cobrado (${adminSoEscape(o.shipping_payment_method || '—')}) ${adminSoMoney(o.shipping_cost || shipCost)}</span>`
+                            : '<span style="color:#b45309;">Pendiente de cobro — guarda el peso y cobra</span>'}
+                    </div>
+                    ` : `
+                    <div style="margin-top:10px;font-size:13px;color:#64748b;">
+                        Al marcar <strong>Enviado</strong> podrás agregar peso, garantía y cobrar el envío.
+                    </div>
+                    `}
+
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+                        ${isNew ? `<button type="button" class="btn-save admin-so-viewed" data-id="${adminSoEscape(o.id)}" style="background:#64748b;"><i class="fas fa-eye"></i> Marcar visto</button>` : ''}
+                        ${status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="ordered">Marcar comprado</button>` : ''}
+                        ${status === 'ordered' || status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="shipped" style="background:#1565c0;">Marcar enviado</button>` : ''}
+                        ${showShipFields && !o.shipping_paid && status === 'shipped' ? `
+                            <button type="button" class="btn-save admin-so-ship-cash" data-id="${adminSoEscape(o.id)}"><i class="fas fa-money-bill-wave"></i> Cobrar envío Cash</button>
+                            <button type="button" class="btn-save admin-so-ship-card" data-id="${adminSoEscape(o.id)}" style="background:#006aff;"><i class="fas fa-credit-card"></i> Cobrar envío Square</button>
+                        ` : ''}
+                        ${canDeliver ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="received" style="background:#2e7d32;">Entregado</button>` : ''}
+                        ${status !== 'cancelled' && status !== 'received' ? `<button type="button" class="btn-cancel admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="cancelled">Cancelar</button>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // Preview en vivo + guardar peso (persistente) al cambiar
+        const shipSaveTimers = {};
+        list.querySelectorAll('.admin-so-lb, .admin-so-extra').forEach(inp => {
+            const syncCost = (id) => {
+                const card = list.querySelector(`.admin-order-card[data-id="${id}"]`);
+                const lbVal = parseFloat(card?.querySelector('.admin-so-lb')?.value) || 0;
+                const extraVal = parseFloat(card?.querySelector('.admin-so-extra')?.value) || 0;
+                const cost = window.calcShippingCost?.(lbVal, extraVal) || 0;
+                const costEl = card?.querySelector('.admin-so-ship-cost');
+                if (costEl) costEl.textContent = adminSoMoney(cost);
+                return { lbVal, extraVal, cost };
+            };
+            inp.addEventListener('input', () => {
+                const id = inp.dataset.id;
+                syncCost(id);
+                clearTimeout(shipSaveTimers[id]);
+                shipSaveTimers[id] = setTimeout(async () => {
+                    const { lbVal, extraVal, cost } = syncCost(id);
+                    await window.patchSpecialOrder(id, {
+                        shipping_lb: lbVal,
+                        shipping_extra: extraVal,
+                        shipping_cost: cost
+                    });
+                }, 600);
+            });
+            inp.addEventListener('change', async () => {
+                const id = inp.dataset.id;
+                clearTimeout(shipSaveTimers[id]);
+                const { lbVal, extraVal, cost } = syncCost(id);
+                await window.patchSpecialOrder(id, {
+                    shipping_lb: lbVal,
+                    shipping_extra: extraVal,
+                    shipping_cost: cost
+                });
+            });
+        });
+
+        list.querySelectorAll('.admin-so-warranty').forEach(sel => {
+            sel.addEventListener('change', async () => {
+                const id = sel.dataset.id;
+                const val = sel.value;
+                if (!val) return;
+                const lifetime = val === 'lifetime';
+                const purchase = (await window.loadAllSpecialOrders()).find(x => x.id === id);
+                const purchaseDate = purchase?.purchase_date || purchase?.created_at || new Date().toISOString();
+                await window.patchSpecialOrder(id, {
+                    warranty_years: lifetime ? 'lifetime' : parseInt(val, 10),
+                    warranty_lifetime: lifetime,
+                    warranty_label: window.warrantyLabelFromValue?.(val) || val,
+                    warranty_expires_at: lifetime ? null : window.computeWarrantyExpiry?.(purchaseDate, val),
+                    purchase_date: purchaseDate
+                });
+                await renderAdminSpecialOrders();
+            });
+        });
+
+        list.querySelectorAll('.admin-so-viewed').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                window.markSpecialOrderViewed?.(btn.dataset.id);
+                await window.patchSpecialOrder(btn.dataset.id, { admin_viewed: true });
+                await renderAdminSpecialOrders();
+                await refreshSpecialOrdersBadge();
+            });
+        });
+
+        list.querySelectorAll('.admin-so-status').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                const status = btn.dataset.status;
+                if (status === 'received') {
+                    const orders = await window.loadAllSpecialOrders();
+                    const o = orders.find(x => x.id === id);
+                    if (!o?.shipping_paid) {
+                        if (typeof showAlert === 'function') {
+                            await showAlert('Envío pendiente', 'Debes cobrar el envío antes de marcar Entregado.', 'warning');
+                        }
+                        return;
+                    }
+                }
+                if (status === 'cancelled') {
+                    const ok = typeof showConfirm === 'function'
+                        ? await showConfirm('Cancelar orden', '¿Cancelar esta orden?', { confirmText: 'Sí, cancelar', type: 'warning' })
+                        : true;
+                    if (!ok) return;
+                }
+                await window.patchSpecialOrder(id, { status });
+                await renderAdminSpecialOrders();
+            });
+        });
+
+        list.querySelectorAll('.admin-so-ship-cash').forEach(btn => {
+            btn.addEventListener('click', () => chargeAdminShipping(btn.dataset.id, 'CASH'));
+        });
+        list.querySelectorAll('.admin-so-ship-card').forEach(btn => {
+            btn.addEventListener('click', () => chargeAdminShipping(btn.dataset.id, 'CARD'));
+        });
+
+        // Auto-marcar vistas al listar (opcional suave: solo badge refresh)
+        await refreshSpecialOrdersBadge();
+    } catch (e) {
+        list.innerHTML = `<p style="color:#c62828;text-align:center;">Error: ${adminSoEscape(e.message)}</p>`;
+    }
+}
+
+async function chargeAdminShipping(id, method) {
+    const list = document.getElementById('admin-special-orders-list');
+    const card = list?.querySelector(`.admin-order-card[data-id="${id}"]`);
+    const lb = parseFloat(card?.querySelector('.admin-so-lb')?.value) || 0;
+    const extra = parseFloat(card?.querySelector('.admin-so-extra')?.value) || 0;
+    const cost = window.calcShippingCost?.(lb, extra) || 0;
+    if (!(cost > 0)) {
+        if (typeof showAlert === 'function') {
+            await showAlert('Envío', 'Indica el peso (lb) y/o un extra para calcular el envío.', 'warning');
+        }
+        return;
+    }
+    if (method === 'CARD') {
+        const ok = typeof showConfirm === 'function'
+            ? await showConfirm('Cobrar envío Square', `Cobrar envío ${adminSoMoney(cost)} con Square (se registrará como CARD). ¿Continuar?`, { confirmText: 'Cobrar', type: 'confirm' })
+            : true;
+        if (!ok) return;
+    } else {
+        const ok = typeof showConfirm === 'function'
+            ? await showConfirm('Cobrar envío Cash', `Registrar cobro de envío ${adminSoMoney(cost)} en Cash?`, { confirmText: 'Cobrar', type: 'confirm' })
+            : true;
+        if (!ok) return;
+    }
+    await window.patchSpecialOrder(id, {
+        shipping_lb: lb,
+        shipping_extra: extra,
+        shipping_cost: cost,
+        shipping_paid: true,
+        shipping_payment_method: method,
+        admin_viewed: true
+    });
+    window.markSpecialOrderViewed?.(id);
+    await renderAdminSpecialOrders();
+    await refreshSpecialOrdersBadge();
+}
+
+// Badge al cargar admin
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => refreshSpecialOrdersBadge(), 800);
+    setInterval(() => refreshSpecialOrdersBadge(), 30000);
+});
+

@@ -1,10 +1,11 @@
-// Servidor Proxy para Square API - Tropiplus Supermarket
+// Servidor Proxy para Square API - TropiParts
 const http = require('http');
 const https = require('https');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
+const { fetchProductFromSupplierUrl, getOxylabsCredentials } = require('./product-from-url');
 
 const PORT = 8080;
 const SQUARE_API_BASE = 'https://connect.squareup.com';
@@ -625,6 +626,29 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.url === '/api/product-from-url' && req.method === 'POST') {
+    try {
+      const rawBody = await readRequestBody(req);
+      let body = {};
+      try { body = rawBody ? JSON.parse(rawBody) : {}; } catch (_) {}
+      const targetUrl = String(body.url || '').trim();
+      if (!/^https?:\/\//i.test(targetUrl)) {
+        res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'URL inválida' }));
+        return;
+      }
+
+      const extracted = await fetchProductFromSupplierUrl(targetUrl);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(extracted));
+    } catch (e) {
+      console.error('[product-from-url]', e);
+      res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: e.message || 'No se pudo obtener el producto' }));
+    }
+    return;
+  }
+
   if (req.url === '/api/barcode-lookup' && req.method === 'POST') {
     try {
       const rawBody = await readRequestBody(req);
@@ -921,7 +945,10 @@ const server = http.createServer(async (req, res) => {
   serveStaticFile(filePath, res);
 });
 
+
 server.listen(PORT, () => {
-  console.log(`🚀 Tropiplus Supermarket corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 TropiParts corriendo en http://localhost:${PORT}`);
   console.log(`📡 Proxy de Square API disponible en /api/square`);
+  const oxy = getOxylabsCredentials();
+  console.log(oxy ? '🛰️ Oxylabs OK (product-from-url)' : '⚠️ Oxylabs NO configurado — AutoZone solo nombre/SKU desde URL');
 });

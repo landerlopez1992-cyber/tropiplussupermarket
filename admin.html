@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administración - Tropiplus Supermarket</title>
+    <title>Administración - TropiParts</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -402,6 +402,10 @@
             <button class="admin-internal-btn" data-subtab="delivery">
                 <i class="fas fa-truck"></i> Delivery
             </button>
+            <button class="admin-internal-btn" data-subtab="special-orders">
+                <i class="fas fa-clipboard-list"></i> Órdenes
+                <span id="special-orders-badge" class="admin-orders-badge" style="display:none;">0</span>
+            </button>
             <button class="admin-internal-btn" data-subtab="settings">
                 <i class="fas fa-cog"></i> Ajustes
             </button>
@@ -538,7 +542,7 @@
                             <option value="">Cargando locations...</option>
                         </select>
                         <small style="color: var(--gray-text); display: block; margin-top: 5px; font-size: 12px;">
-                            Por defecto se selecciona TropiPlus Supermarket.
+                            Por defecto se selecciona TropiParts.
                         </small>
                     </div>
                     
@@ -1138,6 +1142,32 @@
                 </div>
             </div>
 
+            <!-- Subtab Órdenes especiales (Servicio) -->
+            <div id="special-orders-content" class="admin-subcontent">
+                <div style="margin-bottom: 20px; text-align: center;">
+                    <h2 style="margin-bottom: 8px; font-size: 24px;">
+                        <i class="fas fa-clipboard-list"></i> Órdenes de Servicio
+                    </h2>
+                    <p style="color: var(--gray-text); font-size: 14px; margin: 0;">
+                        Pedidos especiales. Envío temporal: <strong>$5 / lb</strong> + extras. Marca como visto al abrir.
+                    </p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:center;">
+                    <button type="button" class="admin-so-filter active" data-so-status="">Todas</button>
+                    <button type="button" class="admin-so-filter" data-so-status="processing">Procesando</button>
+                    <button type="button" class="admin-so-filter" data-so-status="ordered">Comprado</button>
+                    <button type="button" class="admin-so-filter" data-so-status="shipped">Enviado</button>
+                    <button type="button" class="admin-so-filter" data-so-status="received">Entregado</button>
+                    <button type="button" class="admin-so-filter" data-so-status="cancelled">Cancelado</button>
+                    <button type="button" class="btn-save" id="admin-so-refresh" style="margin-left:auto;">
+                        <i class="fas fa-sync"></i> Actualizar
+                    </button>
+                </div>
+                <div id="admin-special-orders-list">
+                    <p style="text-align:center;color:var(--gray-text);padding:24px;">Cargando…</p>
+                </div>
+            </div>
+
             <!-- Subtab de Ajustes -->
             <div id="settings-content" class="admin-subcontent">
             <div style="margin-bottom: 25px; text-align: center;">
@@ -1377,7 +1407,8 @@
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/modal.js"></script>
-        <script src="js/supabase-config.js?v=20260210p"></script>
+        <script src="js/firebase-config.js"></script>
+        <script src="js/special-orders.js"></script>
         <script src="js/admin.js?v=20260210p"></script>
 </body>
 </html>

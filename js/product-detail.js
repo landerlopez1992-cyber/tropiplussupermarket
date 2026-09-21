@@ -61,7 +61,7 @@ async function renderProductDetails(product) {
     // Título
     const title = itemData.name || 'Producto';
     document.getElementById('product-name').textContent = title;
-    document.getElementById('product-title').textContent = `${title} - Tropiplus Supermarket`;
+    document.getElementById('product-title').textContent = `${title} - TropiParts`;
     document.getElementById('breadcrumb-product').textContent = title;
     
     // Precio

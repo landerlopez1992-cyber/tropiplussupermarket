@@ -9,7 +9,7 @@ Esta aplicación está diseñada para ser publicada en **Square App Marketplace*
 1. Ve a: https://developer.squareup.com/apps
 2. Haz clic en **"Create App"**
 3. Completa la información:
-   - **App Name**: Tropiplus Supermarket
+   - **App Name**: TropiParts
    - **Description**: Gestión simplificada de inventario y pedidos para comercios
    - **Category**: Inventory Management
    - **App Type**: Web Application
@@ -72,7 +72,7 @@ La app ya incluye:
 ## 🚀 Proceso de Instalación para Merchants
 
 1. **Merchant va a Square App Marketplace**
-2. **Busca "Tropiplus Supermarket"**
+2. **Busca "TropiParts"**
 3. **Hace clic en "Install"**
 4. **Autoriza la app** (OAuth flow)
 5. **La app se instala** en su terminal POS

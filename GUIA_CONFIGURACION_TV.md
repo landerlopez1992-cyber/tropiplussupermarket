@@ -15,7 +15,7 @@
 - **Mostrar etiqueta OFERTA:** ✓ Sí
 - **Texto promocional:** 
   ```
-  Bienvenido a Tropiplus Supermarket - Ofertas del día - Productos frescos y de calidad
+  Bienvenido a TropiParts - Ofertas del día - Productos frescos y de calidad
   ```
 - **TV activo:** ✓ Sí
 

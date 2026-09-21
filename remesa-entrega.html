@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entregar Remesa - TropiParts</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="servicio-page remesa-entrega-page">
+    <header class="main-header-section">
+        <div class="container">
+            <div class="header-top-row">
+                <div class="logo-section-main">
+                    <a href="index.html" class="main-logo-link">
+                        <img src="images/logo.png" alt="TropiParts" class="main-logo-image">
+                        <span class="main-logo-text">Tropi<em>Parts</em></span>
+                    </a>
+                </div>
+                <div class="header-user-section">
+                    <a href="account.html" class="user-account-link" id="user-account-link">
+                        <i class="fas fa-user"></i>
+                        <span id="user-account-text">Empleado</span>
+                    </a>
+                    <div class="cart-icon-wrapper" id="cart-trigger">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge-number">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-bar-dark-blue">
+        <div class="container">
+            <div class="nav-bar-inner">
+                <div class="nav-links-main">
+                    <a href="index.html" class="nav-link-item">Inicio</a>
+                    <a href="servicio.html" class="nav-link-item">Servicio</a>
+                    <a href="ventas.html" class="nav-link-item">Ventas</a>
+                    <a href="remesa-entrega.html" class="nav-link-item" style="color:#f5a623;">Remesa</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="page-content servicio-main">
+        <div class="container svc-content-narrow">
+            <div class="servicio-header">
+                <div>
+                    <h1>Entregar remesa</h1>
+                    <p>Ingresa el código de 10 dígitos, o busca por nombre / CI de quien recoge.</p>
+                </div>
+            </div>
+
+            <div class="remesa-search-panel">
+                <label>Código de seguridad</label>
+                <div class="svc-phone-row remesa-code-row">
+                    <div id="remesa-code-pin" class="digit-pin" aria-label="Código de remesa"></div>
+                    <input type="hidden" id="remesa-search-code" value="">
+                    <button type="button" class="btn-primary" id="remesa-search-btn">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                <p class="svc-hint" style="margin-top:10px;">El familiar debe darte el código de 10 dígitos (estilo Western Union).</p>
+
+                <div class="remesa-or-divider"><span>o</span></div>
+
+                <label for="remesa-search-text">Nombre o CI del destinatario</label>
+                <div class="svc-url-row remesa-text-row">
+                    <input type="text" id="remesa-search-text" placeholder="Nombre completo o carnet" autocomplete="off">
+                    <button type="button" class="btn-primary" id="remesa-search-text-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <p id="remesa-search-msg" class="svc-hint" style="margin-top:8px;"></p>
+            </div>
+
+            <div id="remesa-results" class="remesa-results"></div>
+        </div>
+    </main>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/square-config.js"></script>
+    <script src="js/square-integration.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/phone-pin.js"></script>
+    <script src="js/remesa-entrega.js"></script>
+</body>
+</html>

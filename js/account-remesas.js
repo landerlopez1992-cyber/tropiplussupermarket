@@ -142,13 +142,16 @@ function renderUserRemesas(remesas) {
             })
             : null;
         
+        const codeDisplay = typeof window.formatRemesaCodeDisplay === 'function'
+            ? window.formatRemesaCodeDisplay(remesa.confirmation_code)
+            : remesa.confirmation_code;
         return `
             <div class="order-card" style="border: 2px solid var(--gray-border); border-radius: 8px; padding: 24px; margin-bottom: 20px; background: white;">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
                     <div style="flex: 1;">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             <h3 style="margin: 0; color: var(--dark-blue-nav); font-size: 20px;">
-                                Remesa #${remesa.confirmation_code}
+                                Remesa ${codeDisplay}
                             </h3>
                             <span style="background: ${statusColor}; color: white; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 12px;">
                                 ${statusLabel}
@@ -193,10 +196,10 @@ function renderUserRemesas(remesas) {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <p style="margin: 0; font-size: 13px; color: var(--gray-text);">
-                                <i class="fas fa-key"></i> <strong>Código de Confirmación:</strong>
+                                <i class="fas fa-key"></i> <strong>Código de seguridad:</strong>
                             </p>
                             <p style="margin: 8px 0 0 0; font-size: 24px; font-weight: 700; color: #42b649; letter-spacing: 3px; font-family: 'Courier New', monospace;">
-                                ${remesa.confirmation_code}
+                                ${codeDisplay}
                             </p>
                         </div>
                         <button onclick="copyConfirmationCode('${remesa.confirmation_code}')" 
@@ -206,7 +209,7 @@ function renderUserRemesas(remesas) {
                     </div>
                     <p style="margin: 12px 0 0 0; font-size: 12px; color: #1f318a;">
                         <i class="fas fa-info-circle"></i> 
-                        Proporciona este código al destinatario para que pueda recoger la remesa en la tienda.
+                        El destinatario debe dar este código en tienda para cobrar (como Western Union).
                     </p>
                 </div>
                 

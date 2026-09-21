@@ -1,11 +1,11 @@
-# Guía de Configuración - Tropiplus Supermarket Square App
+# Guía de Configuración - TropiParts Square App
 
 ## Paso 1: Crear App en Square Developer Dashboard
 
 1. Ve a https://developer.squareup.com/apps
 2. Haz clic en "Create App"
 3. Completa la información:
-   - **App Name**: Tropiplus Supermarket
+   - **App Name**: TropiParts
    - **Description**: Gestión simplificada de inventario y pedidos para Clover POS
    - **Category**: Inventory Management
 

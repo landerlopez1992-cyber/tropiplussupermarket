@@ -37,36 +37,16 @@ async function checkMaintenanceMode() {
 
 async function getMaintenanceMode() {
     try {
-        // Intentar obtener de Supabase
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
-            const response = await fetch(
-                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/site_settings?key=eq.maintenance_mode&select=value`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': anonKey,
-                        'Authorization': `Bearer ${anonKey}`
-                    }
-                }
-            );
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.length > 0 && data[0].value === 'true') {
-                    return true;
-                }
+        if (typeof window.getSiteSettingFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            const value = await window.getSiteSettingFromFirebase('maintenance_mode');
+            if (value !== null && value !== undefined) {
+                return value === 'true' || value === true;
             }
         }
-        
-        // Fallback a localStorage
-        const localMaintenance = localStorage.getItem('tropiplus_maintenance_mode');
-        return localMaintenance === 'true';
+        return localStorage.getItem('tropiparts_maintenance_mode') === 'true';
     } catch (error) {
-        console.warn('Error obteniendo modo mantenimiento, usando localStorage:', error);
-        const localMaintenance = localStorage.getItem('tropiplus_maintenance_mode');
-        return localMaintenance === 'true';
+        console.warn('Error modo mantenimiento:', error);
+        return localStorage.getItem('tropiparts_maintenance_mode') === 'true';
     }
 }
 

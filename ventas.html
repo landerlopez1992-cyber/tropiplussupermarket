@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventas - TropiParts</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="servicio-page ventas-page">
+    <header class="main-header-section">
+        <div class="container">
+            <div class="header-top-row">
+                <div class="logo-section-main">
+                    <a href="index.html" class="main-logo-link">
+                        <img src="images/logo.png" alt="TropiParts" class="main-logo-image">
+                        <span class="main-logo-text">Tropi<em>Parts</em></span>
+                    </a>
+                </div>
+                <div class="header-user-section">
+                    <a href="account.html" class="user-account-link" id="user-account-link">
+                        <i class="fas fa-user"></i>
+                        <span id="user-account-text">Empleado</span>
+                    </a>
+                    <div class="cart-icon-wrapper" id="cart-trigger">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge-number">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-bar-dark-blue">
+        <div class="container">
+            <div class="nav-bar-inner">
+                <div class="nav-links-main">
+                    <a href="index.html" class="nav-link-item">Inicio</a>
+                    <a href="servicio.html" class="nav-link-item">Servicio</a>
+                    <a href="ventas.html" class="nav-link-item" style="color:#f5a623;">Ventas</a>
+                    <a href="remesa-entrega.html" class="nav-link-item">Remesa</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="page-content servicio-main">
+        <div class="container svc-content-narrow">
+            <div class="servicio-header">
+                <div>
+                    <h1>Ventas</h1>
+                    <p>Almanaque del último mes: totales por día en efectivo y tarjeta (tienda, servicio y online).</p>
+                </div>
+                <button type="button" class="btn-primary" id="ventas-refresh">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+            </div>
+
+            <div id="ventas-status" class="ventas-status">Cargando ventas…</div>
+
+            <div class="ventas-layout">
+                <section class="ventas-calendar-card" aria-label="Almanaque de ventas">
+                    <div class="ventas-cal-header">
+                        <button type="button" class="ventas-cal-nav" id="ventas-prev-month" aria-label="Mes anterior">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h2 id="ventas-month-label">—</h2>
+                        <button type="button" class="ventas-cal-nav" id="ventas-next-month" aria-label="Mes siguiente">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="ventas-weekdays" aria-hidden="true">
+                        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+                    </div>
+                    <div id="ventas-calendar-grid" class="ventas-calendar-grid"></div>
+                    <p class="ventas-cal-hint">Solo se muestran hasta 30 días atrás. Toca un día para ver el detalle.</p>
+                </section>
+
+                <section class="ventas-day-panel" aria-live="polite">
+                    <div class="ventas-day-header">
+                        <h2 id="ventas-day-title">Selecciona un día</h2>
+                        <p id="ventas-day-subtitle" class="ventas-day-subtitle">Elige una fecha en el almanaque.</p>
+                    </div>
+
+                    <div class="ventas-totals" id="ventas-totals">
+                        <div class="ventas-total-card cash">
+                            <span class="ventas-total-label"><i class="fas fa-money-bill-wave"></i> Cash</span>
+                            <strong id="ventas-cash-total">$0.00</strong>
+                        </div>
+                        <div class="ventas-total-card card">
+                            <span class="ventas-total-label"><i class="fas fa-credit-card"></i> Tarjeta</span>
+                            <strong id="ventas-card-total">$0.00</strong>
+                        </div>
+                        <div class="ventas-total-card all">
+                            <span class="ventas-total-label"><i class="fas fa-coins"></i> Total del día</span>
+                            <strong id="ventas-grand-total">$0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="ventas-day-meta" id="ventas-day-meta"></div>
+                    <div id="ventas-day-orders" class="ventas-day-orders"></div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/square-config.js"></script>
+    <script src="js/square-integration.js"></script>
+    <script src="js/square-orders.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/special-orders.js"></script>
+    <script src="js/ventas.js"></script>
+</body>
+</html>

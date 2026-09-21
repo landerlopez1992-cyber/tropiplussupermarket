@@ -148,7 +148,7 @@ async function waitForSquareProducts() {
 
 function loadAllProducts() {
     document.getElementById('category-title').textContent = 'Todos los productos';
-    document.getElementById('page-title').textContent = 'Todos los productos - Tropiplus Supermarket';
+    document.getElementById('page-title').textContent = 'Todos los productos - TropiParts';
     document.getElementById('breadcrumb-category').textContent = 'Todos los productos';
     
     filteredProducts = squareProducts.filter(product => {
@@ -166,7 +166,7 @@ function loadAllProducts() {
 
 function loadProductsByCategory(categoryId, categoryName) {
     document.getElementById('category-title').textContent = categoryName;
-    document.getElementById('page-title').textContent = `${categoryName} - Tropiplus Supermarket`;
+    document.getElementById('page-title').textContent = `${categoryName} - TropiParts`;
     document.getElementById('breadcrumb-category').textContent = categoryName;
     
     filteredProducts = squareProducts.filter(product => {
@@ -183,7 +183,7 @@ function loadProductsByCategory(categoryId, categoryName) {
 
 function loadSaleProducts() {
     document.getElementById('category-title').textContent = 'Productos rebajados';
-    document.getElementById('page-title').textContent = 'Productos rebajados - Tropiplus Supermarket';
+    document.getElementById('page-title').textContent = 'Productos rebajados - TropiParts';
     document.getElementById('breadcrumb-category').textContent = 'Productos rebajados';
     
     // Filtrar productos - excluir Remesa
@@ -200,7 +200,7 @@ function loadSaleProducts() {
 
 function loadFreeShippingProducts() {
     document.getElementById('category-title').textContent = 'Productos con envío gratis';
-    document.getElementById('page-title').textContent = 'Productos con envío gratis - Tropiplus Supermarket';
+    document.getElementById('page-title').textContent = 'Productos con envío gratis - TropiParts';
     document.getElementById('breadcrumb-category').textContent = 'Productos con envío gratis';
     
     // Filtrar productos - excluir Remesa
@@ -217,7 +217,7 @@ function loadFreeShippingProducts() {
 
 function loadSearchResults(query) {
     document.getElementById('category-title').textContent = `Resultados de búsqueda: "${query}"`;
-    document.getElementById('page-title').textContent = `Búsqueda: "${query}" - Tropiplus Supermarket`;
+    document.getElementById('page-title').textContent = `Búsqueda: "${query}" - TropiParts`;
     document.getElementById('breadcrumb-category').textContent = `Búsqueda: "${query}"`;
     
     // Intentar obtener resultados guardados en localStorage
@@ -250,7 +250,7 @@ function loadSearchResults(query) {
 
 async function loadBuyAgainProducts() {
     document.getElementById('category-title').textContent = 'Comprar de nuevo';
-    document.getElementById('page-title').textContent = 'Comprar de nuevo - Tropiplus Supermarket';
+    document.getElementById('page-title').textContent = 'Comprar de nuevo - TropiParts';
     document.getElementById('breadcrumb-category').textContent = 'Comprar de nuevo';
     
     // Verificar si el usuario está logueado

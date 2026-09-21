@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Tropiplus Supermarket</title>
+    <title>Checkout - TropiParts</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Square Web Payments SDK -->
     <script type="text/javascript" src="https://web.squarecdn.com/v1/square.js"></script>
 </head>
@@ -18,8 +18,8 @@
                 <!-- Logo -->
                 <div class="logo-section-main">
                     <a href="index.html" class="main-logo-link">
-                        <img src="images/logo.png" alt="Tropiplus Supermarket" class="main-logo-image">
-                        <span class="main-logo-text">Tropiplus Supermarket</span>
+                        <img src="images/logo.png" alt="TropiParts" class="main-logo-image">
+                        <span class="main-logo-text">Tropi<em>Parts</em></span>
                     </a>
                 </div>
 
@@ -32,7 +32,7 @@
                         <i class="fas fa-map-marker-alt"></i> Real Campiña, Aguada de Pasajeros
                     </div>
                     <div class="main-search-wrapper">
-                        <input type="text" class="main-search-input" placeholder="Buscar en la tienda ..." id="main-search">
+                        <input type="text" class="main-search-input" placeholder="Buscar piezas, marcas, vehículos ..." id="main-search">
                         <button class="main-search-btn">
                             <i class="fas fa-search"></i>
                         </button>
@@ -145,7 +145,7 @@
                             <div class="pickup-info-box">
                                 <i class="fas fa-map-marker-alt"></i>
                                 <div>
-                                    <strong>Tropiplus Supermarket Real Campiña</strong>
+                                    <strong>TropiParts Real Campiña</strong>
                                     <p>Aguada de Pasajeros, Cienfuegos</p>
                                     <p class="pickup-note">Recogida en tienda - Gratis</p>
                                 </div>
@@ -194,7 +194,7 @@
                                 <div class="cash-payment-info">
                                     <i class="fas fa-info-circle"></i>
                                     <p>Pagarás en efectivo cuando recojas tu pedido en la tienda.</p>
-                                    <p><strong>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>
+                                    <p><strong>TropiParts Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>
                                 </div>
                             </div>
                             <div id="save-card-option" class="save-card-option" style="display: none;">
@@ -276,13 +276,13 @@
                     <i class="fas fa-store"></i>
                     <div>
                         <strong>Recogida en sucursal</strong>
-                        <p>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</p>
+                        <p>TropiParts Real Campiña<br>Aguada de Pasajeros, Cienfuegos</p>
                         <p class="footer-pickup-note">No realizamos envíos. Solo recogida en tienda.</p>
                     </div>
                 </div>
             </div>
             <div class="footer-copyright">
-                <p>Copyright © 2026. Tropiplus Supermarket. Todos los derechos reservados.</p>
+                <p>Copyright © 2026. TropiParts. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
@@ -429,7 +429,7 @@
                 <i class="fas fa-store"></i>
                 <div class="pickup-info-text">
                     <strong>Recogida en sucursal</strong>
-                    <span>Tropiplus Supermarket Real Campiña</span>
+                    <span>TropiParts Real Campiña</span>
                     <span>Aguada de Pasajeros, Cienfuegos</span>
                 </div>
             </div>
@@ -465,6 +465,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
     <script src="js/square-config.js"></script>
     <script src="js/square-integration.js"></script>
     <script src="js/auth.js"></script>

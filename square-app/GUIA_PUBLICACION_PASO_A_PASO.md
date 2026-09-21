@@ -10,7 +10,7 @@
 ### 1.2 Crear Nueva Aplicación
 1. Haz clic en el botón **"Create App"** o **"Nueva Aplicación"**
 2. Completa el formulario:
-   - **App Name**: `Tropiplus Supermarket`
+   - **App Name**: `TropiParts`
    - **Description**: `Gestión simplificada de inventario y pedidos para comercios. Interfaz fácil de usar optimizada para terminales POS.`
    - **Category**: Selecciona **"Inventory Management"** o **"Business Operations"**
    - **App Type**: Selecciona **"Web Application"**
@@ -196,7 +196,7 @@ Marca los siguientes scopes:
 
 **App Name:**
 ```
-Tropiplus Supermarket
+TropiParts
 ```
 
 **Short Description (Descripción Corta):**
@@ -206,7 +206,7 @@ Gestión simplificada de inventario y pedidos para tu negocio. Interfaz fácil d
 
 **Long Description (Descripción Larga):**
 ```
-Tropiplus Supermarket es una aplicación diseñada para simplificar la gestión de inventario y pedidos en tu negocio. 
+TropiParts es una aplicación diseñada para simplificar la gestión de inventario y pedidos en tu negocio. 
 
 Características principales:
 • Gestión de inventario en tiempo real

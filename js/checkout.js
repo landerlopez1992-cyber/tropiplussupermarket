@@ -863,14 +863,19 @@ async function processPayment(paymentMethod, paymentToken, customerId) {
                         <i class="fas fa-key" style="color: #42b649;"></i>
                         Código(s) de Confirmación de Remesa:
                     </h4>
-                    ${confirmationCodes.map(code => `
+                    ${confirmationCodes.map(code => {
+                        const display = typeof window.formatRemesaCodeDisplay === 'function'
+                            ? window.formatRemesaCodeDisplay(code)
+                            : code;
+                        return `
                         <div style="background: white; padding: 12px; border-radius: 4px; margin: 8px 0; border: 2px solid #42b649;">
-                            <strong style="font-size: 20px; color: #42b649; letter-spacing: 2px;">${code}</strong>
-                        </div>
-                    `).join('')}
+                            <div style="font-size:12px;color:#666;margin-bottom:4px;">Código de seguridad (dar al familiar)</div>
+                            <strong style="font-size: 22px; color: #42b649; letter-spacing: 3px; font-family: monospace;">${display}</strong>
+                        </div>`;
+                    }).join('')}
                     <p style="margin-bottom: 0; color: #1f318a; font-size: 14px;">
                         <i class="fas fa-info-circle"></i> 
-                        <strong>Importante:</strong> Proporciona este código al destinatario para que pueda recoger la remesa. 
+                        <strong>Importante:</strong> El destinatario debe mostrar este código en tienda para cobrar la remesa (como Western Union). 
                         También puedes verlo en <a href="account-remesas.html" style="color: #42b649; font-weight: bold;">Mis Remesas</a>.
                     </p>
                 </div>
@@ -886,7 +891,7 @@ async function processPayment(paymentMethod, paymentToken, customerId) {
                 ${remesaConfirmationHtml}
                 <p>Tu pedido ha sido creado y aparecerá en nuestro sistema.</p>
                 <p>Recogerás tu compra en:</p>
-                <p><strong>Tropiplus Supermarket Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>
+                <p><strong>TropiParts Real Campiña<br>Aguada de Pasajeros, Cienfuegos</strong></p>
                 ${paymentMethod === 'CASH' ? '<p class="cash-note"><i class="fas fa-info-circle"></i> Recuerda traer el efectivo cuando recojas tu pedido.</p>' : ''}
                 <p>Puedes ver el estado de tu pedido en <a href="account-orders.html">Mis Órdenes</a>.</p>
             </div>
@@ -1161,7 +1166,7 @@ function showCashPickupModal(orderId) {
                     <p><strong>Tu orden #${orderId} ha sido confirmada.</strong></p>
                     <p>Tienes <strong>24 horas</strong> para recoger tu pedido en la tienda.</p>
                     <p><strong>Ubicación:</strong><br>
-                    Tropiplus Supermarket Real Campiña<br>
+                    TropiParts Real Campiña<br>
                     Aguada de Pasajeros, Cienfuegos</p>
                     <div class="cash-pickup-warning-box">
                         <i class="fas fa-exclamation-triangle"></i>

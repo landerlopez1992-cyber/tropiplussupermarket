@@ -1,4 +1,4 @@
-// Integración de Square con Tropiplus Supermarket
+// Integración de Square con TropiParts
 let squareCategories = [];
 let squareProducts = [];
 let categoryHierarchy = {}; // Estructura: { parentCategoryId: [childCategories] }

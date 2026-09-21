@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio Empleados - TropiParts</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="servicio-page">
+    <header class="main-header-section">
+        <div class="container">
+            <div class="header-top-row">
+                <div class="logo-section-main">
+                    <a href="index.html" class="main-logo-link">
+                        <img src="images/logo.png" alt="TropiParts" class="main-logo-image">
+                        <span class="main-logo-text">Tropi<em>Parts</em></span>
+                    </a>
+                </div>
+                <div class="header-user-section">
+                    <a href="account.html" class="user-account-link" id="user-account-link">
+                        <i class="fas fa-user"></i>
+                        <span id="user-account-text">Empleado</span>
+                    </a>
+                    <div class="cart-icon-wrapper" id="cart-trigger">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge-number">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-bar-dark-blue">
+        <div class="container">
+            <div class="nav-bar-inner">
+                <div class="nav-links-main">
+                    <a href="index.html" class="nav-link-item">Inicio</a>
+                    <a href="servicio.html" class="nav-link-item" style="color:#f5a623;">Servicio</a>
+                    <a href="ventas.html" class="nav-link-item">Ventas</a>
+                    <a href="remesa-entrega.html" class="nav-link-item">Remesa</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="page-content servicio-main">
+        <div class="container svc-content-narrow">
+            <div class="servicio-header">
+                <div>
+                    <h1>Panel de Servicio</h1>
+                    <p>Pedidos especiales de piezas que no están en inventario Square (compra externa → envío a Cuba).</p>
+                </div>
+                <div class="servicio-header-actions">
+                    <button type="button" class="btn-primary svc-btn-locate" id="btn-locate-customer">
+                        <i class="fas fa-search"></i> Localizar
+                    </button>
+                    <button type="button" class="btn-primary" id="btn-open-create-order">
+                        <i class="fas fa-plus"></i> Crear orden
+                    </button>
+                </div>
+            </div>
+
+            <div class="servicio-filters">
+                <button class="svc-filter active" data-status="">Todas</button>
+                <button class="svc-filter" data-status="processing">Procesando</button>
+                <button class="svc-filter" data-status="ordered">Comprado</button>
+                <button class="svc-filter" data-status="shipped">Enviado</button>
+                <button class="svc-filter" data-status="received">Recibido</button>
+                <button class="svc-filter" data-status="cancelled">Cancelado</button>
+            </div>
+
+            <div id="servicio-orders-list" class="servicio-orders-list">
+                <p class="svc-loading">Cargando pedidos…</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pantalla cliente localizado (historial + garantía) -->
+    <section id="svc-customer-screen" class="svc-customer-screen" style="display:none;" aria-live="polite">
+        <div class="container svc-customer-wrap">
+            <button type="button" class="svc-customer-back" id="svc-customer-back">
+                <i class="fas fa-arrow-left"></i> Volver al panel
+            </button>
+
+            <div class="svc-customer-profile-card">
+                <div class="svc-customer-avatar" aria-hidden="true"><i class="fas fa-user"></i></div>
+                <div class="svc-customer-profile-text">
+                    <p class="svc-customer-kicker">Cliente · Garantía</p>
+                    <h1 id="svc-customer-name">Cliente</h1>
+                    <p id="svc-customer-phone" class="svc-customer-phone">—</p>
+                    <p id="svc-customer-stats" class="svc-customer-stats"></p>
+                </div>
+            </div>
+
+            <h2 class="svc-customer-history-title">Historial de compras</h2>
+            <div id="svc-customer-history" class="svc-customer-history"></div>
+        </div>
+    </section>
+
+    <!-- Modal crear orden -->
+    <div id="svc-create-modal" class="svc-modal" style="display:none;">
+        <div class="svc-modal-content svc-modal-wide">
+            <div class="svc-modal-header">
+                <h2><i class="fas fa-link"></i> Nueva orden especial</h2>
+                <button type="button" class="svc-modal-close" id="svc-modal-close">&times;</button>
+            </div>
+            <div class="svc-modal-body">
+                <!-- Paso 1: Cliente por teléfono -->
+                <div id="svc-step-customer" class="svc-step">
+                    <p class="svc-step-title">1. Cliente (teléfono)</p>
+                    <p class="svc-hint">Como AutoZone: busca o registra el teléfono para asociar compras y garantía.</p>
+                    <label>Teléfono Cuba *</label>
+                    <div class="svc-phone-row">
+                        <div id="svc-phone-pin" class="digit-pin" aria-label="Teléfono Cuba"></div>
+                        <input type="hidden" id="svc-phone" value="">
+                        <button type="button" class="btn-primary" id="svc-phone-lookup"><i class="fas fa-search"></i> Buscar</button>
+                    </div>
+                    <p id="svc-customer-msg" class="svc-hint" style="margin-top:6px;"></p>
+                    <div id="svc-customer-fields" style="display:none;">
+                        <div class="svc-grid-2">
+                            <div>
+                                <label>Nombre *</label>
+                                <input type="text" id="svc-given-name" placeholder="Nombre">
+                            </div>
+                            <div>
+                                <label>Apellido *</label>
+                                <input type="text" id="svc-family-name" placeholder="Apellido">
+                            </div>
+                        </div>
+                        <button type="button" class="btn-primary" id="svc-customer-continue" style="width:100%;margin-top:10px;">
+                            Continuar al producto <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paso 2: Producto + garantía -->
+                <div id="svc-step-product" class="svc-step" style="display:none;">
+                    <p class="svc-step-title">2. Producto y garantía</p>
+                    <div id="svc-customer-chip" class="svc-customer-chip"></div>
+
+                    <label>URL del proveedor *</label>
+                    <div class="svc-url-row">
+                        <input type="url" id="svc-url" placeholder="https://www.autozone.com/p/...">
+                        <button type="button" class="btn-primary" id="svc-fetch-url"><i class="fas fa-search"></i> Detectar</button>
+                    </div>
+                    <p class="svc-hint">Pega el link del producto. Intentamos detectar nombre, precio y foto.</p>
+
+                    <div id="svc-preview" class="svc-preview" style="display:none;">
+                        <img id="svc-preview-img" alt="Producto" src="">
+                        <div>
+                            <strong id="svc-preview-name">—</strong>
+                            <div id="svc-preview-price">—</div>
+                        </div>
+                    </div>
+
+                    <label>Nombre del producto *</label>
+                    <input type="text" id="svc-name" placeholder="Nombre">
+
+                    <div class="svc-grid-2">
+                        <div>
+                            <label>Precio USD *</label>
+                            <input type="number" id="svc-price" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label>Cantidad</label>
+                            <input type="number" id="svc-qty" min="1" value="1">
+                        </div>
+                    </div>
+
+                    <div class="svc-grid-2">
+                        <div>
+                            <label>Garantía *</label>
+                            <select id="svc-warranty">
+                                <option value="">— Seleccionar —</option>
+                                <option value="1">1 año</option>
+                                <option value="2">2 años</option>
+                                <option value="3">3 años</option>
+                                <option value="4">4 años</option>
+                                <option value="5">5 años</option>
+                                <option value="6">6 años</option>
+                                <option value="7">7 años</option>
+                                <option value="8">8 años</option>
+                                <option value="9">9 años</option>
+                                <option value="10">10 años</option>
+                                <option value="lifetime">De por vida</option>
+                            </select>
+                            <p id="svc-warranty-hint" class="svc-hint" style="margin:4px 0 0;"></p>
+                        </div>
+                        <div>
+                            <label>SKU / Part # opcional</label>
+                            <input type="text" id="svc-sku" placeholder="Part number">
+                        </div>
+                    </div>
+
+                    <label>URL de foto</label>
+                    <input type="url" id="svc-image" placeholder="https://...">
+
+                    <label>Notas / vehículo</label>
+                    <textarea id="svc-notes" rows="2" placeholder="Vehículo, urgencia…"></textarea>
+
+                    <div id="svc-pay-step" class="svc-pay-step" style="display:none;">
+                        <p class="svc-pay-title">Cobrar artículo: <strong id="svc-pay-amount">$0.00</strong></p>
+                        <p class="svc-hint">Elige el método de pago. Con tarjeta, el pago debe ser exitoso antes de crear la orden.</p>
+                        <div class="svc-pay-btns">
+                            <button type="button" class="btn-primary" id="svc-pay-cash">
+                                <i class="fas fa-money-bill-wave"></i> Cash
+                            </button>
+                            <button type="button" class="btn-primary svc-pay-square" id="svc-pay-card">
+                                <i class="fas fa-credit-card"></i> Tarjeta Square
+                            </button>
+                        </div>
+                        <div id="svc-card-panel" style="display:none;margin-top:12px;">
+                            <div id="svc-card-container" class="svc-card-container"></div>
+                            <button type="button" class="btn-primary svc-pay-square" id="svc-pay-card-confirm" style="width:100%;margin-top:10px;">
+                                <i class="fas fa-lock"></i> Cobrar con tarjeta
+                            </button>
+                        </div>
+                        <p id="svc-pay-msg" class="svc-error" style="display:none;margin-top:10px;"></p>
+                    </div>
+                </div>
+
+                <p id="svc-error" class="svc-error" style="display:none;"></p>
+            </div>
+            <div class="svc-modal-footer">
+                <button type="button" class="btn-cancel" id="svc-cancel">Cancelar</button>
+                <button type="button" class="btn-primary" id="svc-submit" style="display:none;">
+                    <i class="fas fa-check"></i> Crear pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Localizar cliente / garantía -->
+    <div id="svc-locate-modal" class="svc-modal" style="display:none;">
+        <div class="svc-modal-content svc-modal-wide">
+            <div class="svc-modal-header">
+                <h2><i class="fas fa-search"></i> Localizar por teléfono</h2>
+                <button type="button" class="svc-modal-close" id="svc-locate-close">&times;</button>
+            </div>
+            <div class="svc-modal-body">
+                <p class="svc-hint">Busca compras y garantía restantes sin recibo de papel.</p>
+                <label>Teléfono Cuba</label>
+                <div class="svc-phone-row">
+                    <div id="svc-locate-phone-pin" class="digit-pin" aria-label="Teléfono Cuba"></div>
+                    <input type="hidden" id="svc-locate-phone" value="">
+                    <button type="button" class="btn-primary" id="svc-locate-search"><i class="fas fa-search"></i> Buscar</button>
+                </div>
+                <p id="svc-locate-msg" class="svc-hint" style="margin-top:8px;"></p>
+            </div>
+            <div class="svc-modal-footer">
+                <button type="button" class="btn-cancel" id="svc-locate-cancel">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://web.squarecdn.com/v1/square.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/square-config.js"></script>
+    <script src="js/square-integration.js"></script>
+    <script src="js/square-orders.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/phone-pin.js"></script>
+    <script src="js/special-orders.js"></script>
+    <script src="js/servicio.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// Aplicación principal - Tropiplus Supermarket Square App
+// Aplicación principal - TropiParts Square App
 
 let currentTab = 'inventory';
 let allInventory = [];

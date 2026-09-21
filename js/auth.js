@@ -171,17 +171,16 @@ async function handleLogin(e) {
         
         console.log('✅ Contraseña válida, procediendo con login');
 
-        // Verificar si el usuario es administrador desde customer.note o metadata
-        const customerNote = customer.note || '';
-        const customerEmail = customer.email_address || '';
         const isAdmin = customerNote.includes('"isAdmin":true') || 
                        customerNote.includes('"credenciales":true') ||
                        customerEmail.toLowerCase() === 'tallercell0133@gmail.com'; // Usuario específico como admin
+        const isEmployee = isEmployeeFromNoteOrEmail(customerNote, customerEmail) || isAdmin;
         
         console.log('🔐 Verificando admin:', {
             email: customerEmail,
             note: customerNote,
-            isAdmin: isAdmin
+            isAdmin: isAdmin,
+            isEmployee: isEmployee
         });
 
         // Crear sesión de usuario
@@ -194,6 +193,8 @@ async function handleLogin(e) {
             address: customer.address,
             loggedIn: true,
             isAdmin: isAdmin,
+            isEmployee: isEmployee,
+            role: isAdmin ? 'admin' : (isEmployee ? 'empleado' : 'customer'),
             credenciales: isAdmin,
             loginTime: Date.now()
         };
@@ -331,7 +332,8 @@ async function handleRegister(e) {
             const customerNote = newCustomer.customer.note || '';
             const isAdmin = customerNote.includes('"isAdmin":true') || 
                            customerNote.includes('"credenciales":true') ||
-                           newCustomer.customer.email_address === 'tallercell0133@gmail.com'; // Usuario específico como admin
+                           newCustomer.customer.email_address === 'tallercell0133@gmail.com';
+            const isEmployee = isEmployeeFromNoteOrEmail(customerNote, newCustomer.customer.email_address) || isAdmin;
             
             const userSession = {
                 id: newCustomer.customer.id,
@@ -342,6 +344,8 @@ async function handleRegister(e) {
                 address: newCustomer.customer.address,
                 loggedIn: true,
                 isAdmin: isAdmin,
+                isEmployee: isEmployee,
+                role: isAdmin ? 'admin' : (isEmployee ? 'empleado' : 'customer'),
                 credenciales: isAdmin,
                 loginTime: Date.now()
             };
@@ -508,11 +512,32 @@ function getCurrentUser() {
     }
 }
 
+// Empleados: agrega emails aquí O en Square Customer note: {"isEmployee":true}
+const EMPLOYEE_EMAILS = [
+    'tallercell0133@gmail.com'
+];
+
+function isEmployeeFromNoteOrEmail(note, email) {
+    const n = String(note || '');
+    const e = String(email || '').toLowerCase().trim();
+    if (EMPLOYEE_EMAILS.map(x => x.toLowerCase()).includes(e)) return true;
+    if (n.includes('"isEmployee":true') || n.includes('"role":"empleado"') || n.includes('"role":"employee"')) return true;
+    return false;
+}
+
 // Función para verificar si el usuario es administrador
 function isUserAdmin() {
     const user = getCurrentUser();
     if (!user) return false;
     return user.isAdmin === true || user.credenciales === true;
+}
+
+function isUserEmployee() {
+    const user = getCurrentUser();
+    if (!user) return false;
+    if (user.isEmployee === true || user.role === 'empleado' || user.role === 'employee') return true;
+    if (isUserAdmin()) return true;
+    return isEmployeeFromNoteOrEmail('', user.email);
 }
 
 // Función para cerrar sesión
@@ -545,7 +570,7 @@ function showLoginSpinner() {
     // Logo dentro del spinner
     const logoImg = document.createElement('img');
     logoImg.src = 'images/logo.png';
-    logoImg.alt = 'Tropiplus Supermarket';
+    logoImg.alt = 'TropiParts';
     logoImg.className = 'login-spinner-logo';
     
     spinner.appendChild(logoImg);
@@ -564,4 +589,6 @@ function showLoginSpinner() {
 window.isUserLoggedIn = isUserLoggedIn;
 window.getCurrentUser = getCurrentUser;
 window.isUserAdmin = isUserAdmin;
+window.isUserEmployee = isUserEmployee;
+window.EMPLOYEE_EMAILS = EMPLOYEE_EMAILS;
 window.logout = logout;

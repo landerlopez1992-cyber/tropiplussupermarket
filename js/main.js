@@ -1,4 +1,4 @@
-// Funcionalidad principal Tropiplus Supermarket
+// Funcionalidad principal TropiParts
 
 document.addEventListener('DOMContentLoaded', function() {
     initCartSidebar();
@@ -252,8 +252,39 @@ function initUserAccount() {
         console.error('❌ No se encontraron elementos user-account-link o user-account-text');
     }
     
+    // Botón Servicio (solo empleados)
+    initServiceButton();
     // Agregar pestaña "Administrar" si el usuario es admin
     initAdminTab();
+}
+
+function initServiceButton() {
+    const section = document.querySelector('.header-user-section');
+    if (!section) return;
+
+    let btn = document.getElementById('service-staff-btn');
+    const canSee = typeof isUserEmployee === 'function' && isUserEmployee();
+
+    if (!canSee) {
+        if (btn) btn.remove();
+        return;
+    }
+
+    if (!btn) {
+        btn = document.createElement('a');
+        btn.id = 'service-staff-btn';
+        btn.href = 'servicio.html';
+        btn.className = 'service-staff-btn';
+        btn.innerHTML = '<i class="fas fa-wrench"></i><span>Servicio</span>';
+        const cart = section.querySelector('#cart-trigger') || section.querySelector('.cart-icon-wrapper');
+        if (cart && cart.nextSibling) {
+            section.insertBefore(btn, cart.nextSibling);
+        } else if (cart) {
+            cart.after(btn);
+        } else {
+            section.appendChild(btn);
+        }
+    }
 }
 
 function initAdminTab() {
@@ -522,102 +553,49 @@ async function initPromotionalBanners() {
 
 async function getBannersFromStorage() {
     try {
-        // Intentar obtener de Supabase
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
-            const response = await fetch(
-                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/home_banners?select=*&active=eq.true&order=display_order.asc`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': anonKey,
-                        'Authorization': `Bearer ${anonKey}`
-                    }
-                }
-            );
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ [Banners] Banners cargados desde Supabase:', data.length);
-                return data;
-            }
+        if (typeof window.getHomeBannersFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            const data = await window.getHomeBannersFromFirebase(true);
+            console.log('✅ [Banners] Firebase:', data.length);
+            return data;
         }
-        
-        // Fallback a localStorage
-        const localBanners = localStorage.getItem('tropiplus_banners');
+        const localBanners = localStorage.getItem('tropiparts_banners');
         if (localBanners) {
-            const parsed = JSON.parse(localBanners);
-            console.log('✅ [Banners] Banners cargados desde localStorage:', parsed.length);
-            return parsed.filter(b => b.active !== false);
+            return JSON.parse(localBanners).filter(b => b.active !== false);
         }
-        
         return [];
     } catch (error) {
-        console.warn('⚠️ [Banners] Error obteniendo banners, usando localStorage:', error);
-        const localBanners = localStorage.getItem('tropiplus_banners');
+        console.warn('⚠️ [Banners] Error, localStorage:', error);
+        const localBanners = localStorage.getItem('tropiparts_banners');
         return localBanners ? JSON.parse(localBanners).filter(b => b.active !== false) : [];
     }
 }
 
 function renderPromotionalBanners(banners) {
-    const bannersRow = document.querySelector('.banners-row');
+    const bannersRow = document.getElementById('dynamic-banners-row') || document.querySelector('.banners-row');
     if (!bannersRow) {
-        console.warn('⚠️ [Banners] No se encontró .banners-row');
+        console.warn('⚠️ [Banners] No se encontró contenedor de banners');
         return;
     }
     
-    // Limpiar banners existentes (excepto el contenedor)
+    if (!banners || banners.length === 0) {
+        return;
+    }
+
+    bannersRow.style.display = 'flex';
     bannersRow.innerHTML = '';
     
-    if (banners.length === 0) {
-        return;
-    }
-    
-    // Crear banners dinámicamente
     banners.forEach((banner, index) => {
-        const bannerCard = document.createElement('div');
-        bannerCard.className = 'promo-banner-card';
-        bannerCard.dataset.bannerIndex = index;
+        const bannerCard = document.createElement('a');
+        bannerCard.className = 'az-promo-tile';
+        bannerCard.href = banner.redirect_url || 'products.html';
+        if (banner.redirect_url) bannerCard.target = '_blank';
         
-        // Si tiene URL de redirección, hacer el banner clickeable
-        if (banner.redirect_url) {
-            bannerCard.style.cursor = 'pointer';
-            bannerCard.addEventListener('click', () => {
-                window.open(banner.redirect_url, '_blank');
-            });
-        }
-        
-        // Crear imagen o contenido del banner
         if (banner.image_url) {
             const img = document.createElement('img');
             img.src = banner.image_url;
             img.alt = `Banner ${index + 1}`;
-            img.className = 'promo-banner-image';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'cover';
-            img.style.borderRadius = '12px';
-            img.onerror = function() {
-                this.style.display = 'none';
-                bannerCard.innerHTML = `
-                    <div class="banner-inner-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <h3 class="banner-title">Banner ${index + 1}</h3>
-                        <p class="banner-text">Imagen no disponible</p>
-                    </div>
-                `;
-            };
             bannerCard.appendChild(img);
-        } else {
-            // Fallback si no hay imagen
-            bannerCard.innerHTML = `
-                <div class="banner-inner-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <h3 class="banner-title">Banner ${index + 1}</h3>
-                    <p class="banner-text">Sin imagen</p>
-                </div>
-            `;
         }
-        
         bannersRow.appendChild(bannerCard);
     });
     
@@ -630,7 +608,7 @@ function startBannerRotation(banners) {
     }
     
     // Obtener intervalo de transición
-    const savedInterval = localStorage.getItem('tropiplus_banner_transition_interval');
+    const savedInterval = localStorage.getItem('tropiparts_banner_transition_interval');
     const intervalSeconds = savedInterval ? parseInt(savedInterval) : 5;
     const intervalMs = intervalSeconds * 1000;
     
@@ -666,40 +644,19 @@ async function initFeaturedCards() {
 
 async function getFeaturedCardsFromHomeStorage() {
     try {
-        // Intentar obtener de Supabase
-        const anonKey = window.SUPABASE_CONFIG?.anonKey || localStorage.getItem('supabase_anon_key');
-        if (anonKey && anonKey !== 'null' && anonKey !== 'placeholder') {
-            const response = await fetch(
-                `${window.SUPABASE_CONFIG?.url || 'https://your-project.supabase.co'}/rest/v1/featured_cards?select=*&active=eq.true&order=display_order.asc`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': anonKey,
-                        'Authorization': `Bearer ${anonKey}`
-                    }
-                }
-            );
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ [Featured Cards] Tarjetas cargadas desde Supabase:', data.length);
-                return data;
-            }
+        if (typeof window.getFeaturedCardsFromFirebase === 'function' && window.isFirebaseConfigured?.()) {
+            const data = await window.getFeaturedCardsFromFirebase(true);
+            console.log('✅ [Featured Cards] Firebase:', data.length);
+            return data;
         }
-        
-        // Fallback a localStorage
-        const localCards = localStorage.getItem('tropiplus_featured_cards');
+        const localCards = localStorage.getItem('tropiparts_featured_cards');
         if (localCards) {
-            const parsed = JSON.parse(localCards);
-            console.log('✅ [Featured Cards] Tarjetas cargadas desde localStorage:', parsed.length);
-            return parsed.filter(c => c.active !== false);
+            return JSON.parse(localCards).filter(c => c.active !== false);
         }
-        
         return [];
     } catch (error) {
-        console.warn('⚠️ [Featured Cards] Error obteniendo tarjetas, usando localStorage:', error);
-        const localCards = localStorage.getItem('tropiplus_featured_cards');
+        console.warn('⚠️ [Featured Cards] Error, localStorage:', error);
+        const localCards = localStorage.getItem('tropiparts_featured_cards');
         return localCards ? JSON.parse(localCards).filter(c => c.active !== false) : [];
     }
 }
@@ -911,4 +868,22 @@ document.addEventListener('click', function(e) {
         
         qtyInput.value = currentValue;
     }
+});
+
+
+// TropiParts hero carousel controls
+document.addEventListener('DOMContentLoaded', function() {
+    const slides = document.querySelectorAll('#hero-banner-carousel .hero-banner-slide');
+    const dots = document.querySelectorAll('.hero-az-carousel .carousel-dot');
+    if (!slides.length) return;
+    let idx = 0;
+    function show(i) {
+        idx = (i + slides.length) % slides.length;
+        slides.forEach((s, n) => s.classList.toggle('active', n === idx));
+        dots.forEach((d, n) => d.classList.toggle('active', n === idx));
+    }
+    document.getElementById('az-hero-prev')?.addEventListener('click', () => show(idx - 1));
+    document.getElementById('az-hero-next')?.addEventListener('click', () => show(idx + 1));
+    dots.forEach((d, n) => d.addEventListener('click', () => show(n)));
+    setInterval(() => show(idx + 1), 5500);
 });

@@ -135,7 +135,7 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
             const pickupDetails = {
                 recipient,
                 schedule_type: 'ASAP',
-                note: 'Recogida en tienda - Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos'
+                note: 'Recogida en tienda - TropiParts Real Campiña, Aguada de Pasajeros, Cienfuegos'
             };
             
             fulfillments.push({
@@ -148,7 +148,7 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
             });
             
             metadata.delivery_method = 'pickup';
-            metadata.pickup_location = 'Tropiplus Supermarket Real Campiña, Aguada de Pasajeros, Cienfuegos';
+            metadata.pickup_location = 'TropiParts Real Campiña, Aguada de Pasajeros, Cienfuegos';
         }
 
         const orderData = {
@@ -161,12 +161,14 @@ async function createSquareOrder(cartItems, customerId, paymentMethod = 'CARD', 
                     name: 'Tropiplus Web'
                 },
                 line_items: lineItems,
-                customer_id: customerId,
                 state: 'OPEN',
                 fulfillments: fulfillments,
                 metadata: metadata
             }
         };
+        if (customerId) {
+            orderData.order.customer_id = customerId;
+        }
 
         console.log('📦 Creando orden en Square:', orderData);
 
@@ -415,6 +417,59 @@ async function getCustomerOrders(customerId, limit = 50) {
 }
 
 /**
+ * Busca órdenes de la ubicación por rango de fechas (paginado).
+ * @param {string} startAt - ISO start
+ * @param {string} endAt - ISO end
+ * @param {number} pageLimit - page size (max 1000 for Square)
+ * @returns {Promise<Array>}
+ */
+async function searchOrdersByDateRange(startAt, endAt, pageLimit = 100) {
+    const locationId = SQUARE_CONFIG?.locationId;
+    if (!locationId) {
+        console.error('❌ locationId no configurado');
+        return [];
+    }
+
+    const all = [];
+    let cursor = undefined;
+
+    try {
+        do {
+            const body = {
+                location_ids: [locationId],
+                query: {
+                    filter: {
+                        date_time_filter: {
+                            created_at: {
+                                start_at: startAt,
+                                end_at: endAt
+                            }
+                        }
+                    },
+                    sort: {
+                        sort_field: 'CREATED_AT',
+                        sort_order: 'DESC'
+                    }
+                },
+                limit: pageLimit
+            };
+            if (cursor) body.cursor = cursor;
+
+            const response = await squareApiCall('/v2/orders/search', 'POST', body);
+            if (response && Array.isArray(response.orders)) {
+                all.push(...response.orders);
+            }
+            cursor = response?.cursor || null;
+        } while (cursor);
+
+        return all;
+    } catch (error) {
+        console.error('❌ Error buscando órdenes por fecha:', error);
+        return all;
+    }
+}
+
+/**
  * Obtiene una orden específica por ID
  */
 async function getOrderById(orderId) {
@@ -562,6 +617,7 @@ async function processCashPayment(orderId, amount) {
 // Hacer funciones disponibles globalmente
 window.createSquareOrder = createSquareOrder;
 window.getCustomerOrders = getCustomerOrders;
+window.searchOrdersByDateRange = searchOrdersByDateRange;
 window.getOrderById = getOrderById;
 window.updateOrderState = updateOrderState;
 /**
@@ -717,6 +773,7 @@ async function reloadGiftCard(giftCardData) {
 }
 
 window.processCashPayment = processCashPayment;
+window.processCardPayment = processCardPayment;
 window.saveCardForFutureUse = saveCardForFutureUse;
 window.adjustInventoryForOrder = adjustInventoryForOrder;
 window.reloadGiftCard = reloadGiftCard;

@@ -48,7 +48,7 @@
 
 1. Ve a: **https://developer.squareup.com/apps**
 2. Inicia sesión
-3. Selecciona tu app: **"Tropiplus Supermarket"**
+3. Selecciona tu app: **"TropiParts"**
 
 ### Paso 2: Crear App Marketplace Listing
 
@@ -60,7 +60,7 @@
 
 **App Name:**
 ```
-Tropiplus Supermarket
+TropiParts
 ```
 
 **Short Description (Descripción Corta - 160 caracteres máximo):**
@@ -70,7 +70,7 @@ Gestión simplificada de inventario y pedidos. Interfaz fácil optimizada para t
 
 **Long Description (Descripción Larga):**
 ```
-Tropiplus Supermarket es una aplicación diseñada para simplificar la gestión de inventario y pedidos en tu negocio.
+TropiParts es una aplicación diseñada para simplificar la gestión de inventario y pedidos en tu negocio.
 
 Características principales:
 • Gestión de inventario en tiempo real
@@ -165,7 +165,7 @@ Necesitas al menos **3-5 screenshots**:
 **Banner Image (Imagen de Banner):**
 - Tamaño: **1200x300 px**
 - Formato: **PNG o JPG**
-- Diseño con logo y texto "Tropiplus Supermarket"
+- Diseño con logo y texto "TropiParts"
 
 ### Paso 8: Support Information (Información de Soporte)
 

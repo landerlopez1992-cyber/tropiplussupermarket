@@ -31,23 +31,20 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
   const isLocalhost = window.location.hostname === 'localhost' || 
                       window.location.hostname === '127.0.0.1';
   
-  // URLs de proxy a intentar (en orden de prioridad)
+  // Proxy Square: Vercel (prod) o localhost (misma Square production en máquina)
+  // Ya NO se usa Supabase Edge Functions.
+  const VERCEL_PROXY = 'https://tropiplussupermarket.vercel.app';
   let proxyUrls = [];
-  
-  // Supabase siempre disponible (funciona en local y producción)
-  const SUPABASE_URL = 'https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy';
-  
+
   if (isLocalhost) {
-    // En desarrollo local: intentar proxy local primero, luego Supabase
     proxyUrls = [
-      'http://localhost:8080',  // Proxy local (si está corriendo)
-      SUPABASE_URL,  // Supabase como fallback (siempre funciona)
+      'http://localhost:8080',
+      VERCEL_PROXY
     ];
   } else {
-    // En producción: usar Supabase principalmente
     proxyUrls = [
-      SUPABASE_URL,  // Supabase LogiFlow Pro (PRINCIPAL)
-      'https://tropiplussupermarket.vercel.app',  // Vercel (fallback)
+      VERCEL_PROXY,
+      window.location.origin
     ];
   }
   
@@ -77,17 +74,10 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
         proxyUrl = `${baseUrl}${encodeURIComponent(squareUrl)}`;
         options.headers['Square-Version'] = '2024-01-18';
         options.headers['Authorization'] = `Bearer ${SQUARE_CONFIG.accessToken}`;
-      } else if (baseUrl.includes('supabase.co')) {
-        // Proxy de Supabase - construir la URL correctamente
-        // baseUrl es: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy
-        // endpoint es: /v2/catalog/search
-        // Resultado: https://fbbvfzeyhhopdwzsooew.supabase.co/functions/v1/square-proxy/v2/catalog/search
-        proxyUrl = `${baseUrl}${endpoint}`;
-      } else if (baseUrl.includes('localhost:8080')) {
-        // Proxy local - usar /api/square como endpoint
+      } else if (baseUrl.includes('localhost:8080') || baseUrl.includes('127.0.0.1')) {
         proxyUrl = `${baseUrl}/api/square${endpoint}`;
       } else {
-        // Proxy normal (Vercel)
+        // Vercel / mismo origin
         proxyUrl = `${baseUrl}/api/square${endpoint}`;
       }
       
@@ -121,9 +111,8 @@ async function squareApiCall(endpoint, method = 'GET', body = null) {
           continue;
         }
         
-        // Si es 401 del proxy local, intentar Supabase
         if (response.status === 401 && baseUrl.includes('localhost')) {
-          console.warn(`⚠️ Proxy local devolvió 401 (no autenticado), intentando Supabase...`);
+          console.warn(`⚠️ Proxy local 401, intentando Vercel...`);
           lastError = new Error(`Proxy local no autenticado: ${response.status}`);
           continue;
         }

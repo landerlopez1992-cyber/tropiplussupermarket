@@ -65,7 +65,7 @@ sq0idp-1soiZa2SKukDWOuzVG9QAA
 **Texto sugerido:**
 
 ```
-Tropiplus Supermarket es una aplicación web diseñada para simplificar la gestión de inventario y pedidos para comercios que usan Square POS.
+TropiParts es una aplicación web diseñada para simplificar la gestión de inventario y pedidos para comercios que usan Square POS.
 
 CARACTERÍSTICAS PRINCIPALES:
 • Gestión de inventario en tiempo real - Ver y actualizar stock de productos directamente desde Square API
@@ -90,7 +90,7 @@ La aplicación ya está desarrollada, probada y lista para ser publicada en Squa
 **Versión más corta (si el campo tiene límite de caracteres):**
 
 ```
-Tropiplus Supermarket es una aplicación web para gestión simplificada de inventario y pedidos en comercios Square.
+TropiParts es una aplicación web para gestión simplificada de inventario y pedidos en comercios Square.
 
 Características:
 - Gestión de inventario en tiempo real desde Square API

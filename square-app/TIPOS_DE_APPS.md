@@ -14,7 +14,7 @@
 
 **Cómo funciona:**
 1. Merchant va a App Marketplace
-2. Encuentra "Tropiplus Supermarket"
+2. Encuentra "TropiParts"
 3. Hace clic en "Get Started" o "Abrir"
 4. Se abre en el **navegador del terminal** (Chrome/Firefox)
 5. Merchant autoriza con OAuth
