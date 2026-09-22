@@ -262,11 +262,22 @@ async function getAllRemesasFromSupabase(status = null) {
 
 async function getUserRemesasFromSupabase(customerId) {
     const db = await ensureFirebase();
-    const snap = await db.collection('remesas')
-        .where('sender_customer_id', '==', customerId)
-        .orderBy('created_at', 'desc')
-        .get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    try {
+        const snap = await db.collection('remesas')
+            .where('sender_customer_id', '==', customerId)
+            .orderBy('created_at', 'desc')
+            .get();
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+        // Sin índice compuesto: filtrar y ordenar en cliente
+        console.warn('[remesas] query con orderBy falló, fallback:', e?.message || e);
+        const snap = await db.collection('remesas')
+            .where('sender_customer_id', '==', customerId)
+            .get();
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+        return rows;
+    }
 }
 
 /**

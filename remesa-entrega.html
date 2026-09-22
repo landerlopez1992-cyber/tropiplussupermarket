@@ -55,26 +55,28 @@
             </div>
 
             <div class="remesa-search-panel">
-                <label>Código de seguridad</label>
-                <div class="svc-phone-row remesa-code-row">
+                <div class="remesa-search-block">
+                    <label>Código de seguridad</label>
                     <div id="remesa-code-pin" class="digit-pin" aria-label="Código de remesa"></div>
                     <input type="hidden" id="remesa-search-code" value="">
-                    <button type="button" class="btn-primary" id="remesa-search-btn">
+                    <button type="button" class="btn-primary svc-pin-search-btn" id="remesa-search-btn">
                         <i class="fas fa-search"></i> Buscar
                     </button>
+                    <p class="svc-hint">El familiar debe darte el código de 10 dígitos (estilo Western Union).</p>
                 </div>
-                <p class="svc-hint" style="margin-top:10px;">El familiar debe darte el código de 10 dígitos (estilo Western Union).</p>
 
                 <div class="remesa-or-divider"><span>o</span></div>
 
-                <label for="remesa-search-text">Nombre o CI del destinatario</label>
-                <div class="svc-url-row remesa-text-row">
-                    <input type="text" id="remesa-search-text" placeholder="Nombre completo o carnet" autocomplete="off">
-                    <button type="button" class="btn-primary" id="remesa-search-text-btn">
-                        <i class="fas fa-search"></i>
-                    </button>
+                <div class="remesa-search-block">
+                    <label for="remesa-search-text">Nombre o CI del destinatario</label>
+                    <div class="remesa-text-row">
+                        <input type="text" id="remesa-search-text" placeholder="Nombre completo o carnet" autocomplete="off">
+                        <button type="button" class="btn-primary" id="remesa-search-text-btn" aria-label="Buscar">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <p id="remesa-search-msg" class="svc-hint"></p>
                 </div>
-                <p id="remesa-search-msg" class="svc-hint" style="margin-top:8px;"></p>
             </div>
 
             <div id="remesa-results" class="remesa-results"></div>

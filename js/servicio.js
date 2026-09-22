@@ -562,9 +562,10 @@
         const itemTotal = window.orderItemTotal?.(o) ?? ((o.product_price || 0) * (o.quantity || 1));
         const shipCost = window.orderShipCost?.(o) || 0;
         const grandTotal = window.orderGrandTotal?.(o) ?? (itemTotal + shipCost);
-        const canDeliver = status === 'shipped' && o.shipping_paid === true;
+        const canDeliver = status === 'shipped';
         const img = orderImageUrl(o);
         const hasShip = shipCost > 0 || (o.shipping_lb != null && o.shipping_lb > 0);
+        const needShipPay = status === 'shipped' && !o.shipping_paid && shipCost > 0;
         const w = window.getWarrantyInfo?.(o) || {};
         const purchaseLabel = window.formatDateShort?.(o.purchase_date || o.created_at) || '—';
 
@@ -610,11 +611,17 @@
                     ` : (status === 'received' || status === 'cancelled' ? `
                     <button type="button" class="svc-btn svc-btn-print" data-action="print" data-id="${escapeHtml(o.id)}">Imprimir</button>
                     ` : '')}
+                    ${needShipPay ? `
+                    <button type="button" class="svc-btn svc-btn-ship-cash" data-action="ship-cash" data-id="${escapeHtml(o.id)}">
+                        <i class="fas fa-money-bill-wave"></i> Cobrar envío Cash ${formatMoney(shipCost)}
+                    </button>
+                    <button type="button" class="svc-btn svc-btn-ship-card" data-action="ship-card" data-id="${escapeHtml(o.id)}">
+                        <i class="fas fa-credit-card"></i> Cobrar envío Square
+                    </button>
+                    ` : ''}
                     ${canDeliver
                         ? `<button type="button" class="svc-btn svc-btn-done" data-action="deliver" data-id="${escapeHtml(o.id)}">Entregado</button>`
-                        : (status === 'shipped' && !o.shipping_paid
-                            ? `<span class="svc-meta" style="color:#b45309;">Envío pendiente de cobro (admin)</span>`
-                            : '')}
+                        : ''}
                 </div>
             </div>
         </article>`;
@@ -660,60 +667,292 @@
             if (!ok) return;
             await window.patchSpecialOrder(id, { status: 'cancelled' });
             await renderOrders();
+        } else if (action === 'ship-cash' || action === 'ship-card') {
+            await chargeEmployeeShipping(id, action === 'ship-cash' ? 'CASH' : 'CARD');
         } else if (action === 'deliver') {
-            const orders = await window.loadAllSpecialOrders();
-            const o = orders.find(x => x.id === id);
-            if (!o?.shipping_paid) {
-                if (typeof showAlert === 'function') {
-                    await showAlert('Envío pendiente', 'No se puede marcar Entregado hasta que el admin cobre el envío.', 'warning');
-                }
-                return;
-            }
+            const ok = typeof showConfirm === 'function'
+                ? await showConfirm(
+                    'Entregar',
+                    '¿El producto ya llegó a tienda y se entrega al cliente? Se marcará como Entregado.',
+                    { confirmText: 'Entregado', type: 'confirm' }
+                )
+                : true;
+            if (!ok) return;
             await window.patchSpecialOrder(id, { status: 'received' });
             await renderOrders();
+            if (locateViewPhone) await refreshCustomerScreen();
         } else if (action === 'print') {
             printOrder(id);
         }
     }
 
+    async function chargeEmployeeShipping(id, method) {
+        const orders = await window.loadAllSpecialOrders();
+        const o = window.normalizeSpecialOrder?.(orders.find(x => x.id === id)) || orders.find(x => x.id === id);
+        if (!o) return;
+        if (o.status !== 'shipped') {
+            if (typeof showAlert === 'function') {
+                await showAlert('Estado', 'El pedido debe estar Enviado para cobrar el envío.', 'warning');
+            }
+            return;
+        }
+        if (o.shipping_paid) {
+            if (typeof showAlert === 'function') {
+                await showAlert('Envío', 'El envío ya está cobrado. Ya puedes marcar Entregado.', 'info');
+            }
+            return;
+        }
+        const cost = window.orderShipCost?.(o) || Number(o.shipping_cost) || 0;
+        if (!(cost > 0)) {
+            if (typeof showAlert === 'function') {
+                await showAlert('Envío', 'El admin aún no cargó el peso/costo de envío.', 'warning');
+            }
+            return;
+        }
+        const label = method === 'CASH' ? 'Cash' : 'Square';
+        const ok = typeof showConfirm === 'function'
+            ? await showConfirm(
+                `Cobrar envío ${label}`,
+                `Cobrar envío ${formatMoney(cost)} con ${label} a ${o.customer_name || 'cliente'}?`,
+                { confirmText: 'Cobrar', type: 'confirm' }
+            )
+            : true;
+        if (!ok) return;
+
+        if (typeof showLoadingModal === 'function') showLoadingModal('Registrando cobro de envío…');
+        try {
+            await window.patchSpecialOrder(id, {
+                shipping_cost: cost,
+                shipping_lb: o.shipping_lb,
+                shipping_extra: o.shipping_extra || 0,
+                shipping_paid: true,
+                shipping_payment_method: method
+            });
+            if (typeof showAlert === 'function') {
+                await showAlert('Envío cobrado', `Envío ${formatMoney(cost)} registrado (${label}). Ahora puedes marcar Entregado.`, 'success');
+            }
+            await renderOrders();
+            if (locateViewPhone) await refreshCustomerScreen();
+        } catch (e) {
+            if (typeof showAlert === 'function') {
+                await showAlert('Error', e.message || 'No se pudo cobrar el envío', 'error');
+            }
+        } finally {
+            if (typeof hideLoadingModal === 'function') hideLoadingModal();
+        }
+    }
+
+    function receiptMoney(n) {
+        return '$' + (Number(n) || 0).toFixed(2);
+    }
+
+    function receiptPad(left, right, width = 32) {
+        const L = String(left || '');
+        const R = String(right || '');
+        const space = Math.max(1, width - L.length - R.length);
+        return escapeHtml(L + ' '.repeat(space) + R);
+    }
+
+    function receiptPayLabel(method) {
+        const m = String(method || '').toUpperCase();
+        if (m === 'CASH') return 'EFECTIVO';
+        if (m === 'CARD') return 'TARJETA';
+        if (m === 'WARRANTY' || m === 'GARANTIA') return 'GARANTIA';
+        return m || '—';
+    }
+
     async function printOrder(id) {
         const orders = await window.loadAllSpecialOrders();
-        const o = orders.find(x => x.id === id);
+        const o = window.normalizeSpecialOrder?.(orders.find(x => x.id === id)) || orders.find(x => x.id === id);
         if (!o) return;
-        const itemTotal = window.orderItemTotal?.(o) || 0;
+
+        const qty = Number(o.quantity) || 1;
+        const unit = Number(o.product_price) || 0;
+        const itemTotal = window.orderItemTotal?.(o) || Math.round(unit * qty * 100) / 100;
         const shipCost = window.orderShipCost?.(o) || 0;
-        const grand = window.orderGrandTotal?.(o) || itemTotal;
-        const img = orderImageUrl(o);
+        const grand = window.orderGrandTotal?.(o) || (itemTotal + shipCost);
         const w = window.getWarrantyInfo?.(o) || {};
         const purchaseLabel = window.formatDateShort?.(o.purchase_date || o.created_at) || '—';
-        const html = `<!DOCTYPE html><html><head><title>Recibo</title>
-            <style>
-              body{font-family:system-ui,sans-serif;padding:24px;max-width:420px;margin:0 auto}
-              h1{font-size:18px;margin:0 0 12px}
-              .row{margin:6px 0;font-size:14px}
-              .total{font-size:18px;font-weight:700;margin-top:12px;border-top:1px solid #ddd;padding-top:10px}
-              img{max-width:120px;max-height:120px;object-fit:contain}
-              .w{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;margin-top:12px;border-radius:6px}
-            </style></head><body>
-            <h1>TropiParts — Recibo pedido especial</h1>
-            ${img ? `<p><img src="${escapeHtml(img)}" alt="" referrerpolicy="no-referrer"></p>` : ''}
-            <div class="row"><strong>${escapeHtml(o.product_name)}</strong></div>
-            <div class="row">Cliente: ${escapeHtml(o.customer_name || '—')}</div>
-            <div class="row">Teléfono: ${escapeHtml(window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '—')}</div>
-            <div class="row">Artículo: ${formatMoney(itemTotal)} · Cant. ${o.quantity || 1}</div>
-            <div class="row">Pago: ${escapeHtml(o.payment_method || '—')}</div>
-            ${shipCost > 0 ? `<div class="row">Envío: ${formatMoney(shipCost)}</div>` : ''}
-            <div class="total">Total: ${formatMoney(grand)}</div>
-            <div class="w">
-              <div class="row"><strong>Garantía: ${escapeHtml(o.warranty_label || w.label || '—')}</strong></div>
-              <div class="row">Fecha de compra: ${escapeHtml(purchaseLabel)}</div>
-              ${w.lifetime
-                ? '<div class="row">Vigencia: de por vida</div>'
-                : `<div class="row">Vence: ${escapeHtml(window.formatDateShort?.(w.expires_at) || '—')}</div>
-                   <div class="row">Restante hoy: ${escapeHtml(w.remaining_label || '—')}</div>`}
-            </div>
-            <div class="row" style="margin-top:12px;color:#666;font-size:12px;">ID: ${escapeHtml(o.id)}</div>
-            </body></html>`;
+        const now = new Date();
+        const printedAt = now.toLocaleString('es-ES', {
+            day: '2-digit', month: '2-digit', year: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const ticketNo = String(o.id || '').replace(/^so_/, '').slice(0, 12).toUpperCase();
+        const isWarranty = !!(o.is_warranty_replacement || o.replaced_order_id || o.payment_method === 'WARRANTY');
+        const productPaid = o.product_paid !== false;
+        const shipPaid = !!o.shipping_paid;
+        const phone = window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '—';
+        const sku = o.product_sku ? String(o.product_sku) : '';
+        const statusLabel = window.specialStatusLabel?.(o.status) || o.status || '';
+
+        const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Recibo TropiParts</title>
+<style>
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+  body {
+    width: 80mm;
+    max-width: 80mm;
+    margin: 0 auto;
+    padding: 3mm 3mm 6mm;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .center { text-align: center; }
+  .bold { font-weight: 700; }
+  .brand {
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 2px;
+  }
+  .sub {
+    font-size: 10px;
+    margin: 0;
+  }
+  .rule {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+  .rule-dbl {
+    border: none;
+    border-top: 2px solid #000;
+    margin: 6px 0;
+  }
+  .mono {
+    white-space: pre;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 11px;
+    margin: 1px 0;
+  }
+  .item-name {
+    font-weight: 700;
+    font-size: 11px;
+    margin: 4px 0 2px;
+    word-break: break-word;
+  }
+  .muted { font-size: 10px; }
+  .total-line {
+    font-size: 13px;
+    font-weight: 900;
+    margin: 4px 0;
+  }
+  .badge {
+    display: inline-block;
+    border: 1px solid #000;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    margin: 4px 0;
+    text-transform: uppercase;
+  }
+  .foot {
+    margin-top: 8px;
+    font-size: 9px;
+  }
+  @media print {
+    html, body {
+      width: 80mm;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="center">
+    <p class="brand">TROPIPARTS</p>
+    <p class="sub">Real Campiña · Aguada de Pasajeros</p>
+    <p class="sub">Cienfuegos, Cuba</p>
+    <p class="sub">(772) 985-1015</p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="center bold">RECIBO DE VENTA</div>
+  <div class="center muted">Pedido especial / Servicio</div>
+  ${isWarranty ? '<div class="center"><span class="badge">Reemplazo por garantía</span></div>' : ''}
+
+  <hr class="rule">
+
+  <div class="mono">${receiptPad('Ticket', '#' + ticketNo)}</div>
+  <div class="mono">${receiptPad('Fecha', printedAt)}</div>
+  <div class="mono">${receiptPad('Estado', String(statusLabel).slice(0, 14))}</div>
+
+  <hr class="rule">
+
+  <div class="mono">${receiptPad('Cliente', '')}</div>
+  <div class="bold">${escapeHtml(o.customer_name || 'Cliente')}</div>
+  <div class="mono">${receiptPad('Tel', phone)}</div>
+
+  <hr class="rule">
+
+  <div class="center bold">*** ARTICULOS ***</div>
+  <div class="item-name">${escapeHtml(o.product_name || 'Producto')}</div>
+  ${sku ? `<div class="mono muted">SKU: ${escapeHtml(sku)}</div>` : ''}
+  <div class="mono">${receiptPad(qty + ' x ' + receiptMoney(unit), receiptMoney(itemTotal))}</div>
+  ${shipCost > 0
+    ? `<div class="mono">${receiptPad('Envio a Cuba' + (shipPaid ? '' : ' *'), receiptMoney(shipCost))}</div>`
+    : `<div class="mono muted">${receiptPad('Envio a Cuba', 'POR COTIZAR')}</div>`}
+
+  <hr class="rule">
+
+  ${isWarranty ? `
+  <div class="mono">${receiptPad('Subtotal', receiptMoney(itemTotal + shipCost))}</div>
+  <div class="mono">${receiptPad('Credito garantia', '-' + receiptMoney(itemTotal))}</div>
+  <hr class="rule-dbl">
+  <div class="mono total-line">${receiptPad('TOTAL A PAGAR', receiptMoney(shipCost))}</div>
+  <div class="center muted">Producto cubierto por garantia</div>
+  ` : `
+  <div class="mono">${receiptPad('Subtotal', receiptMoney(itemTotal))}</div>
+  ${shipCost > 0 ? `<div class="mono">${receiptPad('Envio', receiptMoney(shipCost))}</div>` : ''}
+  <hr class="rule-dbl">
+  <div class="mono total-line">${receiptPad('TOTAL', receiptMoney(grand))}</div>
+  `}
+  <div class="mono">${receiptPad('Pago', receiptPayLabel(o.payment_method))}</div>
+  <div class="mono">${receiptPad('Articulo', productPaid ? 'PAGADO' : 'PENDIENTE')}</div>
+  ${shipCost > 0 ? `<div class="mono">${receiptPad('Envio', shipPaid ? 'PAGADO' : 'PENDIENTE')}</div>` : ''}
+
+  <hr class="rule">
+
+  <div class="center bold">GARANTIA</div>
+  <div class="mono">${receiptPad('Cobertura', String(o.warranty_label || w.label || '—').slice(0, 16))}</div>
+  <div class="mono">${receiptPad('Compra', purchaseLabel)}</div>
+  ${w.lifetime
+    ? '<div class="mono">' + receiptPad('Vigencia', 'DE POR VIDA') + '</div>'
+    : `<div class="mono">${receiptPad('Vence', window.formatDateShort?.(w.expires_at) || '—')}</div>
+       <div class="mono">${receiptPad('Restante', String(w.remaining_label || '—').slice(0, 16))}</div>`}
+
+  <hr class="rule">
+
+  <div class="center foot">
+    Conserve este recibo.<br>
+    Es su comprobante de compra<br>
+    y garantia del producto.<br><br>
+    ¡Gracias por su compra!<br>
+    www.tropiparts.com
+  </div>
+
+  <hr class="rule">
+  <div class="center muted">${escapeHtml(String(o.id || ''))}</div>
+</body>
+</html>`;
 
         let iframe = document.getElementById('svc-print-frame');
         if (!iframe) {
@@ -727,9 +966,13 @@
         doc.write(html);
         doc.close();
         setTimeout(() => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        }, 250);
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (e) {
+                console.error('Print error', e);
+            }
+        }, 300);
     }
 
     /* —— Localizar / cliente / reemplazo por garantía —— */
@@ -815,6 +1058,19 @@
                        · Vence: ${escapeHtml(window.formatDateShort?.(w.expires_at) || '—')}`}
                 </div>
                 <div class="svc-locate-card-actions">
+                  ${o.status === 'shipped' && !o.shipping_paid && ship > 0 ? `
+                  <button type="button" class="svc-btn svc-btn-ship-cash" data-action="ship-cash" data-id="${escapeHtml(o.id)}">
+                    <i class="fas fa-money-bill-wave"></i> Cobrar envío Cash ${formatMoney(ship)}
+                  </button>
+                  <button type="button" class="svc-btn svc-btn-ship-card" data-action="ship-card" data-id="${escapeHtml(o.id)}">
+                    <i class="fas fa-credit-card"></i> Cobrar envío Square
+                  </button>
+                  ` : ''}
+                  ${o.status === 'shipped' ? `
+                  <button type="button" class="svc-btn svc-btn-done" data-action="deliver" data-id="${escapeHtml(o.id)}">
+                    <i class="fas fa-check"></i> Entregado
+                  </button>
+                  ` : ''}
                   ${replaceOk ? `
                   <button type="button" class="svc-btn-replace" data-action="replace" data-id="${escapeHtml(o.id)}">
                     <i class="fas fa-exchange-alt"></i> Reemplazar
@@ -828,6 +1084,9 @@
 
         box.querySelectorAll('[data-action="replace"]').forEach(btn => {
             btn.addEventListener('click', () => onWarrantyReplace(btn.dataset.id, btn));
+        });
+        box.querySelectorAll('[data-action="ship-cash"], [data-action="ship-card"], [data-action="deliver"]').forEach(btn => {
+            btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.id));
         });
     }
 

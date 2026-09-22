@@ -6474,7 +6474,7 @@ async function renderAdminSpecialOrders() {
                 ? o.shipping_cost
                 : (window.calcShippingCost?.(lb, extra) || 0);
             const grandTotal = Math.round((Number(itemTotal) + Number(shipCost || 0)) * 100) / 100;
-            const canDeliver = status === 'shipped' && o.shipping_paid === true;
+            const canDeliver = status === 'shipped';
             const showShipFields = status === 'shipped' || status === 'received';
             const img = (o.product_image || o.image || o.image_url || '').trim();
             const wInfo = window.getWarrantyInfo?.(o) || {};
@@ -6491,6 +6491,7 @@ async function renderAdminSpecialOrders() {
                         <strong>${adminSoEscape(o.product_name || 'Producto')}</strong>
                         <span class="svc-status svc-status-${adminSoEscape(status)}">${adminSoEscape(window.specialStatusLabel?.(status) || status)}</span>
                     </div>
+                    <div style="font-size:12px;color:#888;margin-top:2px;">Pedido: <code style="font-size:11px;">${adminSoEscape(o.order_number || o.id)}</code></div>
                     ${(o.customer_name || o.customer_phone) ? `
                     <div style="font-size:13px;color:#444;margin-top:4px;">
                         <i class="fas fa-user"></i> ${adminSoEscape(o.customer_name || '')} · ${adminSoEscape(window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '')}
@@ -6511,38 +6512,51 @@ async function renderAdminSpecialOrders() {
                     <div style="font-size:12px;color:#888;margin-top:4px;">Creado: ${adminSoEscape((o.created_at || '').slice(0, 16).replace('T', ' '))} · ${adminSoEscape(o.created_by || '')}</div>
 
                     ${showShipFields ? `
-                    <div class="admin-order-ship">
-                        <div>
-                            <label style="font-size:11px;font-weight:700;display:block;">Peso (lb)</label>
-                            <input type="number" min="0" step="0.1" class="admin-so-lb" data-id="${adminSoEscape(o.id)}" value="${lb !== '' && lb != null ? lb : ''}" placeholder="lb" ${o.shipping_paid ? 'readonly' : ''} style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">
+                    <div class="admin-so-ship-panel">
+                        <p class="admin-so-ship-title"><i class="fas fa-shipping-fast"></i> Envío y etiqueta</p>
+                        <div class="admin-order-ship">
+                            <div class="admin-so-field">
+                                <label>Peso (lb)</label>
+                                <input type="number" min="0" step="0.1" class="admin-so-lb" data-id="${adminSoEscape(o.id)}" value="${lb !== '' && lb != null ? lb : ''}" placeholder="0" ${o.shipping_paid ? 'readonly' : ''}>
+                            </div>
+                            <div class="admin-so-field">
+                                <label>Extra $</label>
+                                <input type="number" min="0" step="0.01" class="admin-so-extra" data-id="${adminSoEscape(o.id)}" value="${extra || 0}" ${o.shipping_paid ? 'readonly' : ''}>
+                            </div>
+                            <div class="admin-so-field admin-so-cost-field">
+                                <label>Envío (lb×$5 + extra)</label>
+                                <div class="admin-so-ship-cost" data-id="${adminSoEscape(o.id)}">${adminSoMoney(shipCost)}</div>
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;display:block;">Extra $</label>
-                            <input type="number" min="0" step="0.01" class="admin-so-extra" data-id="${adminSoEscape(o.id)}" value="${extra || 0}" ${o.shipping_paid ? 'readonly' : ''} style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">
+                        <div class="admin-so-field admin-so-warranty-field">
+                            <label>Garantía</label>
+                            <select class="admin-so-warranty" data-id="${adminSoEscape(o.id)}" ${o.shipping_paid ? 'disabled' : ''}>
+                                <option value="">— Seleccionar —</option>
+                                ${(window.WARRANTY_OPTIONS || []).map(opt => {
+                                    const cur = o.warranty_lifetime || o.warranty_years === 'lifetime' ? 'lifetime' : String(o.warranty_years || '');
+                                    return `<option value="${opt.value}" ${cur === String(opt.value) ? 'selected' : ''}>${opt.label}</option>`;
+                                }).join('')}
+                            </select>
                         </div>
-                        <div>
-                            <label style="font-size:11px;font-weight:700;display:block;">Envío (= lb×$5 + extra)</label>
-                            <div class="admin-so-ship-cost" data-id="${adminSoEscape(o.id)}" style="font-weight:700;padding:6px 0;">${adminSoMoney(shipCost)}</div>
+                        <p class="admin-so-ship-status">
+                            Envío: ${o.shipping_paid
+                                ? `<span class="ok">Cobrado (${adminSoEscape(o.shipping_payment_method || '—')}) ${adminSoMoney(o.shipping_cost || shipCost)}</span>`
+                                : '<span class="pending">Pendiente de cobro</span>'}
+                        </p>
+                        <div class="admin-so-ship-actions">
+                            ${!o.shipping_paid ? `
+                            <button type="button" class="btn-save admin-so-save" data-id="${adminSoEscape(o.id)}">
+                                <i class="fas fa-save"></i> Guardar cambios
+                            </button>
+                            ` : ''}
+                            <button type="button" class="btn-save admin-so-print-label" data-id="${adminSoEscape(o.id)}" style="background:#111;">
+                                <i class="fas fa-tag"></i> Imprimir etiqueta
+                            </button>
                         </div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <label style="font-size:11px;font-weight:700;display:block;">Garantía</label>
-                        <select class="admin-so-warranty" data-id="${adminSoEscape(o.id)}" ${o.shipping_paid ? 'disabled' : ''} style="width:100%;max-width:280px;padding:8px;border:1px solid #ddd;border-radius:4px;margin-top:4px;">
-                            <option value="">— Seleccionar —</option>
-                            ${(window.WARRANTY_OPTIONS || []).map(opt => {
-                                const cur = o.warranty_lifetime || o.warranty_years === 'lifetime' ? 'lifetime' : String(o.warranty_years || '');
-                                return `<option value="${opt.value}" ${cur === String(opt.value) ? 'selected' : ''}>${opt.label}</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
-                    <div style="margin-top:8px;font-size:13px;">
-                        Envío: ${o.shipping_paid
-                            ? `<span style="color:#15803d;">Cobrado (${adminSoEscape(o.shipping_payment_method || '—')}) ${adminSoMoney(o.shipping_cost || shipCost)}</span>`
-                            : '<span style="color:#b45309;">Pendiente de cobro — guarda el peso y cobra</span>'}
                     </div>
                     ` : `
                     <div style="margin-top:10px;font-size:13px;color:#64748b;">
-                        Al marcar <strong>Enviado</strong> podrás agregar peso, garantía y cobrar el envío.
+                        Al marcar <strong>Enviado</strong> podrás agregar peso, garantía, etiqueta y cobrar el envío.
                     </div>
                     `}
 
@@ -6561,60 +6575,25 @@ async function renderAdminSpecialOrders() {
             </div>`;
         }).join('');
 
-        // Preview en vivo + guardar peso (persistente) al cambiar
-        const shipSaveTimers = {};
+        // Solo preview del costo en vivo (guardar con botón)
         list.querySelectorAll('.admin-so-lb, .admin-so-extra').forEach(inp => {
-            const syncCost = (id) => {
+            inp.addEventListener('input', () => {
+                const id = inp.dataset.id;
                 const card = list.querySelector(`.admin-order-card[data-id="${id}"]`);
                 const lbVal = parseFloat(card?.querySelector('.admin-so-lb')?.value) || 0;
                 const extraVal = parseFloat(card?.querySelector('.admin-so-extra')?.value) || 0;
                 const cost = window.calcShippingCost?.(lbVal, extraVal) || 0;
                 const costEl = card?.querySelector('.admin-so-ship-cost');
                 if (costEl) costEl.textContent = adminSoMoney(cost);
-                return { lbVal, extraVal, cost };
-            };
-            inp.addEventListener('input', () => {
-                const id = inp.dataset.id;
-                syncCost(id);
-                clearTimeout(shipSaveTimers[id]);
-                shipSaveTimers[id] = setTimeout(async () => {
-                    const { lbVal, extraVal, cost } = syncCost(id);
-                    await window.patchSpecialOrder(id, {
-                        shipping_lb: lbVal,
-                        shipping_extra: extraVal,
-                        shipping_cost: cost
-                    });
-                }, 600);
-            });
-            inp.addEventListener('change', async () => {
-                const id = inp.dataset.id;
-                clearTimeout(shipSaveTimers[id]);
-                const { lbVal, extraVal, cost } = syncCost(id);
-                await window.patchSpecialOrder(id, {
-                    shipping_lb: lbVal,
-                    shipping_extra: extraVal,
-                    shipping_cost: cost
-                });
             });
         });
 
-        list.querySelectorAll('.admin-so-warranty').forEach(sel => {
-            sel.addEventListener('change', async () => {
-                const id = sel.dataset.id;
-                const val = sel.value;
-                if (!val) return;
-                const lifetime = val === 'lifetime';
-                const purchase = (await window.loadAllSpecialOrders()).find(x => x.id === id);
-                const purchaseDate = purchase?.purchase_date || purchase?.created_at || new Date().toISOString();
-                await window.patchSpecialOrder(id, {
-                    warranty_years: lifetime ? 'lifetime' : parseInt(val, 10),
-                    warranty_lifetime: lifetime,
-                    warranty_label: window.warrantyLabelFromValue?.(val) || val,
-                    warranty_expires_at: lifetime ? null : window.computeWarrantyExpiry?.(purchaseDate, val),
-                    purchase_date: purchaseDate
-                });
-                await renderAdminSpecialOrders();
-            });
+        list.querySelectorAll('.admin-so-save').forEach(btn => {
+            btn.addEventListener('click', () => saveAdminShipChanges(btn.dataset.id, btn));
+        });
+
+        list.querySelectorAll('.admin-so-print-label').forEach(btn => {
+            btn.addEventListener('click', () => printSpecialOrderLabel(btn.dataset.id));
         });
 
         list.querySelectorAll('.admin-so-viewed').forEach(btn => {
@@ -6631,14 +6610,10 @@ async function renderAdminSpecialOrders() {
                 const id = btn.dataset.id;
                 const status = btn.dataset.status;
                 if (status === 'received') {
-                    const orders = await window.loadAllSpecialOrders();
-                    const o = orders.find(x => x.id === id);
-                    if (!o?.shipping_paid) {
-                        if (typeof showAlert === 'function') {
-                            await showAlert('Envío pendiente', 'Debes cobrar el envío antes de marcar Entregado.', 'warning');
-                        }
-                        return;
-                    }
+                    const ok = typeof showConfirm === 'function'
+                        ? await showConfirm('Entregar', '¿Marcar como Entregado? (producto llegó a tienda / se entrega al cliente)', { confirmText: 'Entregado', type: 'confirm' })
+                        : true;
+                    if (!ok) return;
                 }
                 if (status === 'cancelled') {
                     const ok = typeof showConfirm === 'function'
@@ -6677,6 +6652,8 @@ async function chargeAdminShipping(id, method) {
         }
         return;
     }
+    // Guardar peso/garantía antes de cobrar
+    await saveAdminShipChanges(id, null, { silent: true });
     if (method === 'CARD') {
         const ok = typeof showConfirm === 'function'
             ? await showConfirm('Cobrar envío Square', `Cobrar envío ${adminSoMoney(cost)} con Square (se registrará como CARD). ¿Continuar?`, { confirmText: 'Cobrar', type: 'confirm' })
@@ -6699,6 +6676,223 @@ async function chargeAdminShipping(id, method) {
     window.markSpecialOrderViewed?.(id);
     await renderAdminSpecialOrders();
     await refreshSpecialOrdersBadge();
+}
+
+function collectShipForm(id) {
+    const list = document.getElementById('admin-special-orders-list');
+    const card = list?.querySelector(`.admin-order-card[data-id="${id}"]`);
+    if (!card) return null;
+    const lbVal = parseFloat(card.querySelector('.admin-so-lb')?.value) || 0;
+    const extraVal = parseFloat(card.querySelector('.admin-so-extra')?.value) || 0;
+    const cost = window.calcShippingCost?.(lbVal, extraVal) || 0;
+    const warrantyVal = card.querySelector('.admin-so-warranty')?.value || '';
+    return { lbVal, extraVal, cost, warrantyVal };
+}
+
+async function saveAdminShipChanges(id, btn, opts = {}) {
+    const form = collectShipForm(id);
+    if (!form) return;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando…';
+    }
+    try {
+        const orders = await window.loadAllSpecialOrders();
+        const purchase = orders.find(x => x.id === id);
+        const purchaseDate = purchase?.purchase_date || purchase?.created_at || new Date().toISOString();
+        const patch = {
+            shipping_lb: form.lbVal,
+            shipping_extra: form.extraVal,
+            shipping_cost: form.cost,
+            admin_viewed: true
+        };
+        if (form.warrantyVal) {
+            const lifetime = form.warrantyVal === 'lifetime';
+            patch.warranty_years = lifetime ? 'lifetime' : parseInt(form.warrantyVal, 10);
+            patch.warranty_lifetime = lifetime;
+            patch.warranty_label = window.warrantyLabelFromValue?.(form.warrantyVal) || form.warrantyVal;
+            patch.warranty_expires_at = lifetime ? null : window.computeWarrantyExpiry?.(purchaseDate, form.warrantyVal);
+            patch.purchase_date = purchaseDate;
+        }
+        await window.patchSpecialOrder(id, patch);
+        window.markSpecialOrderViewed?.(id);
+        if (!opts.silent && typeof showAlert === 'function') {
+            await showAlert('Guardado', `Cambios guardados. Envío: ${adminSoMoney(form.cost)}`, 'success');
+        }
+        if (!opts.silent) await renderAdminSpecialOrders();
+    } catch (e) {
+        if (typeof showAlert === 'function') {
+            await showAlert('Error', e.message || 'No se pudo guardar', 'error');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar cambios';
+        }
+    }
+}
+
+async function printSpecialOrderLabel(id) {
+    const orders = await window.loadAllSpecialOrders();
+    const o = window.normalizeSpecialOrder?.(orders.find(x => x.id === id)) || orders.find(x => x.id === id);
+    if (!o) return;
+    const given = o.customer_given_name || (o.customer_name || '').split(' ')[0] || '';
+    const family = o.customer_family_name
+        || (o.customer_name || '').split(' ').slice(1).join(' ')
+        || '';
+    const fullName = [given, family].filter(Boolean).join(' ') || o.customer_name || '—';
+    const phone = window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '—';
+    const orderNo = o.order_number || o.id;
+    // Código corto para etiqueta térmica
+    const shortNo = String(orderNo).replace(/^so_/, '').slice(0, 18);
+    const ship = window.orderShipCost?.(o) || o.shipping_cost || 0;
+    const productShort = String(o.product_name || '').slice(0, 48);
+    const weightTxt = o.shipping_lb != null ? `${o.shipping_lb} lb` : '—';
+
+    const html = `<!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <title>Etiqueta</title>
+      <style>
+        /* Etiqueta térmica Zebra — 4×6 in (estándar envío) */
+        @page {
+          size: 4in 6in;
+          margin: 0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+          width: 4in;
+          height: 6in;
+          overflow: hidden;
+          font-family: Arial, Helvetica, sans-serif;
+          color: #000;
+          background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .label {
+          width: 4in;
+          height: 6in;
+          padding: 0.28in 0.22in;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          page-break-after: avoid;
+          page-break-inside: avoid;
+        }
+        .brand {
+          font-size: 18px;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          margin-bottom: 10px;
+        }
+        .brand em {
+          font-style: normal;
+          color: #c62828;
+        }
+        .sub {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          margin-bottom: 14px;
+          opacity: 0.75;
+        }
+        .line {
+          width: 85%;
+          height: 2px;
+          background: #000;
+          margin: 8px auto 12px;
+        }
+        .k {
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-top: 8px;
+          opacity: 0.65;
+        }
+        .v {
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.15;
+          margin-top: 2px;
+          word-break: break-word;
+          max-width: 100%;
+        }
+        .v.order {
+          font-size: 16px;
+          letter-spacing: 0.02em;
+          font-family: "Courier New", Courier, monospace;
+        }
+        .v.phone {
+          font-size: 22px;
+        }
+        .v.name {
+          font-size: 24px;
+          text-transform: uppercase;
+        }
+        .meta {
+          margin-top: 14px;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1.35;
+          max-width: 90%;
+        }
+        .meta strong { font-size: 13px; }
+        @media print {
+          html, body, .label {
+            width: 4in;
+            height: 6in;
+          }
+        }
+      </style>
+    </head><body>
+      <div class="label">
+        <div class="brand">Tropi<em>Parts</em></div>
+        <div class="sub">Etiqueta de envío</div>
+        <div class="line"></div>
+
+        <div class="k">Nº de pedido</div>
+        <div class="v order">${adminSoEscape(shortNo)}</div>
+
+        <div class="k">Cliente</div>
+        <div class="v name">${adminSoEscape(fullName)}</div>
+
+        <div class="k">Nombre</div>
+        <div class="v">${adminSoEscape(given || '—')}</div>
+
+        <div class="k">Apellidos</div>
+        <div class="v">${adminSoEscape(family || '—')}</div>
+
+        <div class="k">Teléfono</div>
+        <div class="v phone">${adminSoEscape(phone)}</div>
+
+        <div class="line"></div>
+        <div class="meta">
+          ${adminSoEscape(productShort)}${String(o.product_name || '').length > 48 ? '…' : ''}<br>
+          <strong>Peso ${adminSoEscape(weightTxt)}</strong>${ship > 0 ? ` · Envío ${adminSoMoney(ship)}` : ''}
+        </div>
+      </div>
+    </body></html>`;
+
+    let iframe = document.getElementById('admin-so-print-frame');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'admin-so-print-frame';
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(iframe);
+    }
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }, 300);
 }
 
 // Badge al cargar admin

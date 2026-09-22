@@ -73,14 +73,19 @@ async function loadUserRemesas(statusFilter = null) {
         renderUserRemesas(filteredRemesas);
     } catch (error) {
         console.error('❌ Error cargando remesas:', error);
+        const raw = String(error.message || error || '');
+        const isIndex = /requires an index|FAILED_PRECONDITION/i.test(raw);
+        const friendly = isIndex
+            ? 'No se pudieron ordenar las remesas en el servidor. Reintenta; si persiste, el administrador debe crear el índice en Firebase.'
+            : 'No se pudieron cargar tus remesas. Revisa tu conexión e inténtalo de nuevo.';
         container.innerHTML = `
-            <div class="orders-empty">
-                <div class="orders-empty-icon">
+            <div class="orders-empty remesas-state">
+                <div class="orders-empty-icon remesas-state-icon">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <h3>Error cargando remesas</h3>
-                <p>${error.message || 'Error desconocido'}</p>
-                <button onclick="loadUserRemesas()" class="auth-submit-btn" style="display: inline-block; margin-top: 20px;">
+                <p class="remesas-state-msg">${friendly}</p>
+                <button type="button" onclick="loadUserRemesas()" class="remesas-retry-btn">
                     <i class="fas fa-sync-alt"></i> Reintentar
                 </button>
             </div>
@@ -94,13 +99,13 @@ function renderUserRemesas(remesas) {
     
     if (!remesas || remesas.length === 0) {
         container.innerHTML = `
-            <div class="orders-empty">
-                <div class="orders-empty-icon">
+            <div class="orders-empty remesas-state">
+                <div class="orders-empty-icon remesas-state-icon">
                     <i class="fas fa-money-bill-wave"></i>
                 </div>
                 <h3>No se han encontrado remesas.</h3>
-                <p>Cuando envíes una remesa, aparecerá aquí con su código de confirmación.</p>
-                <a href="index.html" class="auth-submit-btn" style="display: inline-block; margin-top: 20px;">
+                <p class="remesas-state-msg">Cuando envíes una remesa, aparecerá aquí con su código de confirmación.</p>
+                <a href="index.html" class="remesas-retry-btn">
                     <i class="fas fa-coins"></i> Enviar Remesa
                 </a>
             </div>
