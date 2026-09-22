@@ -407,24 +407,45 @@ async function backfillSpecialOrderMedia(order) {
 async function persistSpecialOrder(record) {
     record = normalizeSpecialOrder(record);
     upsertSpecialOrderLocal(record);
-    try {
-        if (typeof window.saveSpecialOrderToFirebase === 'function' && window.isFirebaseConfigured?.()) {
-            const saved = await window.saveSpecialOrderToFirebase(record);
-            if (saved?.id) {
-                record.id = saved.id;
-                upsertSpecialOrderLocal(record);
+    // Firebase en segundo plano: no bloquear la UI si tarda
+    const savePromise = (async () => {
+        try {
+            if (typeof window.saveSpecialOrderToFirebase === 'function' && window.isFirebaseConfigured?.()) {
+                const saved = await window.saveSpecialOrderToFirebase(record);
+                if (saved?.id) {
+                    record.id = saved.id;
+                    upsertSpecialOrderLocal({ ...record, ...saved });
+                }
             }
+        } catch (e) {
+            console.warn('[special-orders] Firebase save:', e);
         }
-    } catch (e) {
-        console.warn('[special-orders] Firebase save:', e);
-    }
+        return record;
+    })();
+    // Esperar máximo ~2.5s; si Firebase va lento, devolver ya con local
+    await Promise.race([
+        savePromise,
+        new Promise(resolve => setTimeout(resolve, 2500))
+    ]);
     return record;
 }
 
 async function patchSpecialOrder(id, patch) {
-    const all = await loadAllSpecialOrders();
-    const cur = all.find(o => o.id === id) || { id };
-    const next = { ...cur, ...patch, id, updated_at: new Date().toISOString() };
+    // Preferir local (rápido); solo ir a red si no está en localStorage
+    let cur = readSpecialOrdersLocal().find(o => o.id === id);
+    if (!cur) {
+        try {
+            const all = await loadAllSpecialOrders();
+            cur = all.find(o => o.id === id);
+        } catch (_) { /* ignore */ }
+    }
+    cur = cur || { id };
+    const next = {
+        ...normalizeSpecialOrder(cur),
+        ...patch,
+        id,
+        updated_at: new Date().toISOString()
+    };
     return persistSpecialOrder(next);
 }
 

@@ -1144,27 +1144,25 @@
 
             <!-- Subtab Órdenes especiales (Servicio) -->
             <div id="special-orders-content" class="admin-subcontent">
-                <div style="margin-bottom: 20px; text-align: center;">
-                    <h2 style="margin-bottom: 8px; font-size: 24px;">
-                        <i class="fas fa-clipboard-list"></i> Órdenes de Servicio
-                    </h2>
-                    <p style="color: var(--gray-text); font-size: 14px; margin: 0;">
-                        Pedidos especiales. Envío temporal: <strong>$5 / lb</strong> + extras. Marca como visto al abrir.
-                    </p>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:center;">
-                    <button type="button" class="admin-so-filter active" data-so-status="">Todas</button>
-                    <button type="button" class="admin-so-filter" data-so-status="processing">Procesando</button>
-                    <button type="button" class="admin-so-filter" data-so-status="ordered">Comprado</button>
-                    <button type="button" class="admin-so-filter" data-so-status="shipped">Enviado</button>
-                    <button type="button" class="admin-so-filter" data-so-status="received">Entregado</button>
-                    <button type="button" class="admin-so-filter" data-so-status="cancelled">Cancelado</button>
-                    <button type="button" class="btn-save" id="admin-so-refresh" style="margin-left:auto;">
-                        <i class="fas fa-sync"></i> Actualizar
-                    </button>
-                </div>
-                <div id="admin-special-orders-list">
-                    <p style="text-align:center;color:var(--gray-text);padding:24px;">Cargando…</p>
+                <div class="admin-so-page">
+                    <div class="admin-so-page-head">
+                        <h2><i class="fas fa-clipboard-list"></i> Órdenes de Servicio</h2>
+                        <p>Pedidos especiales · Envío <strong>$5 / lb</strong> + extras. Toca una orden para ver detalles.</p>
+                    </div>
+                    <div class="admin-so-filters-bar">
+                        <button type="button" class="admin-so-filter active" data-so-status="">Todas</button>
+                        <button type="button" class="admin-so-filter" data-so-status="processing">Procesando</button>
+                        <button type="button" class="admin-so-filter" data-so-status="ordered">Comprado</button>
+                        <button type="button" class="admin-so-filter" data-so-status="shipped">Enviado</button>
+                        <button type="button" class="admin-so-filter" data-so-status="received">Entregado</button>
+                        <button type="button" class="admin-so-filter" data-so-status="cancelled">Cancelado</button>
+                        <button type="button" class="btn-save admin-so-refresh-btn" id="admin-so-refresh">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                    <div id="admin-special-orders-list" class="admin-so-list">
+                        <p style="text-align:center;color:var(--gray-text);padding:24px;">Cargando…</p>
+                    </div>
                 </div>
             </div>
 

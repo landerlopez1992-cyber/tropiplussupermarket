@@ -6479,37 +6479,42 @@ async function renderAdminSpecialOrders() {
             const img = (o.product_image || o.image || o.image_url || '').trim();
             const wInfo = window.getWarrantyInfo?.(o) || {};
             const purchaseLabel = window.formatDateShort?.(o.purchase_date || o.created_at) || '—';
+            const shortId = String(o.order_number || o.id || '').replace(/^so_/, '').slice(0, 14);
+            const customerLine = o.customer_name || o.customer_phone
+                ? `${adminSoEscape(o.customer_name || '')}${o.customer_phone ? ' · ' + adminSoEscape(window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone) : ''}`
+                : 'Sin cliente';
 
             return `
-            <div class="admin-order-card ${isNew ? 'is-new' : ''}" data-id="${adminSoEscape(o.id)}">
-                ${isNew ? '<span class="new-dot" title="Nueva"></span>' : ''}
-                ${img
-                    ? `<img src="${adminSoEscape(img)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
-                    : '<div style="width:80px;height:80px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;"><i class="fas fa-box"></i></div>'}
-                <div style="flex:1;">
-                    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                        <strong>${adminSoEscape(o.product_name || 'Producto')}</strong>
+            <article class="admin-so-acc ${isNew ? 'is-new' : ''}" data-id="${adminSoEscape(o.id)}">
+                <button type="button" class="admin-so-acc-head" aria-expanded="false">
+                    ${img
+                        ? `<img class="admin-so-acc-thumb" src="${adminSoEscape(img)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+                        : `<span class="admin-so-acc-thumb ph"><i class="fas fa-box"></i></span>`}
+                    <span class="admin-so-acc-main">
+                        <span class="admin-so-acc-title">${adminSoEscape(o.product_name || 'Producto')}</span>
+                        <span class="admin-so-acc-sub">${customerLine}</span>
+                        <span class="admin-so-acc-meta">
+                            ${adminSoMoney(itemTotal)}${shipCost > 0 ? ` · Total ${adminSoMoney(grandTotal)}` : ''}
+                            ${o.shipping_paid ? ' · <em class="ok">Envío cobrado</em>' : (shipCost > 0 ? ' · <em class="pend">Envío pend.</em>' : '')}
+                            ${o.warranty_label ? ` · ${adminSoEscape(o.warranty_label)}` : ''}
+                        </span>
+                    </span>
+                    <span class="admin-so-acc-right">
+                        ${isNew ? '<span class="admin-so-acc-dot" title="Nueva"></span>' : ''}
                         <span class="svc-status svc-status-${adminSoEscape(status)}">${adminSoEscape(window.specialStatusLabel?.(status) || status)}</span>
+                        <i class="fas fa-chevron-down admin-so-acc-chevron" aria-hidden="true"></i>
+                    </span>
+                </button>
+                <div class="admin-so-acc-body" hidden>
+                    <div class="admin-so-acc-grid">
+                        <div><span class="k">Pedido</span><code>${adminSoEscape(shortId)}</code></div>
+                        <div><span class="k">Artículo</span>${adminSoMoney(itemTotal)} · Cant. ${o.quantity || 1} · ${adminSoPayBadge(o.payment_method)}</div>
+                        ${shipCost > 0 ? `<div><span class="k">Envío</span>${adminSoMoney(shipCost)}${o.shipping_paid ? ' · cobrado' : ' · pendiente'}</div>` : ''}
+                        ${shipCost > 0 ? `<div><span class="k">Total</span><strong>${adminSoMoney(grandTotal)}</strong></div>` : ''}
+                        ${o.warranty_label ? `<div class="span2"><span class="k">Garantía</span>${adminSoEscape(o.warranty_label)} · Compra ${adminSoEscape(purchaseLabel)}${wInfo.lifetime ? '' : ` · Resta ${adminSoEscape(wInfo.remaining_label || '—')}`}</div>` : ''}
+                        ${o.product_url ? `<div class="span2"><a href="${adminSoEscape(o.product_url)}" target="_blank" rel="noopener">Ver producto</a></div>` : ''}
+                        <div class="span2 muted">Creado ${adminSoEscape((o.created_at || '').slice(0, 16).replace('T', ' '))} · ${adminSoEscape(o.created_by || '')}</div>
                     </div>
-                    <div style="font-size:12px;color:#888;margin-top:2px;">Pedido: <code style="font-size:11px;">${adminSoEscape(o.order_number || o.id)}</code></div>
-                    ${(o.customer_name || o.customer_phone) ? `
-                    <div style="font-size:13px;color:#444;margin-top:4px;">
-                        <i class="fas fa-user"></i> ${adminSoEscape(o.customer_name || '')} · ${adminSoEscape(window.formatPhoneDisplay?.(o.customer_phone) || o.customer_phone || '')}
-                    </div>` : ''}
-                    <div style="font-size:13px;color:#666;margin-top:4px;">
-                        Artículo: ${adminSoMoney(itemTotal)} · Cant. ${o.quantity || 1} · ${adminSoPayBadge(o.payment_method)}
-                    </div>
-                    ${o.warranty_label ? `
-                    <div style="font-size:13px;margin-top:4px;padding:6px 8px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
-                        <i class="fas fa-shield-alt"></i> Garantía: <strong>${adminSoEscape(o.warranty_label)}</strong>
-                        · Compra: ${adminSoEscape(purchaseLabel)}
-                        ${wInfo.lifetime ? ' · De por vida' : ` · Resta: <strong>${adminSoEscape(wInfo.remaining_label || '—')}</strong>${wInfo.expired ? ' <span style="color:#c62828;">(vencida)</span>' : ''}`}
-                    </div>` : ''}
-                    ${shipCost > 0 ? `<div style="font-size:13px;color:#666;">Envío: ${adminSoMoney(shipCost)}${o.shipping_paid ? ' · cobrado' : ' · pendiente'}</div>` : ''}
-                    ${shipCost > 0 ? `<div style="font-size:14px;font-weight:700;margin-top:2px;">Total: ${adminSoMoney(grandTotal)}</div>` : ''}
-                    ${o.notes ? `<div style="font-size:13px;color:#666;">${adminSoEscape(o.notes)}</div>` : ''}
-                    ${o.product_url ? `<div style="font-size:12px;"><a href="${adminSoEscape(o.product_url)}" target="_blank" rel="noopener">Ver producto</a></div>` : ''}
-                    <div style="font-size:12px;color:#888;margin-top:4px;">Creado: ${adminSoEscape((o.created_at || '').slice(0, 16).replace('T', ' '))} · ${adminSoEscape(o.created_by || '')}</div>
 
                     ${showShipFields ? `
                     <div class="admin-so-ship-panel">
@@ -6524,7 +6529,7 @@ async function renderAdminSpecialOrders() {
                                 <input type="number" min="0" step="0.01" class="admin-so-extra" data-id="${adminSoEscape(o.id)}" value="${extra || 0}" ${o.shipping_paid ? 'readonly' : ''}>
                             </div>
                             <div class="admin-so-field admin-so-cost-field">
-                                <label>Envío (lb×$5 + extra)</label>
+                                <label>Envío</label>
                                 <div class="admin-so-ship-cost" data-id="${adminSoEscape(o.id)}">${adminSoMoney(shipCost)}</div>
                             </div>
                         </div>
@@ -6546,40 +6551,59 @@ async function renderAdminSpecialOrders() {
                         <div class="admin-so-ship-actions">
                             ${!o.shipping_paid ? `
                             <button type="button" class="btn-save admin-so-save" data-id="${adminSoEscape(o.id)}">
-                                <i class="fas fa-save"></i> Guardar cambios
+                                <i class="fas fa-save"></i> Guardar
                             </button>
                             ` : ''}
                             <button type="button" class="btn-save admin-so-print-label" data-id="${adminSoEscape(o.id)}" style="background:#111;">
-                                <i class="fas fa-tag"></i> Imprimir etiqueta
+                                <i class="fas fa-tag"></i> Etiqueta
                             </button>
                         </div>
                     </div>
                     ` : `
-                    <div style="margin-top:10px;font-size:13px;color:#64748b;">
-                        Al marcar <strong>Enviado</strong> podrás agregar peso, garantía, etiqueta y cobrar el envío.
-                    </div>
+                    <p class="admin-so-hint">Marca <strong>Enviado</strong> para peso, etiqueta y cobro de envío.</p>
                     `}
 
-                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-                        ${isNew ? `<button type="button" class="btn-save admin-so-viewed" data-id="${adminSoEscape(o.id)}" style="background:#64748b;"><i class="fas fa-eye"></i> Marcar visto</button>` : ''}
-                        ${status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="ordered">Marcar comprado</button>` : ''}
-                        ${status === 'ordered' || status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="shipped" style="background:#1565c0;">Marcar enviado</button>` : ''}
+                    <div class="admin-so-acc-actions">
+                        ${isNew ? `<button type="button" class="btn-save admin-so-viewed" data-id="${adminSoEscape(o.id)}" style="background:#64748b;">Visto</button>` : ''}
+                        ${status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="ordered">Comprado</button>` : ''}
+                        ${status === 'ordered' || status === 'processing' ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="shipped" style="background:#1565c0;">Enviado</button>` : ''}
                         ${showShipFields && !o.shipping_paid && status === 'shipped' ? `
-                            <button type="button" class="btn-save admin-so-ship-cash" data-id="${adminSoEscape(o.id)}"><i class="fas fa-money-bill-wave"></i> Cobrar envío Cash</button>
-                            <button type="button" class="btn-save admin-so-ship-card" data-id="${adminSoEscape(o.id)}" style="background:#006aff;"><i class="fas fa-credit-card"></i> Cobrar envío Square</button>
+                            <button type="button" class="btn-save admin-so-ship-cash" data-id="${adminSoEscape(o.id)}"><i class="fas fa-money-bill-wave"></i> Envío Cash</button>
+                            <button type="button" class="btn-save admin-so-ship-card" data-id="${adminSoEscape(o.id)}" style="background:#006aff;"><i class="fas fa-credit-card"></i> Envío Square</button>
                         ` : ''}
                         ${canDeliver ? `<button type="button" class="btn-save admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="received" style="background:#2e7d32;">Entregado</button>` : ''}
                         ${status !== 'cancelled' && status !== 'received' ? `<button type="button" class="btn-cancel admin-so-status" data-id="${adminSoEscape(o.id)}" data-status="cancelled">Cancelar</button>` : ''}
                     </div>
                 </div>
-            </div>`;
+            </article>`;
         }).join('');
+
+        // Acordeón: tocar fila para abrir/cerrar
+        list.querySelectorAll('.admin-so-acc-head').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const acc = btn.closest('.admin-so-acc');
+                const body = acc?.querySelector('.admin-so-acc-body');
+                if (!body) return;
+                const open = !acc.classList.contains('open');
+                list.querySelectorAll('.admin-so-acc.open').forEach(other => {
+                    if (other !== acc) {
+                        other.classList.remove('open');
+                        other.querySelector('.admin-so-acc-body')?.setAttribute('hidden', '');
+                        other.querySelector('.admin-so-acc-head')?.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                acc.classList.toggle('open', open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) body.removeAttribute('hidden');
+                else body.setAttribute('hidden', '');
+            });
+        });
 
         // Solo preview del costo en vivo (guardar con botón)
         list.querySelectorAll('.admin-so-lb, .admin-so-extra').forEach(inp => {
             inp.addEventListener('input', () => {
                 const id = inp.dataset.id;
-                const card = list.querySelector(`.admin-order-card[data-id="${id}"]`);
+                const card = list.querySelector(`.admin-so-acc[data-id="${id}"]`);
                 const lbVal = parseFloat(card?.querySelector('.admin-so-lb')?.value) || 0;
                 const extraVal = parseFloat(card?.querySelector('.admin-so-extra')?.value) || 0;
                 const cost = window.calcShippingCost?.(lbVal, extraVal) || 0;
@@ -6642,7 +6666,7 @@ async function renderAdminSpecialOrders() {
 
 async function chargeAdminShipping(id, method) {
     const list = document.getElementById('admin-special-orders-list');
-    const card = list?.querySelector(`.admin-order-card[data-id="${id}"]`);
+    const card = list?.querySelector(`.admin-so-acc[data-id="${id}"]`);
     const lb = parseFloat(card?.querySelector('.admin-so-lb')?.value) || 0;
     const extra = parseFloat(card?.querySelector('.admin-so-extra')?.value) || 0;
     const cost = window.calcShippingCost?.(lb, extra) || 0;
@@ -6680,7 +6704,7 @@ async function chargeAdminShipping(id, method) {
 
 function collectShipForm(id) {
     const list = document.getElementById('admin-special-orders-list');
-    const card = list?.querySelector(`.admin-order-card[data-id="${id}"]`);
+    const card = list?.querySelector(`.admin-so-acc[data-id="${id}"]`);
     if (!card) return null;
     const lbVal = parseFloat(card.querySelector('.admin-so-lb')?.value) || 0;
     const extraVal = parseFloat(card.querySelector('.admin-so-extra')?.value) || 0;

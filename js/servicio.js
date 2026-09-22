@@ -728,14 +728,18 @@
                 shipping_paid: true,
                 shipping_payment_method: method
             });
-            if (typeof showAlert === 'function') {
-                await showAlert('Envío cobrado', `Envío ${formatMoney(cost)} registrado (${label}). Ahora puedes marcar Entregado.`, 'success');
-            }
+            if (typeof hideLoadingModal === 'function') hideLoadingModal();
             await renderOrders();
-            if (locateViewPhone) await refreshCustomerScreen();
-        } catch (e) {
+            if (locateViewPhone) {
+                try { await refreshCustomerScreen(); } catch (_) { /* ignore */ }
+            }
             if (typeof showAlert === 'function') {
-                await showAlert('Error', e.message || 'No se pudo cobrar el envío', 'error');
+                showAlert('Envío cobrado', `Envío ${formatMoney(cost)} registrado (${label}). Ahora puedes marcar Entregado.`, 'success');
+            }
+        } catch (e) {
+            if (typeof hideLoadingModal === 'function') hideLoadingModal();
+            if (typeof showAlert === 'function') {
+                showAlert('Error', e.message || 'No se pudo cobrar el envío', 'error');
             }
         } finally {
             if (typeof hideLoadingModal === 'function') hideLoadingModal();

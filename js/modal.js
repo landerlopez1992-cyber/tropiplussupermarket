@@ -1,6 +1,8 @@
 // Sistema de modales personalizados para reemplazar alerts/confirm del navegador
 
 function showModal(title, message, type = 'info', onAccept = null) {
+    if (typeof hideLoadingModal === 'function') hideLoadingModal();
+
     const existingModal = document.getElementById('custom-modal');
     if (existingModal) existingModal.remove();
 
@@ -77,6 +79,8 @@ function showConfirm(title, message, options = {}) {
     } = options;
 
     return new Promise((resolve) => {
+        if (typeof hideLoadingModal === 'function') hideLoadingModal();
+
         const existingModal = document.getElementById('custom-modal');
         if (existingModal) existingModal.remove();
 
@@ -181,7 +185,7 @@ function hideLoadingModal() {
     const el = document.getElementById('app-loading-modal');
     if (!el) return;
     el.classList.remove('active');
-    setTimeout(() => el.remove(), 200);
+    try { el.remove(); } catch (_) { /* ignore */ }
 }
 
 window.showLoadingModal = showLoadingModal;

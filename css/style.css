@@ -8825,56 +8825,235 @@ input.digit-pin-box {
     font-weight: 700;
     line-height: 1.4;
 }
-.admin-order-card {
+
+/* ── Órdenes especiales: página centrada + acordeón compacto ── */
+.admin-so-page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 12px 40px;
+}
+.admin-so-page-head {
+    text-align: center;
+    margin-bottom: 16px;
+}
+.admin-so-page-head h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+}
+.admin-so-page-head p {
+    margin: 0;
+    color: var(--gray-text, #666);
+    font-size: 13px;
+}
+.admin-so-filters-bar {
     display: flex;
-    gap: 14px;
-    padding: 14px;
-    margin-bottom: 12px;
-    border: 1px solid var(--gray-border, #e0e0e0);
-    border-radius: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.admin-so-filter {
+    border: 1px solid #ddd;
     background: #fff;
-    position: relative;
-    max-width: 820px;
+    color: #444;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.admin-order-card.is-new { border-color: #c62828; box-shadow: 0 0 0 1px #c62828; }
-.admin-order-card .new-dot {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #c62828;
+.admin-so-filter:hover { border-color: #999; }
+.admin-so-filter.active {
+    background: #111;
+    border-color: #111;
+    color: #fff;
 }
-.admin-order-card img {
-    width: 80px;
-    height: 80px;
+.admin-so-refresh-btn {
+    width: auto !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    margin-left: 4px;
+}
+.admin-so-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-so-acc {
+    border: 1px solid #e2e2e2;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.admin-so-acc.is-new {
+    border-color: #c62828;
+}
+.admin-so-acc.open {
+    border-color: #bbb;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+.admin-so-acc-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}
+.admin-so-acc-head:hover { background: #fafafa; }
+.admin-so-acc-thumb {
+    width: 44px;
+    height: 44px;
     object-fit: contain;
     background: #f5f5f5;
     border-radius: 4px;
     flex-shrink: 0;
 }
-.admin-so-ship-panel {
+.admin-so-acc-thumb.ph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 16px;
+}
+.admin-so-acc-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.admin-so-acc-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.admin-so-acc-sub {
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.admin-so-acc-meta {
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.admin-so-acc-meta em.ok { color: #15803d; font-style: normal; font-weight: 600; }
+.admin-so-acc-meta em.pend { color: #b45309; font-style: normal; font-weight: 600; }
+.admin-so-acc-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.admin-so-acc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c62828;
+}
+.admin-so-acc-right .svc-status {
+    font-size: 10px;
+    padding: 3px 7px;
+    white-space: nowrap;
+}
+.admin-so-acc-chevron {
+    font-size: 11px;
+    color: #999;
+    transition: transform 0.2s;
+}
+.admin-so-acc.open .admin-so-acc-chevron {
+    transform: rotate(180deg);
+}
+.admin-so-acc-body {
+    padding: 0 12px 14px;
+    border-top: 1px solid #eee;
+    animation: adminSoReveal 0.18s ease;
+}
+@keyframes adminSoReveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.admin-so-acc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 12px 0 4px;
+    font-size: 13px;
+    color: #333;
+}
+.admin-so-acc-grid .k {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #888;
+    margin-bottom: 2px;
+}
+.admin-so-acc-grid .span2 { grid-column: 1 / -1; }
+.admin-so-acc-grid .muted { color: #888; font-size: 12px; }
+.admin-so-acc-grid code {
+    font-size: 11px;
+    background: #f5f5f5;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.admin-so-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+.admin-so-acc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
+}
+.admin-so-acc-actions .btn-save,
+.admin-so-acc-actions .btn-cancel {
+    width: auto;
+    padding: 7px 12px;
+    font-size: 12px;
+}
+
+.admin-so-ship-panel {
+    margin-top: 10px;
     padding: 12px;
     background: #fafafa;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
-    max-width: 420px;
 }
 .admin-so-ship-title {
     margin: 0 0 10px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #111;
-    font-family: var(--font-display);
 }
 .admin-order-ship {
     display: grid;
-    grid-template-columns: 90px 90px 1fr;
-    gap: 10px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
     align-items: end;
 }
 .admin-so-field label {
@@ -8888,42 +9067,44 @@ input.digit-pin-box {
 .admin-so-field select {
     width: 100%;
     max-width: 100%;
-    padding: 8px;
+    padding: 7px 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
     background: #fff;
     box-sizing: border-box;
 }
 .admin-so-cost-field .admin-so-ship-cost {
     font-weight: 800;
-    font-size: 16px;
-    padding: 8px 0;
+    font-size: 15px;
+    padding: 7px 0;
     color: #c62828;
 }
 .admin-so-warranty-field {
     margin-top: 10px;
-    max-width: 220px;
+    max-width: 200px;
 }
 .admin-so-ship-status {
     margin: 10px 0 0;
-    font-size: 13px;
+    font-size: 12px;
 }
 .admin-so-ship-status .ok { color: #15803d; font-weight: 600; }
 .admin-so-ship-status .pending { color: #b45309; font-weight: 600; }
 .admin-so-ship-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 6px;
+    margin-top: 10px;
 }
 .admin-so-ship-actions .btn-save {
     width: auto;
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: 7px 12px;
+    font-size: 12px;
 }
 @media (max-width: 640px) {
+    .admin-so-page { max-width: 100%; padding: 0 8px 32px; }
     .admin-order-ship { grid-template-columns: 1fr 1fr; }
     .admin-so-cost-field { grid-column: 1 / -1; }
-    .admin-order-card { max-width: 100%; }
+    .admin-so-acc-grid { grid-template-columns: 1fr; }
+    .admin-so-acc-right .svc-status { font-size: 9px; padding: 2px 5px; }
 }
